@@ -1,0 +1,8 @@
+eclipse.preferences.version=1
+org.jboss.tools.openshift.ApplicationId=62f07ecab9aa4e7cbfd33c6926bc49c5
+org.jboss.tools.openshift.ApplicationName=blog
+org.jboss.tools.openshift.Connection=https\://fengxue2026%40qq.com@
+org.jboss.tools.openshift.DeployFolder=deployments
+org.jboss.tools.openshift.Domain=irelandken
+org.jboss.tools.openshift.RemoteName=openshift
+org.jboss.tools.openshift.Username=fengxue2026@qq.com

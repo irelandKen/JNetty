@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app version="3.0" xmlns="http://java.sun.com/xml/ns/javaee"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://java.sun.com/xml/ns/javaee 
+	http://java.sun.com/xml/ns/javaee/web-app_3_0.xsd">
+	<display-name></display-name>
+
+	<listener>
+		<listener-class>listeners.myServletContestListener</listener-class>
+	</listener>
+
+
+	<!-- 过滤器的顺序要注意一下,初始化init(),销毁destroy() 及实际执行时doFilter时 是严格按照web.xml定义的顺序的,在过滤器链中也是按xml上定义的先后顺序排列的 -->
+	<filter>
+		<description>abc</description>
+		<display-name>dd</display-name>
+		
+		<filter-name>EncodeFilter</filter-name>
+		<filter-class>Filters.EncodeFilter</filter-class>
+		<async-supported>true</async-supported>
+		
+		<init-param>
+			<param-name>abc</param-name>
+			<param-value>55</param-value>
+		</init-param>
+		<init-param>
+			<param-name>eee</param-name>
+			<param-value>55</param-value>
+		</init-param>
+	</filter>
+
+	<filter-mapping>
+		<filter-name>EncodeFilter</filter-name>
+		<url-pattern>/FirstServlet</url-pattern>
+		<url-pattern>/*</url-pattern>
+		<dispatcher>REQUEST</dispatcher>
+		<dispatcher>ASYNC</dispatcher>
+		<dispatcher>FORWARD</dispatcher>
+	</filter-mapping>
+
+	<filter-mapping>
+		<filter-name>EncodeFilter</filter-name>
+		<servlet-name>FirstServlet</servlet-name>
+		<servlet-name>SecondServlet</servlet-name>
+		<dispatcher>FORWARD</dispatcher>
+		<dispatcher>REQUEST</dispatcher>
+	</filter-mapping>
+	
+	<filter>
+		<filter-name>LoginFilter</filter-name>
+		<filter-class>Filters.LoginFilter</filter-class>
+	</filter>
+
+	<filter-mapping>
+		<filter-name>LoginFilter</filter-name>
+		<url-pattern>/*</url-pattern>
+		<dispatcher>REQUEST</dispatcher>
+	</filter-mapping>
+
+
+	<servlet>
+	
+		<description>This is FirstServlet</description>
+		
+		<display-name>FirstServlet</display-name>
+		
+		<servlet-name>FirstServlet</servlet-name>
+		<servlet-class>myServlet.FirstServlet</servlet-class>
+		
+		<init-param>
+			<param-name>abc</param-name>
+			<param-value>12</param-value>
+		</init-param>
+		
+		<init-param>
+			<param-name>addsf</param-name>
+			<param-value>155</param-value>
+		</init-param>
+		
+		<load-on-startup>2</load-on-startup>
+		
+		<async-supported>true</async-supported>
+		
+	</servlet>
+	
+	<servlet-mapping>
+		<servlet-name>FirstServlet</servlet-name>
+		<url-pattern>/FirstServlet</url-pattern>
+		<url-pattern>/*</url-pattern>
+	</servlet-mapping>
+
+
+	<servlet>
+		<servlet-name>SecondServlet</servlet-name>
+		<servlet-class>myServlet.SecondServlet</servlet-class>
+		<load-on-startup>2</load-on-startup>
+	</servlet>
+	<servlet-mapping>
+		<servlet-name>SecondServlet</servlet-name>
+		<url-pattern>/SecondServlet</url-pattern>
+	</servlet-mapping>
+</web-app>

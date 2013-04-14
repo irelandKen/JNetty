@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" 
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:context="http://www.springframework.org/schema/context"
+    xmlns:mvc="http://www.springframework.org/schema/mvc"
+    xsi:schemaLocation="
+        http://www.springframework.org/schema/beans 
+        http://www.springframework.org/schema/beans/spring-beans-3.2.xsd
+        http://www.springframework.org/schema/context 
+        http://www.springframework.org/schema/context/spring-context-3.2.xsd
+        http://www.springframework.org/schema/mvc
+        http://www.springframework.org/schema/mvc/spring-mvc-3.2.xsd">
+
+
+	<!-- Scans the classpath of this application for @Components to deploy as beans -->
+	
+
+    <context:component-scan base-package="com.ireland.controller"/>
+    
+    <context:annotation-config></context:annotation-config>
+    
+    
+    
+	<!-- Enables controllers mapped with @RequestMapping annotations, 
+	formatting annotations @NumberFormat @DateTimeFormat, 
+	and JSR 303 style validation 
+	和 配置7个默认的HttpMessageConverter -->
+	<mvc:annotation-driven >
+		<!-- default-timeout: 1000 sec -->
+		<mvc:async-support default-timeout="10000000"></mvc:async-support>
+	</mvc:annotation-driven>
+   
+    <bean class="org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping">
+    </bean>
+    
+    
+    <bean class="org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter">
+    </bean>
+
+ 
+    
+    
+    
+
+	<!-- Resolves view names to protected .jsp resources within the /WEB-INF/pages directory -->   
+    <bean class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+    	<property name="viewClass" value="org.springframework.web.servlet.view.JstlView"/>
+    	<property name="prefix" value="/WEB-INF/pages/"/>
+    	<property name="suffix" value=".jsp"/>
+	</bean>
+    
+
+	
+	<!-- 文件上传必需配置 multipartResolver-->
+	<bean id="multipartResolver"
+		class="org.springframework.web.multipart.support.StandardServletMultipartResolver">
+	</bean>
+	
+	
+	
+	<!-- 静态资源 -->
+	<!-- Handles HTTP GET requests for /resources/** by efficiently serving up static resources in the ${webappRoot}/resources/ directory -->
+	<mvc:resources mapping="/css/**" location="/WEB-INF/pages/css/" cache-period="31556926"/>
+	<mvc:resources mapping="/js/**" location="/WEB-INF/pages/js/" cache-period="31556926"/>
+	<mvc:resources mapping="/img/**" location="/WEB-INF/pages/img/" cache-period="31556926"/>
+	<!-- <mvc:resources mapping="/staticfiles/**" location="/WEB-INF/staticfiles/"/> -->
+	
+	
+	<!-- 当URL无法与DispatcherServlet的handler配置时,尝试与Servlet容器的资源配置 -->
+	<!-- 如: 访问静态资源 -->
+	<!-- 相当于配置了 DefaultServletHttpRequestHandler : "/*" -->
+	<!--  <mvc:default-servlet-handler />-->
+	
+	
+	
+	
+	<!-- 简单视图跳转 -->
+	
+	<!-- Map paths directly to view names without controller processing. Use the view-name attribute if necessary: by convention the view name equals the path without the leading slash -->
+
+	<!-- 主页 -->
+	<!-- <mvc:view-controller path="/" view-name="index" /> -->
+
+	<!-- 错误页面 -->
+	<mvc:view-controller path="/404" view-name="system/404"/>
+	<mvc:view-controller path="/403" view-name="system/403"/>
+	
+	<!-- 用户 -->
+	<!-- <mvc:view-controller path="/login" view-name="user/login"/> -->
+	<mvc:view-controller path="/register" view-name="user/register"/>
+	<mvc:view-controller path="/changepassword" view-name="user/changePasswordPage"/>
+	
+	<mvc:view-controller path="/file/upload" view-name="files/upload"/>
+
+
+
+	
+
+     
+</beans>
