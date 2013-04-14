@@ -35,6 +35,7 @@ import javax.servlet.ServletContext;
 import javax.servlet.FilterRegistration;
 import javax.servlet.DispatcherType;
 
+import org.ireland.jnetty.config.ConfigException;
 import org.ireland.jnetty.webapp.WebApp;
 
 import java.util.*;
@@ -62,7 +63,7 @@ import java.util.*;
 	</filter>
 
  */
-public class FilterConfigImpl implements FilterConfig, FilterRegistration.Dynamic
+public class FilterConfigImpl<T extends Filter> implements FilterConfig, FilterRegistration.Dynamic
 {
 	
 	private WebApp _webApp;
@@ -77,7 +78,7 @@ public class FilterConfigImpl implements FilterConfig, FilterRegistration.Dynami
 
 	private String _filterClassName;
 
-	private Class<?> _filterClass;
+	private Class<T> _filterClass;
 
 	private String _displayName;
 	
@@ -123,11 +124,11 @@ public class FilterConfigImpl implements FilterConfig, FilterRegistration.Dynami
 	{
 		_filterClassName = filterClassName;
 
-		_filterClass = _webApp.getClassLoader().loadClass(filterClassName);
+		_filterClass = (Class<T>) _webApp.getClassLoader().loadClass(filterClassName);
 
 	}
 
-	public void setFilterClass(Class<?> filterClass)
+	public void setFilterClass(Class<T> filterClass)
 	{
 		_filterClass = filterClass;
 	}
@@ -135,7 +136,7 @@ public class FilterConfigImpl implements FilterConfig, FilterRegistration.Dynami
 	/**
 	 * Gets the filter name.
 	 */
-	public Class<?> getFilterClass()
+	public Class<T> getFilterClass()
 	{
 		return _filterClass;
 	}
@@ -255,9 +256,6 @@ public class FilterConfigImpl implements FilterConfig, FilterRegistration.Dynami
 		try
 		{
 			FilterMapping mapping = new FilterMapping(this);
-			//mapping.setServletContext(_webApp);
-
-			//mapping.setFilterName(_filterName);
 
 			if (dispatcherTypes != null)
 			{
@@ -275,7 +273,7 @@ public class FilterConfigImpl implements FilterConfig, FilterRegistration.Dynami
 		catch (Exception e)
 		{
 			// XXX: needs better exception handling
-			throw new RuntimeException(e.getMessage(), e);
+			throw new ConfigException(e.getMessage(), e);
 		}
 	}
 
@@ -307,9 +305,6 @@ public class FilterConfigImpl implements FilterConfig, FilterRegistration.Dynami
 		try
 		{
 			FilterMapping mapping = new FilterMapping(this);
-			//mapping.setServletContext(_webApp);
-
-			//mapping.setFilterName(_filterName);
 
 			if (dispatcherTypes != null)
 			{
@@ -333,7 +328,7 @@ public class FilterConfigImpl implements FilterConfig, FilterRegistration.Dynami
 		catch (Exception e)
 		{
 			// XXX: needs better exception handling
-			throw new RuntimeException(e.getMessage(), e);
+			throw new ConfigException(e.getMessage(), e);
 		}
 	}
 

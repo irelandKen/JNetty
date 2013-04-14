@@ -40,7 +40,10 @@ import java.util.logging.Logger;
 
 import javax.annotation.PostConstruct;
 import javax.servlet.Filter;
+import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
+
+import org.ireland.jnetty.webapp.WebApp;
 
 
 
@@ -54,6 +57,11 @@ public class FilterManager
 	static final Logger log = Logger.getLogger(FilterManager.class.getName());
 
 	static final L10N L = new L10N(FilterManager.class);
+	
+	private final WebApp _webApp;
+
+	private final ServletContext _servletContext;
+	
 
 	//<filterName,FilterConfigImpl>
 	private HashMap<String, FilterConfigImpl> _filters = new HashMap<String, FilterConfigImpl>();
@@ -70,6 +78,14 @@ public class FilterManager
 	
 	//maps filterName to servletName   <filterName,Set<ServletName>>
 	private Map<String, Set<String>> _servletNames = new HashMap<String, Set<String>>();
+
+	
+	public FilterManager(WebApp _webApp, ServletContext _servletContext)
+	{
+		super();
+		this._webApp = _webApp;
+		this._servletContext = _servletContext;
+	}
 
 	/**
 	 * Adds a filter to the filter manager.
@@ -117,7 +133,7 @@ public class FilterManager
 	{
 		//添加FilterName --> urlPatterns 的映射关系
 		Set<String> patterns = filterMapping.getURLPatterns();
-		if (patterns != null)
+		if (patterns != null && patterns.size() > 0)
 		{
 			Set<String> urls = _urlPatterns.get(filterMapping.getFilterConfig().getName());
 
@@ -174,7 +190,7 @@ public class FilterManager
 		if (config == null)
 			throw new ServletException(L.l("`{0}' is not a known filter.  Filters must be defined by <filter> before being used.",filterName));
 
-		Class<?> filterClass = config.getFilterClass();
+		Class<Filter> filterClass = config.getFilterClass();
 
 		synchronized (config)
 		{
@@ -185,6 +201,14 @@ public class FilterManager
 				if (filter != null)
 					return filter;
 
+				if(config.getFilter() == null)
+				{
+					//filter is null,create one
+					filter = _servletContext.createFilter(config.getFilterClass());
+				
+					config.setFilter(filter);
+				}
+				
 				filter = config.getFilter();
 
 				filter.init(config);

@@ -73,7 +73,6 @@ public class FilterMapping
 
 	private boolean isCaseInsensitive = true;
 
-	private String _urlPattern;
 	
 	private final LinkedHashSet<String> _urlPatterns = new LinkedHashSet<String>();
 
@@ -109,12 +108,8 @@ public class FilterMapping
 	}
 
 	/**
-	 * Gets the url pattern
+	 * Gets the url patterns
 	 */
-	public String getURLPattern()
-	{
-		return _urlPattern;
-	}
 
 	public HashSet<String> getURLPatterns()
 	{
@@ -349,7 +344,7 @@ public class FilterMapping
 	 */
 	public String toString()
 	{
-		return "FilterMapping[pattern=" + _urlPattern + ",name=" + getFilterConfig().getFilterName() + "]";
+		return "FilterMapping[pattern=" + _urlPatterns + ",name=" + getFilterConfig().getFilterName() + "]";
 	}
 
 	public class URLPattern
@@ -363,7 +358,6 @@ public class FilterMapping
 		{
 			pattern = pattern.trim();
 
-			_urlPattern = pattern;
 			_urlPatterns.add(pattern);
 
 			Pattern regexp;

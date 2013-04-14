@@ -349,9 +349,6 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 
 	public void setAsyncSupported(boolean asyncSupported)
 	{
-		if (_webApp != null)
-			throw new IllegalStateException();
-
 		_asyncSupported = asyncSupported;
 	}
 
@@ -487,7 +484,8 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 	/**
 	 * Gets the init params
 	 */
-	public Enumeration getInitParameterNames()
+	@Override
+	public Enumeration<String> getInitParameterNames()
 	{
 		return Collections.enumeration(_initParams.keySet());
 	}
@@ -637,28 +635,21 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 		if (_loadOnStartup >= 0)
 			requireClass = true;
 
-		Thread thread = Thread.currentThread();
-		ClassLoader loader = thread.getContextClassLoader();
-
 		if (_servletClassName == null)
-		{
-		}
-		else if (_servletClassName.equals("invoker"))
 		{
 		}
 		else
 		{
-			try
+			if(_servletClass == null)
 			{
-				_servletClass = Class.forName(_servletClassName, false, loader);
-			}
-			catch (ClassNotFoundException e)
-			{
-				/*
-				 * if (e instanceof CompileException) throw error(e);
-				 */
-
-				log.log(Level.FINER, e.toString(), e);
+				try
+				{
+					_servletClass = Class.forName(_servletClassName, false, _webApp.getClassLoader());
+				}
+				catch (ClassNotFoundException e)
+				{
+					log.log(Level.FINER, e.toString(), e);
+				}
 			}
 
 			if (_servletClass != null)
@@ -676,10 +667,7 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 				return;
 			}
 
-			if (Servlet.class.isAssignableFrom(_servletClass))
-			{
-			}
-			else
+			if (!Servlet.class.isAssignableFrom(_servletClass))
 			{
 				throw error(L.l("'{0}' must implement javax.servlet.Servlet  All servlets must implement the Servlet interface.", _servletClassName));
 			}

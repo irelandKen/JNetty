@@ -305,7 +305,8 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder
 		_servletMapper = new ServletMapper(this);
 		_servletMapper.setServletManager(_servletManager);
 
-		_filterManager = new FilterManager();
+		_filterManager = new FilterManager(this,this);
+		
 		_requestFilterMapper = new FilterMapper();
 		_requestFilterMapper.setServletContext(this);
 		_requestFilterMapper.setFilterManager(_filterManager);
@@ -782,9 +783,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder
 		
 		//按DispatcherType分类存放
 		if (filterMapping.isRequest())
-		{
 			_requestFilterMapper.addFilterMapping(filterMapping);
-		}
 
 		if (filterMapping.isInclude())
 			_includeFilterMapper.addFilterMapping(filterMapping);
