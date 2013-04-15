@@ -176,19 +176,17 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder
 	// The filter manager
 	private FilterManager _filterManager;
 
-	// The filter mapper
-	private FilterMapper _requestFilterMapper;
-
-	// The dispatch filter mapper
+	
+	// The dispatch filter mapper                  (DispatcherType#REQUEST)
 	private FilterMapper _dispatchFilterMapper;
 
-	// The include filter mapper
+	// The include filter mapper                   (DispatcherType#INCLUDE)
 	private FilterMapper _includeFilterMapper;
 
-	// The forward filter mapper
+	// The forward filter mapper                   (DispatcherType#FORWARD)
 	private FilterMapper _forwardFilterMapper;
 
-	// The error filter mapper
+	// The error filter mapper                     (DispatcherType#ERROR)
 	private FilterMapper _errorFilterMapper;
 	// -----filter--------------------------
 
@@ -307,9 +305,9 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder
 
 		_filterManager = new FilterManager(this,this);
 		
-		_requestFilterMapper = new FilterMapper();
-		_requestFilterMapper.setServletContext(this);
-		_requestFilterMapper.setFilterManager(_filterManager);
+		_dispatchFilterMapper = new FilterMapper();
+		_dispatchFilterMapper.setServletContext(this);
+		_dispatchFilterMapper.setFilterManager(_filterManager);
 
 		_includeFilterMapper = new FilterMapper();
 		_includeFilterMapper.setServletContext(this);
@@ -318,10 +316,6 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder
 		_forwardFilterMapper = new FilterMapper();
 		_forwardFilterMapper.setServletContext(this);
 		_forwardFilterMapper.setFilterManager(_filterManager);
-
-		_dispatchFilterMapper = new FilterMapper();
-		_dispatchFilterMapper.setServletContext(this);
-		_dispatchFilterMapper.setFilterManager(_filterManager);
 
 		_errorFilterMapper = new FilterMapper();
 		_errorFilterMapper.setServletContext(this);
@@ -627,10 +621,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder
 
 		try
 		{
-			FilterConfigImpl config = new FilterConfigImpl();
-
-			config.setWebApp(this);
-			config.setServletContext(this);
+			FilterConfigImpl config = createNewFilterConfig();
 
 			config.setFilterName(filterName);
 			config.setFilterClass(className);
@@ -783,7 +774,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder
 		
 		//按DispatcherType分类存放
 		if (filterMapping.isRequest())
-			_requestFilterMapper.addFilterMapping(filterMapping);
+			_dispatchFilterMapper.addFilterMapping(filterMapping);
 
 		if (filterMapping.isInclude())
 			_includeFilterMapper.addFilterMapping(filterMapping);
@@ -1355,7 +1346,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder
 					chain = _servletMapper.mapServlet(invocation);
 
 					// server/13s[o-r]
-					_requestFilterMapper.buildDispatchChain(invocation, chain);
+					_dispatchFilterMapper.buildDispatchChain(invocation, chain);
 					chain = invocation.getFilterChain();
 
 					chain = applyWelcomeFile(DispatcherType.REQUEST,
@@ -1482,7 +1473,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder
 			throws ServletException
 	{
 		// buildDispatchInvocation(invocation, _dispatchFilterMapper);
-		buildDispatchInvocation(invocation, _requestFilterMapper);
+		buildDispatchInvocation(invocation, _dispatchFilterMapper);
 
 		buildSecurity(invocation);
 	}

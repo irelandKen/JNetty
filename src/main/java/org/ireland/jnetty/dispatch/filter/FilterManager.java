@@ -43,6 +43,7 @@ import javax.servlet.Filter;
 import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
 
+import org.ireland.jnetty.dispatch.servlet.ServletConfigImpl;
 import org.ireland.jnetty.webapp.WebApp;
 
 
@@ -55,7 +56,6 @@ import com.caucho.util.L10N;
 public class FilterManager
 {
 	static final Logger log = Logger.getLogger(FilterManager.class.getName());
-
 	static final L10N L = new L10N(FilterManager.class);
 	
 	private final WebApp _webApp;
@@ -66,6 +66,7 @@ public class FilterManager
 	//<filterName,FilterConfigImpl>
 	private HashMap<String, FilterConfigImpl> _filters = new HashMap<String, FilterConfigImpl>();
 
+	
 	
 	//记录 filterName 到 urlPatterns 之间的映射关系 
 	//maps filterName to urlPattern   <filterName,Set<urlPattern>>

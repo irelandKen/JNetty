@@ -34,11 +34,17 @@ import javax.servlet.FilterConfig;
 import javax.servlet.ServletContext;
 import javax.servlet.FilterRegistration;
 import javax.servlet.DispatcherType;
+import javax.servlet.ServletException;
 
 import org.ireland.jnetty.config.ConfigException;
+import org.ireland.jnetty.dispatch.servlet.ServletConfigImpl;
 import org.ireland.jnetty.webapp.WebApp;
 
+import com.caucho.util.L10N;
+
 import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Configuration for a filter.
@@ -65,6 +71,8 @@ import java.util.*;
  */
 public class FilterConfigImpl implements FilterConfig, FilterRegistration.Dynamic
 {
+	static L10N L = new L10N(ServletConfigImpl.class);
+	protected static final Logger log = Logger.getLogger(FilterConfigImpl.class.getName());
 	
 	private WebApp _webApp;
 
@@ -149,16 +157,84 @@ public class FilterConfigImpl implements FilterConfig, FilterRegistration.Dynami
 		return _filterClassName;
 	}
 
-	public Filter getFilter()
-	{
-		return _filter;
-	}
 
 	public void setFilter(Filter filter)
 	{
 		_filter = filter;
 	}
 
+	/**
+	 * Instantiates a Filter given its configuration.
+	 * 
+	 * 返回Filter的实例(单例的,多次调用返回同一个实例)
+	 * 
+	 * 1:如果Filter实例不存在,则创建一个Filter实例,
+	 *   并初始化它(调用Filter#init(FilterConfig config)
+	 * 
+	 * 2:返回已初始化的Filter实例.
+	 * 
+	 * 
+	 * @return the initialized servlet.
+	 */
+	public Filter getInstance() throws Exception
+	{
+		// server/102e
+		if (_filter != null)
+			return _filter;
+
+		_filter = createFilterAndInit();
+		
+		return _filter;
+	}
+
+	/*
+	 * 
+	 * 
+	 * 实例化一个Filter,并初始化它
+	 * 
+	 * Filter.init(this);
+	 */
+	private Filter createFilterAndInit() throws Exception
+	{
+
+		Class<? extends Filter> filterClass = getFilterClass();
+
+		Filter filter;
+
+		if (filterClass == null)
+			throw new NullPointerException(L.l("Null servlet class for '{0}'.", _filterName));
+
+		
+		try
+		{
+			filter = filterClass.newInstance();
+		}
+		catch (Exception e)
+		{
+			throw new ServletException(e);
+		}
+			
+
+		// 配置Filter
+		configureFilter(filter);
+
+		//初始化
+		filter.init(this);
+
+		if (log.isLoggable(Level.FINE))
+			log.finer("Filter[" + _filterName + "] instantiated and inited");
+		
+		return filter;
+	}
+
+	/**
+	 * Configure the servlet (everything that is done after instantiation but before servlet.init()
+	 */
+	void configureFilter(Object servlet)
+	{
+
+	}
+	
 	/**
 	 * Sets an init-param
 	 */
@@ -415,4 +491,6 @@ public class FilterConfigImpl implements FilterConfig, FilterRegistration.Dynami
 	{
 		return "FilterConfigImpl[name=" + _filterName + ",class=" + _filterClass + "]";
 	}
+
+
 }

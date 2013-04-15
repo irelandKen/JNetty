@@ -43,7 +43,6 @@ import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import javax.annotation.PostConstruct;
 import javax.servlet.FilterChain;
 import javax.servlet.MultipartConfigElement;
 import javax.servlet.Servlet;
@@ -119,10 +118,10 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 	private String _servletClassName;
 	private Class<? extends Servlet> _servletClass;
 	private String _displayName;
+	
 	private int _loadOnStartup = Integer.MIN_VALUE;
+	
 	private boolean _asyncSupported;
-
-	private Servlet _singletonServlet;
 
 	private HashMap<String, String> _initParams = new HashMap<String, String>();
 
@@ -765,7 +764,7 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 		if (_servlet != null)
 			return _servlet;
 
-		_servlet = createServletImpl();
+		_servlet = createServletAndInit();
 		
 		return _servlet;
 	}
@@ -777,7 +776,7 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 	 * 
 	 * servlet.init(this);
 	 */
-	private Servlet createServletImpl() throws ServletException
+	private Servlet createServletAndInit() throws ServletException
 	{
 
 		Class<? extends Servlet> servletClass = getServletClass();

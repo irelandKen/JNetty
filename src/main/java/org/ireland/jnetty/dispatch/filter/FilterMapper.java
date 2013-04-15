@@ -48,6 +48,22 @@ import java.util.logging.Logger;
  * Manages dispatching: servlets and filters.
  
   :TODO: rename "FilterMapper" TO "FilterMatcher"
+  
+  通常情况下,一个FilterMapper里存放FilterMappings会支持同一种Dispatcher.Type
+  对于org.ireland.jnetty.webapp.WebApp里,对于每一个Dispatcher.Type都会有对应的独立的FilterMapper
+  	
+  	// The dispatch filter mapper                  (DispatcherType#REQUEST)
+	private FilterMapper _dispatchFilterMapper;
+
+	// The include filter mapper                   (DispatcherType#INCLUDE)
+	private FilterMapper _includeFilterMapper;
+
+	// The forward filter mapper                   (DispatcherType#FORWARD)
+	private FilterMapper _forwardFilterMapper;
+
+	// The error filter mapper                     (DispatcherType#ERROR)
+	private FilterMapper _errorFilterMapper;
+	
  * 
  * Filter匹配器
  */
