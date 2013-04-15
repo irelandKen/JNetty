@@ -43,10 +43,12 @@ import org.ireland.jnetty.dispatch.servlet.ServletConfigImpl;
 
 
 import java.io.IOException;
-import java.util.HashMap;
 
 /**
  * Represents the final servlet in a filter chain.
+ * 
+ * 将Servlet适配成FilterChain,用于表示FilterChain中的最后的Servlet
+ * 
  */
 public class ServletFilterChain implements FilterChain {
   public static String SERVLET_NAME = "javax.servlet.error.servlet_name";
@@ -91,16 +93,9 @@ public class ServletFilterChain implements FilterChain {
                        ServletResponse response)
     throws ServletException, IOException
   {
-    if (_servlet == null) {
-      try {
-        _servlet = (Servlet) _config.createServlet(false);
-      } catch (RuntimeException e) {
-        throw e;
-      } catch (ServletException e) {
-        throw e;
-      } catch (Exception e) {
-        throw new ServletException(e);
-      }
+    if (_servlet == null) 
+    {
+        _servlet = (Servlet) _config.getInstance();
     }
 
     try {

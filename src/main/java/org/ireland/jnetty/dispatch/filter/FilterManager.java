@@ -67,7 +67,7 @@ public class FilterManager
 	private HashMap<String, FilterConfigImpl> _filters = new HashMap<String, FilterConfigImpl>();
 
 	
-	//<filterName,Filter>
+	//<filterName,Filter> 存放所有已创建Filter的实例
 	private HashMap<String, Filter> _instances = new HashMap<String, Filter>();
 
 	
@@ -190,7 +190,7 @@ public class FilterManager
 		if (config == null)
 			throw new ServletException(L.l("`{0}' is not a known filter.  Filters must be defined by <filter> before being used.",filterName));
 
-		Class<Filter> filterClass = config.getFilterClass();
+		Class<? extends Filter> filterClass = config.getFilterClass();
 
 		synchronized (config)
 		{

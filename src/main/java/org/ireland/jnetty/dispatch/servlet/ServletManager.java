@@ -47,7 +47,7 @@ import java.util.logging.Logger;
 /**
  * Manages the servlets.
  * 
- * 管理所有Servlet的集合
+ * 管理Servlet创建\查找的Manager
  * 
  */
 public class ServletManager
@@ -146,9 +146,9 @@ public class ServletManager
 	@PostConstruct
 	public void init() throws ServletException
 	{
-		ArrayList<ServletConfigImpl> loadOnStartup;
-		loadOnStartup = new ArrayList<ServletConfigImpl>();
+		ArrayList<ServletConfigImpl> loadOnStartup = new ArrayList<ServletConfigImpl>();
 
+		//取出loadOnStartup的Servlet,并按其数值升序排序
 		for (int j = 0; j < _servletList.size(); j++)
 		{
 			ServletConfigImpl config = _servletList.get(j);
@@ -173,18 +173,17 @@ public class ServletManager
 
 		}
 
+		//只实例化和初始化 loadOnStartup 的Servlet
 		for (int i = 0; i < loadOnStartup.size(); i++)
 		{
 			ServletConfigImpl config = loadOnStartup.get(i);
 
 			try
 			{
-				config.createServlet(false);
+				config.getInstance();
 			} catch (ServletException e)
 			{
-
 				log.log(Level.WARNING, e.toString(), e);
-
 			}
 		}
 	}
@@ -259,7 +258,7 @@ public class ServletManager
 							servletName));
 		}
 
-		return (Servlet) config.createServlet(false);
+		return config.getInstance();
 	}
 
 	/**

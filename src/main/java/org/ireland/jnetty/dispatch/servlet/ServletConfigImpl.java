@@ -117,7 +117,7 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 	private String _servletNameDefault;
 
 	private String _servletClassName;
-	private Class<?> _servletClass;
+	private Class<? extends Servlet> _servletClass;
 	private String _displayName;
 	private int _loadOnStartup = Integer.MIN_VALUE;
 	private boolean _asyncSupported;
@@ -133,8 +133,10 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 
 
 
-
-	private Object _servlet;
+	//Servlet的实例(单例)
+	private Servlet _servlet;
+	
+	//Servlet实例对应的ServletFilterChain
 	private FilterChain _servletChain;
 
 	/**
@@ -401,7 +403,7 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 
 		try
 		{
-			_servletClass = Class.forName(servletClassName, false, loader);
+			_servletClass = (Class<? extends Servlet>) Class.forName(servletClassName, false, loader);
 
 		}
 		catch (ClassNotFoundException e)
@@ -423,7 +425,7 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 	/**
 	 * Gets the servlet class. 加载Servlet的Class
 	 */
-	public Class getServletClass()
+	public Class<? extends Servlet> getServletClass()
 	{
 
 		if (_servletClassName == null)
@@ -454,7 +456,7 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 
 	public void setServlet(Servlet servlet)
 	{
-		_singletonServlet = servlet;
+		_servlet = servlet;
 	}
 
 	/**
@@ -577,7 +579,7 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 	/**
 	 * Returns the servlet.
 	 */
-	public Object getServlet()
+	public Servlet getServlet()
 	{
 		return _servlet;
 	}
@@ -644,7 +646,7 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 			{
 				try
 				{
-					_servletClass = Class.forName(_servletClassName, false, _webApp.getClassLoader());
+					_servletClass = (Class<? extends Servlet>) Class.forName(_servletClassName, false, _webApp.getClassLoader());
 				}
 				catch (ClassNotFoundException e)
 				{
@@ -712,7 +714,7 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 	}
 
 	/**
-	 * 根据Servlet的类型创新不同的FilterChain
+	 * 
 	 * 
 	 * @return
 	 * @throws ServletException
@@ -721,7 +723,7 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 	{
 		FilterChain servletChain = null;
 
-		if (_singletonServlet != null)
+		if (_servlet != null)
 		{
 			servletChain = new ServletFilterChain(this);
 
@@ -747,58 +749,25 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 	/**
 	 * Instantiates a servlet given its configuration.
 	 * 
-	 * @param isNew
+	 * 返回Servlet的实例(单例的,多次调用返回同一个实例)
+	 * 
+	 * 1:如果Servlet实例不存在,则创建一个Servlet实例,
+	 *   并初始化它(调用javax.servlet.Servlet#init(ServletConfig config)
+	 * 
+	 * 2:返回已初始化的Servlet实例.
+	 * 
 	 * 
 	 * @return the initialized servlet.
 	 */
-	public Object createServlet(boolean isNew) throws ServletException
+	public Servlet getInstance() throws ServletException
 	{
 		// server/102e
-		if (_servlet != null && !isNew)
+		if (_servlet != null)
 			return _servlet;
-		else if (_singletonServlet != null)
-		{
-			// server/1p19
-			_servlet = _singletonServlet;
 
-			_singletonServlet.init(this);
-
-			return _singletonServlet;
-		}
-
-		Object servlet = null;
-
-		try
-		{
-			synchronized (this)
-			{
-				if (!isNew && _servlet != null)
-					return _servlet;
-
-				// XXX: this was outside of the sync block
-				servlet = createServletImpl();
-
-				if (!isNew)
-					_servlet = servlet;
-			}
-
-			if (log.isLoggable(Level.FINE))
-				log.finer("Servlet[" + _servletName + "] active");
-
-			return servlet;
-		}
-		catch (RuntimeException e)
-		{
-			throw e;
-		}
-		catch (ServletException e)
-		{
-			throw e;
-		}
-		catch (Throwable e)
-		{
-			throw new ServletException(e);
-		}
+		_servlet = createServletImpl();
+		
+		return _servlet;
 	}
 
 	/*
@@ -808,39 +777,36 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 	 * 
 	 * servlet.init(this);
 	 */
-	private Object createServletImpl() throws Exception
+	private Servlet createServletImpl() throws ServletException
 	{
 
-		Class<?> servletClass = getServletClass();
+		Class<? extends Servlet> servletClass = getServletClass();
 
-		Object servlet;
+		Servlet servlet;
 
-		if (servletClass != null)
+		if (servletClass == null)
+			throw new ServletException(L.l("Null servlet class for '{0}'.", _servletName));
+
+		
+		try
 		{
-
 			servlet = servletClass.newInstance();
 		}
-		else
-			throw new ServletException(L.l("Null servlet class for '{0}'.", _servletName));
+		catch (Exception e)
+		{
+			throw new ServletException(e);
+		}
+			
 
 		// 配置Servlet
 		configureServlet(servlet);
 
-		try
-		{
-			if (servlet instanceof Servlet)
-			{
-				Servlet servletObj = (Servlet) servlet;
+		//初始化
+		servlet.init(this);
 
-				// 初始化Servlet
-				servletObj.init(this);
-			}
-		}
-		catch (UnavailableException e)
-		{
-			throw e;
-		}
-
+		if (log.isLoggable(Level.FINE))
+			log.finer("Servlet[" + _servletName + "] instantiated and inited");
+		
 		return servlet;
 	}
 
@@ -924,6 +890,8 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 		return getClass().getSimpleName() + "[name=" + _servletName + ",class=" + _servletClass + "]";
 	}
 
+	
+	//unused-------------------------------------------------
 	@Override
 	public String getRunAsRole()
 	{

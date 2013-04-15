@@ -67,7 +67,7 @@ public class ServletMapper
 	private ServletManager _servletManager;
 
 	
-	//<String, ServletMapping>
+	//<urlPattern, ServletMapping>
 	private UrlMap<ServletMapping> _servletMappings = new UrlMap<ServletMapping>();
 
 

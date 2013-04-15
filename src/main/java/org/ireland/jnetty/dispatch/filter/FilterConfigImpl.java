@@ -63,7 +63,7 @@ import java.util.*;
 	</filter>
 
  */
-public class FilterConfigImpl<T extends Filter> implements FilterConfig, FilterRegistration.Dynamic
+public class FilterConfigImpl implements FilterConfig, FilterRegistration.Dynamic
 {
 	
 	private WebApp _webApp;
@@ -78,7 +78,7 @@ public class FilterConfigImpl<T extends Filter> implements FilterConfig, FilterR
 
 	private String _filterClassName;
 
-	private Class<T> _filterClass;
+	private Class<? extends Filter> _filterClass;
 
 	private String _displayName;
 	
@@ -124,11 +124,11 @@ public class FilterConfigImpl<T extends Filter> implements FilterConfig, FilterR
 	{
 		_filterClassName = filterClassName;
 
-		_filterClass = (Class<T>) _webApp.getClassLoader().loadClass(filterClassName);
+		_filterClass = (Class<? extends Filter>) _webApp.getClassLoader().loadClass(filterClassName);
 
 	}
 
-	public void setFilterClass(Class<T> filterClass)
+	public void setFilterClass(Class<? extends Filter> filterClass)
 	{
 		_filterClass = filterClass;
 	}
@@ -136,7 +136,7 @@ public class FilterConfigImpl<T extends Filter> implements FilterConfig, FilterR
 	/**
 	 * Gets the filter name.
 	 */
-	public Class<T> getFilterClass()
+	public Class<? extends Filter> getFilterClass()
 	{
 		return _filterClass;
 	}
