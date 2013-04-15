@@ -252,8 +252,6 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder
 
 	// listeners-----------------------------------------------
 
-	private ArrayList<String> _welcomeFileList = new ArrayList<String>();
-
 	private String rootDirectory;
 
 	private String _tempDir;
@@ -808,22 +806,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder
 		return Collections.unmodifiableMap(result);
 	}
 
-	/**
-	 * Adds a welcome file list to the webApp.
-	 */
 
-	public void addWelcomeFileList(ArrayList<String> fileList)
-	{
-
-		_welcomeFileList = new ArrayList<String>(fileList);
-
-		// _servletMapper.setWelcomeFileList(fileList);
-	}
-
-	public ArrayList<String> getWelcomeFileList()
-	{
-		return _welcomeFileList;
-	}
 
 	/**
 	 * Configures the session manager.
@@ -1349,15 +1332,11 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder
 					_dispatchFilterMapper.buildDispatchChain(invocation, chain);
 					chain = invocation.getFilterChain();
 
-					chain = applyWelcomeFile(DispatcherType.REQUEST,
-							invocation, chain);
-
 					entry = new FilterChainEntry(chain, invocation);
 					chain = entry.getFilterChain();
 
 					if (isCache)
-						_filterChainCache
-								.put(invocation.getContextURI(), entry);
+						_filterChainCache.put(invocation.getContextURI(), entry);
 				}
 
 				chain = createWebAppFilterChain(chain, invocation, true);
@@ -1380,16 +1359,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder
 		}
 	}
 
-	private FilterChain applyWelcomeFile(DispatcherType type,Invocation invocation, FilterChain chain) throws ServletException
-	{
-		if ("".equals(invocation.getContextURI()))
-		{
-			// server/1u3l
-			return new RedirectFilterChain(getContextPath() + "/");
-		}
 
-		return chain;
-	}
 
 	FilterChain createWebAppFilterChain(FilterChain chain,Invocation invocation, boolean isTop)
 	{
@@ -1490,17 +1460,6 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder
 			{
 				chain = _servletMapper.mapServlet(invocation);
 				chain = filterMapper.buildDispatchChain(invocation, chain);
-
-				if (filterMapper == _includeFilterMapper)
-				{
-					chain = applyWelcomeFile(DispatcherType.INCLUDE,invocation, chain);
-
-				}
-				else if (filterMapper == _forwardFilterMapper)
-				{
-					chain = applyWelcomeFile(DispatcherType.FORWARD,invocation, chain);
-
-				}
 
 			}
 
