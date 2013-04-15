@@ -146,10 +146,6 @@ public class HttpHandler extends ChannelInboundMessageHandlerAdapter<FullHttpMes
         ctx.nextOutboundMessageBuffer().add(response);
     }
 
-    @Override
-    public void endMessageReceived(ChannelHandlerContext ctx) throws Exception {
-        //ctx.flush();
-    }
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {

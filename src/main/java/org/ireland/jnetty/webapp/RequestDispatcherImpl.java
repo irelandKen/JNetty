@@ -73,14 +73,14 @@ public class RequestDispatcherImpl implements RequestDispatcher
 
 	public RequestDispatcherImpl(WebApp webApp,String rowURI,Invocation includeInvocation, Invocation forwardInvocation, Invocation errorInvocation, Invocation dispatchInvocation)
 	{
+		_webApp = webApp;
+		
 		_rawURI = rowURI;
 		
 		_includeInvocation = includeInvocation;
 		_forwardInvocation = forwardInvocation;
 		_errorInvocation = errorInvocation;
 		_dispatchInvocation = dispatchInvocation;
-
-		_webApp = webApp;
 	}
 
 	@Override

@@ -252,7 +252,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder
 
 	// listeners-----------------------------------------------
 
-	private String rootDirectory;
+	private String _rootDirectory;
 
 	private String _tempDir;
 
@@ -271,11 +271,12 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder
 	 */
 	public WebApp(String rootDirectory, String host, String contextPath)
 	{
+		
 		_classLoader = this.getClass().getClassLoader();
 
-		this.rootDirectory = rootDirectory;
-
+		_rootDirectory = rootDirectory;
 		_host = host;
+		_contextPath = contextPath;
 
 		if (_host == null)
 			throw new IllegalStateException(L.l("{0} requires an active {1}",getClass().getSimpleName()));
@@ -295,7 +296,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder
 	private void initConstructor()
 	{
 	
-		// Path rootDirectory = getRootDirectory();
+		// Path _rootDirectory = getRootDirectory();
 
 		_servletManager = new ServletManager();
 		_servletMapper = new ServletMapper(this);
