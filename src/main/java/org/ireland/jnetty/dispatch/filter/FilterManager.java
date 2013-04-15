@@ -67,10 +67,6 @@ public class FilterManager
 	private HashMap<String, FilterConfigImpl> _filters = new HashMap<String, FilterConfigImpl>();
 
 	
-	//<filterName,Filter> 存放所有已创建Filter的实例
-	private HashMap<String, Filter> _instances = new HashMap<String, Filter>();
-
-	
 	//记录 filterName 到 urlPatterns 之间的映射关系 
 	//maps filterName to urlPattern   <filterName,Set<urlPattern>>
 	private Map<String, Set<String>> _urlPatterns = new HashMap<String, Set<String>>();
@@ -190,33 +186,17 @@ public class FilterManager
 		if (config == null)
 			throw new ServletException(L.l("`{0}' is not a known filter.  Filters must be defined by <filter> before being used.",filterName));
 
-		Class<? extends Filter> filterClass = config.getFilterClass();
-
 		synchronized (config)
 		{
 			try
 			{
-				Filter filter = _instances.get(filterName);
+				Filter filter = config.getInstance();
 
 				if (filter != null)
 					return filter;
-
-				if(config.getFilter() == null)
-				{
-					//filter is null,create one
-					filter = _servletContext.createFilter(config.getFilterClass());
+				else
+					throw new ServletException("Create Filter Error");
 				
-					config.setFilter(filter);
-				}
-				
-				filter = config.getFilter();
-
-				//在这里执行Filter的初始化方法(init)
-				filter.init(config);
-
-				_instances.put(filterName, filter);
-
-				return filter;
 			} catch (ServletException e)
 			{
 				// XXX: log(e.getMessage(), e);
@@ -236,17 +216,6 @@ public class FilterManager
 	public void destroy()
 	{
 		ArrayList<Filter> filterList = new ArrayList<Filter>();
-
-		if (_instances != null)
-		{
-			synchronized (_instances)
-			{
-				for (Filter filter : _instances.values())
-				{
-					filterList.add(filter);
-				}
-			}
-		}
 
 		for (int i = 0; i < filterList.size(); i++)
 		{
