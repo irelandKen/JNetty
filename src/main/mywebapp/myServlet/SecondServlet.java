@@ -19,7 +19,6 @@ public class SecondServlet extends HttpServlet {
 		
 		resp.setContentType("text/html");
 		resp.setCharacterEncoding("utf-8");
-		resp.setHeader("Connection", "close");
 		
 		PrintWriter out = resp.getWriter();
 		out.println("<!DOCTYPE html><html><body>");
