@@ -1360,8 +1360,6 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder
 								.put(invocation.getContextURI(), entry);
 				}
 
-				chain = buildSecurity(chain, invocation);
-
 				chain = createWebAppFilterChain(chain, invocation, true);
 
 				invocation.setFilterChain(chain);
@@ -1382,8 +1380,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder
 		}
 	}
 
-	private FilterChain applyWelcomeFile(DispatcherType type,
-			Invocation invocation, FilterChain chain) throws ServletException
+	private FilterChain applyWelcomeFile(DispatcherType type,Invocation invocation, FilterChain chain) throws ServletException
 	{
 		if ("".equals(invocation.getContextURI()))
 		{
@@ -1394,8 +1391,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder
 		return chain;
 	}
 
-	FilterChain createWebAppFilterChain(FilterChain chain,
-			Invocation invocation, boolean isTop)
+	FilterChain createWebAppFilterChain(FilterChain chain,Invocation invocation, boolean isTop)
 	{
 		// the cache must be outside of the WebAppFilterChain because
 		// the CacheListener in ServletInvocation needs the top to
@@ -1403,8 +1399,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder
 
 		if (getRequestListeners() != null && getRequestListeners().length > 0)
 		{
-			chain = new WebAppListenerFilterChain(chain, this,
-					getRequestListeners());
+			chain = new WebAppListenerFilterChain(chain, this,getRequestListeners());
 		}
 
 		// TCK: cache needs to be outside because the cache flush conflicts
@@ -1414,7 +1409,6 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder
 
 		WebAppFilterChain webAppChain = new WebAppFilterChain(chain, this);
 
-		// webAppChain.setSecurityRoleMap(invocation.getSecurityRoleMap());
 		chain = webAppChain;
 
 		return chain;
@@ -1472,32 +1466,24 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder
 	public void buildDispatchInvocation(Invocation invocation)
 			throws ServletException
 	{
-		// buildDispatchInvocation(invocation, _dispatchFilterMapper);
-		buildDispatchInvocation(invocation, _dispatchFilterMapper);
 
-		buildSecurity(invocation);
+		buildDispatchInvocation(invocation, _dispatchFilterMapper);
 	}
 
 	/**
 	 * Fills the invocation for subrequests.
 	 */
-	public void buildDispatchInvocation(Invocation invocation,
-			FilterMapper filterMapper) throws ServletException
+	public void buildDispatchInvocation(Invocation invocation,FilterMapper filterMapper) throws ServletException
 	{
 		invocation.setWebApp(this);
 
-		Thread thread = Thread.currentThread();
-		ClassLoader oldLoader = thread.getContextClassLoader();
-
-		thread.setContextClassLoader(getClassLoader());
 		try
 		{
 			FilterChain chain;
 
 			if (!isEnabled())
 			{
-				Exception exn = new UnavailableException(L.l(
-						"'{0}' is not currently available.", getContextPath()));
+				Exception exn = new UnavailableException(L.l("'{0}' is not currently available.", getContextPath()));
 				chain = new ExceptionFilterChain(exn);
 			}
 			else
@@ -1507,14 +1493,12 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder
 
 				if (filterMapper == _includeFilterMapper)
 				{
-					chain = applyWelcomeFile(DispatcherType.INCLUDE,
-							invocation, chain);
+					chain = applyWelcomeFile(DispatcherType.INCLUDE,invocation, chain);
 
 				}
 				else if (filterMapper == _forwardFilterMapper)
 				{
-					chain = applyWelcomeFile(DispatcherType.FORWARD,
-							invocation, chain);
+					chain = applyWelcomeFile(DispatcherType.FORWARD,invocation, chain);
 
 				}
 
@@ -1529,27 +1513,9 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder
 			FilterChain chain = new ExceptionFilterChain(e);
 			invocation.setFilterChain(chain);
 		}
-		finally
-		{
-			thread.setContextClassLoader(oldLoader);
-		}
 	}
 
-	private void buildSecurity(Invocation invocation)
-	{
-		invocation.setFilterChain(buildSecurity(invocation.getFilterChain(),
-				invocation));
-	}
 
-	private FilterChain buildSecurity(FilterChain chain, Invocation invocation)
-	{
-		if (_securityBuilder != null)
-		{
-			return _securityBuilder.build(chain, invocation);
-		}
-
-		return chain;
-	}
 
 	/**
 	 * Returns a dispatcher for the named servlet. TODO:其实可以将具体build invocation的时刻延迟到RequestDispatcherImpl里实现?
@@ -1568,30 +1534,12 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder
 		if (disp != null)
 			return disp;
 
-		Invocation dispatchInvocation = new SubInvocation();
-		Invocation includeInvocation = new SubInvocation();
-		Invocation forwardInvocation = new SubInvocation();
-		Invocation errorInvocation = new SubInvocation();
-		
-
-		URIDecoder decoder = getURIDecoder();
-
 		String rawURI = escapeURL(getContextPath() + url);
 
 		try
 		{
-			decoder.splitQuery(dispatchInvocation, rawURI);
-			decoder.splitQuery(includeInvocation, rawURI);
-			decoder.splitQuery(forwardInvocation, rawURI);
-			decoder.splitQuery(errorInvocation, rawURI);
-			
-
-			buildIncludeInvocation(includeInvocation);
-			buildForwardInvocation(forwardInvocation);
-			buildErrorInvocation(errorInvocation);
-			buildDispatchInvocation(dispatchInvocation);
-
-			disp = new RequestDispatcherImpl(includeInvocation,forwardInvocation, errorInvocation, dispatchInvocation,this);
+			//将Invocation的创建延迟到RequestDispatcher的具体的dispatch或forward方法调用时再进行(很情况下不需要所有DispatcherType都创建)
+			disp = new RequestDispatcherImpl(this,rawURI,null,null, null, null);
 
 			getDispatcherCache().put(url, disp);
 
@@ -1634,13 +1582,11 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder
 		{
 			Invocation invocation = null;
 
-			FilterChain chain = _servletManager.createServletChain(servletName,
-					invocation);
+			FilterChain chain = _servletManager.createServletChain(servletName,invocation);
 
-			FilterChain includeChain = _includeFilterMapper.buildFilterChain(
-					chain, servletName);
-			FilterChain forwardChain = _forwardFilterMapper.buildFilterChain(
-					chain, servletName);
+			FilterChain includeChain = _includeFilterMapper.buildFilterChain(chain, servletName);
+			
+			FilterChain forwardChain = _forwardFilterMapper.buildFilterChain(chain, servletName);
 
 			return new NamedDispatcherImpl(includeChain, forwardChain, null,this);
 

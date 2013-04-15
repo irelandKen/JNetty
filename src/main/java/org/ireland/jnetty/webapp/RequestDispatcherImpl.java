@@ -39,7 +39,9 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpServletResponseWrapper;
 
 import org.ireland.jnetty.dispatch.Invocation;
+import org.ireland.jnetty.dispatch.SubInvocation;
 import org.ireland.jnetty.http.DefaultHttpServletResponse;
+import org.ireland.jnetty.util.http.URIDecoder;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -58,8 +60,10 @@ public class RequestDispatcherImpl implements RequestDispatcher
 	static final int MAX_DEPTH = 64;
 
 	// WebApp the request dispatcher was called from
-	private WebApp _webApp;
+	private final WebApp _webApp;
 
+	private final String _rawURI;
+	
 	private Invocation _includeInvocation;
 	private Invocation _forwardInvocation;
 	private Invocation _errorInvocation;
@@ -67,8 +71,10 @@ public class RequestDispatcherImpl implements RequestDispatcher
 
 	// private Invocation _asyncInvocation;
 
-	public RequestDispatcherImpl(Invocation includeInvocation, Invocation forwardInvocation, Invocation errorInvocation, Invocation dispatchInvocation, WebApp webApp)
+	public RequestDispatcherImpl(WebApp webApp,String rowURI,Invocation includeInvocation, Invocation forwardInvocation, Invocation errorInvocation, Invocation dispatchInvocation)
 	{
+		_rawURI = rowURI;
+		
 		_includeInvocation = includeInvocation;
 		_forwardInvocation = forwardInvocation;
 		_errorInvocation = errorInvocation;
@@ -80,6 +86,14 @@ public class RequestDispatcherImpl implements RequestDispatcher
 	@Override
 	public void forward(ServletRequest request, ServletResponse response) throws ServletException, IOException
 	{
+		//build invocation,if not exist
+		if(_forwardInvocation == null)
+		{
+			_forwardInvocation = new SubInvocation();
+			
+			buildForwardInvocation(_forwardInvocation,_rawURI);
+		}
+		
 		forward(request, response, null, _forwardInvocation, DispatcherType.FORWARD);
 	}
 
@@ -98,12 +112,18 @@ public class RequestDispatcherImpl implements RequestDispatcher
 	 */
 	public void dispatch(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException
 	{
-
-		//forward(request, response, "error", _dispatchInvocation, DispatcherType.REQUEST);
-		
 		// jsp/15m8
 		if (response.isCommitted())
 			throw new IllegalStateException("dispatch() not allowed after buffer has committed.");
+		
+
+		//build invocation,if not exist
+		if(_dispatchInvocation == null)
+		{
+			_dispatchInvocation = new SubInvocation();
+			
+			buildDispatchInvocation(_dispatchInvocation,_rawURI);
+		}
 		
 
 		//到这里,response的buffer一定为空的,TODO: need resetBuffer()?
@@ -146,8 +166,8 @@ public class RequestDispatcherImpl implements RequestDispatcher
 		try
 		{
 
-			_dispatchInvocation.service(request, response);
 
+			_dispatchInvocation.service(request, response);
 			isValid = true;
 		}
 		finally
@@ -173,6 +193,14 @@ public class RequestDispatcherImpl implements RequestDispatcher
 	 */
 	public void error(ServletRequest request, ServletResponse response) throws ServletException, IOException
 	{
+		//build invocation,if not exist
+		if(_errorInvocation == null)
+		{
+			_errorInvocation = new SubInvocation();
+			
+			buildErrorInvocation(_errorInvocation,_rawURI);
+		}
+		
 		forward(request, response, "error", _errorInvocation, DispatcherType.ERROR);
 	}
 
@@ -364,15 +392,22 @@ public class RequestDispatcherImpl implements RequestDispatcher
 	@Override
 	public void include(ServletRequest request, ServletResponse response) throws ServletException, IOException
 	{
-		include(request, response, null);
+		//build invocation,if not exist
+		if(_includeInvocation == null)
+		{
+			_includeInvocation = new SubInvocation();
+			
+			buildIncludeInvocation(_includeInvocation,_rawURI);
+		}
+		
+		include(request, response,_includeInvocation, null);
 	}
 
 	/**
 	 * Include a request into the current page.
 	 */
-	public void include(ServletRequest topRequest, ServletResponse topResponse, String method) throws ServletException, IOException
+	public void include(ServletRequest topRequest, ServletResponse topResponse,Invocation invocation, String method) throws ServletException, IOException
 	{
-		Invocation invocation = _includeInvocation;
 
 		HttpServletRequest parentReq;
 		ServletRequestWrapper reqWrapper = null;
@@ -466,13 +501,77 @@ public class RequestDispatcherImpl implements RequestDispatcher
 			subRequest.finishRequest();
 		}
 	}
+	
+	
+//-----------------------------------------------------------------------------------
+	
+	/**
+	 * Fills the invocation with uri.
+	 * @throws IOException 
+	 */
+	private void buildDispatchInvocation(Invocation invocation,String rawURI)
+			throws ServletException, IOException
+	{
+		URIDecoder decoder = _webApp.getURIDecoder();
 
+		decoder.splitQuery(invocation, rawURI);
+			
+		_webApp.buildDispatchInvocation(invocation);
+	}
+	
+	/**
+	 * Fills the invocation for a forward request.
+	 * @throws IOException 
+	 */
+	private void buildForwardInvocation(Invocation invocation,String rawURI)
+			throws ServletException, IOException
+	{
+		URIDecoder decoder = _webApp.getURIDecoder();
+
+		decoder.splitQuery(invocation, rawURI);
+			
+		_webApp.buildForwardInvocation(invocation);
+	}
+
+	
+	/**
+	 * Fills the invocation for an include request.
+	 * @throws IOException 
+	 */
+	private void buildIncludeInvocation(Invocation invocation,String rawURI)
+			throws ServletException, IOException
+	{
+		URIDecoder decoder = _webApp.getURIDecoder();
+
+		decoder.splitQuery(invocation, rawURI);
+			
+		_webApp.buildIncludeInvocation(invocation);
+	}
+
+
+	/**
+	 * Fills the invocation for an error request.
+	 * @throws IOException 
+	 */
+	private void buildErrorInvocation(Invocation invocation,String rawURI)
+			throws ServletException, IOException
+	{
+		URIDecoder decoder = _webApp.getURIDecoder();
+
+		decoder.splitQuery(invocation, rawURI);
+			
+		_webApp.buildErrorInvocation(invocation);
+	}
+
+
+
+//------------------------------------------------------------------------------------
 	private void finishResponse(ServletResponse res) throws ServletException, IOException
 	{
 
 		if (res instanceof DefaultHttpServletResponse)
 		{
-			res.flushBuffer();
+			res.flushBuffer();								//we sure that all data has already put to the ByteBuf?
 		}
 		else
 		{
