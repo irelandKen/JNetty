@@ -257,7 +257,7 @@ public class ServletMapper
 			return new ErrorFilterChain(404);
 		}
 
-		String servletPath = vars.get(0);
+		String servletPath = contextURI; //TODO: how to decide ?
 
 		invocation.setServletPath(servletPath);
 

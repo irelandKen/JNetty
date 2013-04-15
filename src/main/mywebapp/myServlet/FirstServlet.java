@@ -1,6 +1,7 @@
 package myServlet;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -15,6 +16,16 @@ public class FirstServlet extends HttpServlet {
 
 		System.out.println("1st Servlet.");
 		
-		req.getRequestDispatcher("/SecondServlet").forward(req, resp);
+		resp.setContentType("text/html");
+		resp.setCharacterEncoding("utf-8");
+		
+		PrintWriter out = resp.getWriter();
+		out.println("<!DOCTYPE html><html><body>");
+		out.println("<h1 style=\"color: red; text-align: center;\">Fanstay!It go Well!</h1>");
+		
+		out.println("<h2 style=\"color: blue; text-align: center;\">Power by KEN</h2>");
+		out.println("</body></html>");
+		
+		out.flush();
 	}
 }

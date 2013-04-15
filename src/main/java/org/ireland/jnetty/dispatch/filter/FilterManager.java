@@ -211,6 +211,7 @@ public class FilterManager
 				
 				filter = config.getFilter();
 
+				//在这里执行Filter的初始化方法(init)
 				filter.init(config);
 
 				_instances.put(filterName, filter);

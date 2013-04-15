@@ -1066,6 +1066,7 @@ public class DefaultHttpServletResponse implements HttpServletResponse
 		// Write the response.
 		ctx.nextOutboundMessageBuffer().add(response);
 
+
 		//if CONNECTION == "close" Close the non-keep-alive connection after the write operation is done.
 		if (!keepAlive)
 		{

@@ -785,26 +785,6 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 			if (log.isLoggable(Level.FINE))
 				log.finer("Servlet[" + _servletName + "] active");
 
-			if (!isNew)
-			{
-				// If the servlet has an MBean, register it
-				try
-				{
-					Hashtable<String, String> props = new Hashtable<String, String>();
-
-					props.put("type", _servlet.getClass().getSimpleName());
-					props.put("name", _servletName);
-				}
-				catch (Exception e)
-				{
-					log.finest(e.toString());
-				}
-
-			}
-
-			if (log.isLoggable(Level.FINE))
-				log.finer("Servlet[" + _servletName + "] active");
-
 			return servlet;
 		}
 		catch (RuntimeException e)

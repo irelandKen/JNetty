@@ -22,7 +22,7 @@ public class EncodeFilter implements Filter
 	public void doFilter(ServletRequest request, ServletResponse response,
 			FilterChain chain) throws IOException, ServletException
 	{
-		response.setCharacterEncoding("GB2312");  //将所以经过这个过滤器的页面编码都变成中文GBK
+		response.setCharacterEncoding("utf-8");  //将所以经过这个过滤器的页面编码都变成中文GBK
 		System.out.println("EncodeFilter doFilter() ");
 		chain.doFilter(request, response);  //处理过滤器链上的下一个过滤器
 	}
