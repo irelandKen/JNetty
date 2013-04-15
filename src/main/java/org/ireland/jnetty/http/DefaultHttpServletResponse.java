@@ -19,6 +19,7 @@
 package org.ireland.jnetty.http;
 
 import static io.netty.handler.codec.http.HttpHeaders.Names.CONNECTION;
+import static io.netty.handler.codec.http.HttpHeaders.Names.CONTENT_LENGTH;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
@@ -1043,23 +1044,31 @@ public class DefaultHttpServletResponse implements HttpServletResponse
 	 */
 	private void writeResponse(ChannelHandlerContext ctx,FullHttpRequest request, FullHttpResponse response)
 	{
-		boolean keepAlive = false;
+		boolean keepAlive = true;
 		
 		if(headers.get(HttpHeaders.Names.CONNECTION) != null)					
 		{
 			keepAlive = HttpHeaders.isKeepAlive(response);					//用户显式设置KeepAlive
 		}
-		else
+		else//用户未设置CONNECTION响应头
 		{
 			// Decide whether to close the connection or not.
-			keepAlive = HttpHeaders.isKeepAlive(request);
+			keepAlive = HttpHeaders.isKeepAlive(request);			//用户未设置CONNECTION,则保持未请求头的CONNECTION一致
 	
 			// TODO:think about how to decide keepAlive or not
 			if (keepAlive)
 			{
+	            // Add 'Content-Length' header only for a keep-alive connection.
+	            response.headers().set(CONTENT_LENGTH, response.data().readableBytes());
 				// Add keep alive header as per:
 				// http://www.w3.org/Protocols/HTTP/1.1/draft-ietf-http-v11-spec-01.html#Connection
 				response.headers().set(CONNECTION, HttpHeaders.Values.KEEP_ALIVE);
+			}
+			else
+			{
+				response.headers().set(CONTENT_LENGTH, response.data().readableBytes());
+				 
+				response.headers().set(CONNECTION, HttpHeaders.Values.CLOSE);
 			}
 		}
 
@@ -1068,7 +1077,11 @@ public class DefaultHttpServletResponse implements HttpServletResponse
 
 
 		//if CONNECTION == "close" Close the non-keep-alive connection after the write operation is done.
-		if (!keepAlive)
+		if (keepAlive)
+		{
+			ctx.flush();
+		}
+		else
 		{
 			ctx.flush().addListener(ChannelFutureListener.CLOSE);
 		}
