@@ -1,5 +1,7 @@
 package org.ireland.jnetty.config;
 
+import java.io.File;
+import java.nio.file.FileSystem;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.HashSet;
@@ -23,7 +25,8 @@ import org.ireland.jnetty.webapp.WebApp;
  */
 public class WebXmlLoader
 {
-	private static final String DATA_FILE_NAME = System.getProperty("user.dir") + "\\src\\main\\webapp\\WEB-INF\\web.xml";
+	private static final String DATA_FILE_NAME = System.getProperty("user.dir") + File.separatorChar+
+						"src"+File.separatorChar+"main"+File.separatorChar+"webapp"+File.separatorChar+"WEB-INF"+File.separatorChar+"web.xml";
 
 	private WebApp webApp;
 
