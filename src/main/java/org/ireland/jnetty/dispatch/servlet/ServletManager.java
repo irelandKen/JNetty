@@ -55,19 +55,17 @@ public class ServletManager
 	static final Logger log = Logger.getLogger(ServletManager.class.getName());
 	static final L10N L = new L10N(ServletManager.class);
 
-	//<ServletName,ServletConfigImpl>
+	// <ServletName,ServletConfigImpl>
 	private HashMap<String, ServletConfigImpl> _servlets = new HashMap<String, ServletConfigImpl>();
 
 	private ArrayList<ServletConfigImpl> _servletList = new ArrayList<ServletConfigImpl>();
-
 
 	public ServletManager()
 	{
 	}
 
 	/**
-	 * Adds a servlet to the servlet manager.
-	 * 如果已经存在同名的ServletConfig,旧的会被覆盖
+	 * Adds a servlet to the servlet manager. 如果已经存在同名的ServletConfig,旧的会被覆盖
 	 */
 	public void addServlet(ServletConfigImpl config) throws ServletException
 	{
@@ -77,35 +75,33 @@ public class ServletManager
 
 		synchronized (_servlets)
 		{
-			ServletConfigImpl mergedConfig = null;
 
 			ServletConfigImpl existingConfig = _servlets.get(config.getServletName());
 
-			if (existingConfig != null)
+			
+			if (existingConfig != null)		//删除同名已存在的ServletConfig
 			{
 				for (int i = _servletList.size() - 1; i >= 0; i--)
 				{
 					ServletConfigImpl oldConfig = _servletList.get(i);
 
-					if (config.getServletName().equals(
-							oldConfig.getServletName()))
+					if (config.getServletName().equals(oldConfig.getServletName()))
 					{
 						_servletList.remove(i);
 						break;
 					}
 				}
-
 			}
 
 			try
 			{
-				// ioc/0000, server/12e4
-				if (mergedConfig == null)
-					config.validateClass(false);
-			} catch (ConfigException e)
+				config.validateClass(false);
+			}
+			catch (ConfigException e)
 			{
 				throw e;
-			} catch (Exception e)
+			}
+			catch (Exception e)
 			{
 				if (log.isLoggable(Level.FINE))
 					log.log(Level.FINE, e.toString(), e);
@@ -115,15 +111,10 @@ public class ServletManager
 					log.config(e.toString());
 			}
 
-			if (mergedConfig == null)
-			{
-				_servlets.put(config.getServletName(), config);
-				_servletList.add(config);
-			}
+			_servlets.put(config.getServletName(), config);
+			_servletList.add(config);
 		}
 	}
-
-
 
 	/**
 	 * Returns ServletConfigImpl to the servlet manager.
@@ -146,7 +137,7 @@ public class ServletManager
 	{
 		ArrayList<ServletConfigImpl> loadOnStartup = new ArrayList<ServletConfigImpl>();
 
-		//取出loadOnStartup的Servlet,并按其数值升序排序
+		// 取出loadOnStartup的Servlet,并按其数值升序排序
 		for (int j = 0; j < _servletList.size(); j++)
 		{
 			ServletConfigImpl config = _servletList.get(j);
@@ -171,7 +162,7 @@ public class ServletManager
 
 		}
 
-		//只实例化和初始化 loadOnStartup 的Servlet
+		// 只实例化和初始化 loadOnStartup 的Servlet
 		for (int i = 0; i < loadOnStartup.size(); i++)
 		{
 			ServletConfigImpl config = loadOnStartup.get(i);
@@ -179,7 +170,8 @@ public class ServletManager
 			try
 			{
 				config.getInstance();
-			} catch (ServletException e)
+			}
+			catch (ServletException e)
 			{
 				log.log(Level.WARNING, e.toString(), e);
 			}
@@ -187,17 +179,15 @@ public class ServletManager
 	}
 
 	/**
-	 * Creates the servlet chain for the servlet.
-	 * 根据ServletName和Invocation创建一个FilterChain
+	 * Creates the servlet chain for the servlet. 根据ServletName和Invocation创建一个FilterChain
 	 */
-	public FilterChain createServletChain(String servletName, ServletInvocation invocation)
-			throws ServletException
+	public FilterChain createServletChain(String servletName, ServletInvocation invocation) throws ServletException
 	{
 		ServletConfigImpl config = _servlets.get(servletName);
 
 		if (config == null)
 		{
-			throw new ServletException(L.l("'{0}' is not a known servlet.  Servlets must be defined by <servlet> before being used.",servletName));
+			throw new ServletException(L.l("'{0}' is not a known servlet.  Servlets must be defined by <servlet> before being used.", servletName));
 		}
 
 		if (invocation != null)
@@ -210,19 +200,16 @@ public class ServletManager
 
 		return config.createServletChain();
 	}
-	
+
 	/**
-	 * Creates the servlet chain for the servlet.
-	 * 根据ServletConfigImpl和Invocation创建一个FilterChain
+	 * Creates the servlet chain for the servlet. 根据ServletConfigImpl和Invocation创建一个FilterChain
 	 */
-	public FilterChain createServletChain(ServletConfigImpl config, ServletInvocation invocation)
-			throws ServletException
+	public FilterChain createServletChain(ServletConfigImpl config, ServletInvocation invocation) throws ServletException
 	{
 
 		if (config == null)
 		{
-			throw new ServletException(
-					L.l("'{0}' is not a known servlet.  Servlets must be defined by <servlet> before being used."));
+			throw new ServletException(L.l("'{0}' is not a known servlet.  Servlets must be defined by <servlet> before being used."));
 		}
 
 		if (invocation != null)
@@ -251,9 +238,7 @@ public class ServletManager
 
 		if (config == null)
 		{
-			throw new ServletException(
-					L.l("'{0}' is not a known servlet.  Servlets must be defined by <servlet> before being used.",
-							servletName));
+			throw new ServletException(L.l("'{0}' is not a known servlet.  Servlets must be defined by <servlet> before being used.", servletName));
 		}
 
 		return config.getInstance();
@@ -287,7 +272,8 @@ public class ServletManager
 			try
 			{
 				config.close();
-			} catch (Throwable e)
+			}
+			catch (Throwable e)
 			{
 				log.log(Level.FINE, e.toString(), e);
 			}

@@ -101,13 +101,19 @@ public class ServletInvocation
 	/**
 	 * Returns the URI tail, i.e. everything after the context path.
 	 * 
-	 * EX:<br>
-	 * 
-	 * contextPath: "/myapp"<br>
+	 * e.g:<br>
 	 * 
 	 * URI: "/myapp/blog/page1.jsp"<br>
 	 * 
-	 * ContextURI: "/blog/page1.jsp"<br>
+	 * contextPath: "/myapp"<br>
+	 * 
+	 * ContextURI:  "/blog/page1.jsp"<br>
+	 * 
+	 * servletPath: "/blog"
+	 * 
+	 * pathInfo:    "/page1.jsp"
+	 * 
+	 *
 	 * 
 	 */
 	public final String getContextURI()

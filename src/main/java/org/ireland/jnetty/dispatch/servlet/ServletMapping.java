@@ -165,12 +165,12 @@ public class ServletMapping
 				hasInit = true;
 				servletConfig.init();
 
-				if (servletConfig.getServletClassName() != null)
+				if (servletConfig.getServletClass() != null)
 					mapper.getServletManager().addServlet(servletConfig);
 			}
 
 			if (urlPattern != null)
-				mapper.addUrlMapping(urlPattern, servletConfig.getServletName(), this,_ifAbsent);
+				mapper.addUrlMapping(urlPattern, this,_ifAbsent);
 		}
 
 	}

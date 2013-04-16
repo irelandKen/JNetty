@@ -83,9 +83,9 @@ public class ServletMapper
 
 	
 	
-	//记录 urlPattern 到 <servlet-mapping>的映射关系
+	//记录 urlPattern 到 <servlet-mapping>的映射关系(用于URL精确匹配)
 	// Servlet 3.0 urlPattern to servletName  <urlPattern,ServletMapping>
-	private Map<String, ServletMapping> _servletNamesMap = new HashMap<String, ServletMapping>();
+	private Map<String, ServletMapping> _servletUrlMap = new HashMap<String, ServletMapping>();
 
 	
 	
@@ -133,18 +133,15 @@ public class ServletMapper
 	 * 增加  urlPattern + " -> " + servletName 的映射关系
 	 * 
 	 */
-	void addUrlMapping(final String urlPattern, String servletName,ServletMapping mapping, boolean ifAbsent) throws ServletException
+	void addUrlMapping(final String urlPattern, ServletMapping mapping, boolean ifAbsent) throws ServletException
 	{
 		try
 		{
 			boolean isIgnore = false;
 
+			String servletName = mapping.getServletConfig().getServletName();
 
-			if (servletName == null)
-			{
-				throw new ConfigException(L.l("servlets need a servlet-name."));
-			}
-			else if (_servletManager.getServlet(servletName) == null)
+			if (_servletManager.getServlet(servletName) == null)
 				throw new ConfigException(L.l("'{0}' is an unknown servlet-name.  servlet-mapping requires that the named servlet be defined in a <servlet> configuration before the <servlet-mapping>.",
 								servletName));
 
@@ -169,7 +166,7 @@ public class ServletMapper
 				_urlPatterns.put(servletName, patterns);
 			}
 
-			_servletNamesMap.put(urlPattern, mapping);
+			_servletUrlMap.put(urlPattern, mapping);
 
 			patterns.add(urlPattern);
 
@@ -224,13 +221,29 @@ public class ServletMapper
 
 		String servletName = null;
 		
+		ServletConfigImpl config = null;
+		
 		ArrayList<String> vars = new ArrayList<String>();
 
-		ServletConfigImpl config = null;
+		
 
 		
-		//1:查找是否存在和url相匹配的Servlet
-		if (_servletMappings != null)
+		//1:查找是否存在URL精确匹配的<servler-mapping>
+		if(_servletUrlMap != null)
+		{
+			ServletMapping servletMapping = _servletUrlMap.get(contextURI);
+			
+			if (servletMapping != null && servletMapping.getServletConfig().isServletConfig())
+				config = servletMapping.getServletConfig();
+
+			if (servletMapping != null)
+			{
+				servletName = servletMapping.getServletConfig().getServletName();
+			}
+		}
+		
+		//2:查找是否存在和URL模式相匹配的Servlet
+		if (config == null && servletName == null && _servletMappings != null)
 		{
 			ServletMapping servletMapping = _servletMappings.map(contextURI);
 
@@ -243,10 +256,9 @@ public class ServletMapper
 			}
 		}
 
-
-
-		//2:默认的Servlet(urlPattern为"/",当无法找到匹配的Servlet或jsp时,则默认匹配的Servlet)
-		if (servletName == null)
+		
+		//3:默认的Servlet(urlPattern为"/",当无法找到匹配的Servlet或jsp时,则默认匹配的Servlet)
+		if (config == null && servletName == null)
 		{
 			servletName = _defaultServlet;
 			vars.clear();
@@ -254,15 +266,15 @@ public class ServletMapper
 			vars.add(contextURI);
 		}
 
-		//3:无法找到合适的Servlet,返回404
-		if (servletName == null)
+		//4:无法找到合适的Servlet,返回404
+		if (config == null && servletName == null)
 		{
 			LOG.fine(L.l("'{0}' has no default servlet defined", contextURI));
 
 			return new ErrorFilterChain(404);
 		}
 
-		String servletPath = contextURI; //TODO: how to decide ?
+		String servletPath = contextURI; //TODO: how to decide servletPath ?
 
 		invocation.setServletPath(servletPath);
 
@@ -360,7 +372,7 @@ public class ServletMapper
 
 	public ServletMapping getServletMapping(String pattern)
 	{
-		return _servletNamesMap.get(pattern);
+		return _servletUrlMap.get(pattern);
 	}
 
 	

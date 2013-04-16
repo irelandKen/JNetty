@@ -42,7 +42,6 @@ import org.springframework.util.Assert;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.HashSet;
-import java.util.regex.Pattern;
 
 /**
  * Configuration for a filter. 代表一个<filter-mapping>元素
