@@ -1189,13 +1189,12 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 		
 		try
 		{
-			loader.praseFilter();
+			loader.parseFilterMapping();
 			
-			loader.praseServletConfig();
+			loader.parseServletMapping();
 		}
 		catch (ClassNotFoundException e)
 		{
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		
