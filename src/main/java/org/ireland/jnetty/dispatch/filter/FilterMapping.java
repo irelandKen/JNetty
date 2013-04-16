@@ -37,6 +37,7 @@ import javax.servlet.ServletException;
 import javax.servlet.DispatcherType;
 
 import org.ireland.jnetty.dispatch.ServletInvocation;
+import org.springframework.util.Assert;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -69,13 +70,15 @@ public class FilterMapping
 	static L10N L = new L10N(FilterMapping.class);
 
 
-	private FilterConfigImpl filterConfig;
+	private final FilterConfigImpl filterConfig;
 
 	private boolean isCaseInsensitive = true;
 
 	
+	//urlPatterns按<filter-mapping>里的顺序排列
 	private final LinkedHashSet<String> _urlPatterns = new LinkedHashSet<String>();
 
+	//servletNames按<filter-mapping>里的顺序排列(we sure ServletName不会重复)
 	private final ArrayList<String> _servletNames = new ArrayList<String>();
 	
 	private HashSet<DispatcherType> _dispatcherTypes;
@@ -90,6 +93,8 @@ public class FilterMapping
 	 */
 	public FilterMapping(FilterConfigImpl filterConfig)
 	{
+		Assert.notNull(filterConfig);
+		
 		this.filterConfig = filterConfig;
 	}
 

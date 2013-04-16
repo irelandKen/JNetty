@@ -33,6 +33,8 @@ import java.util.ArrayList;
 
 import javax.servlet.ServletException;
 
+import org.springframework.util.Assert;
+
 
 
 import com.caucho.config.ConfigException;
@@ -56,7 +58,7 @@ public class ServletMapping
 	private static final L10N L = new L10N(ServletMapping.class);
 
 	//<servlet>
-	private ServletConfigImpl servletConfig;
+	private final ServletConfigImpl servletConfig;
 	
 	//<url-pattern> 列表
 	private ArrayList<String> _urlPatternList = new ArrayList<String>();
@@ -72,6 +74,8 @@ public class ServletMapping
 	 */
 	public ServletMapping(ServletConfigImpl servletConfig)
 	{
+		Assert.notNull(servletConfig);
+		
 		this.servletConfig = servletConfig;
 	}
 

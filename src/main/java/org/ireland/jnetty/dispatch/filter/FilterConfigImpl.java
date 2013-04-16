@@ -185,7 +185,7 @@ public class FilterConfigImpl implements FilterConfig, FilterRegistration.Dynami
 	 * 
 	 * @return the initialized servlet.
 	 */
-	public Filter getInstance() throws Exception
+	public Filter getInstance() throws ServletException
 	{
 		// server/102e
 		if (_filter != null)
@@ -203,7 +203,7 @@ public class FilterConfigImpl implements FilterConfig, FilterRegistration.Dynami
 	 * 
 	 * Filter.init(this);
 	 */
-	private Filter createFilterAndInit() throws Exception
+	private Filter createFilterAndInit() throws ServletException
 	{
 
 		Class<? extends Filter> filterClass = getFilterClass();
@@ -324,6 +324,7 @@ public class FilterConfigImpl implements FilterConfig, FilterRegistration.Dynami
 		<dispatcher>REQUEST</dispatcher>
 	</filter-mapping>
 	 */
+	@Override
 	public void addMappingForServletNames(EnumSet<DispatcherType> dispatcherTypes, boolean isMatchAfter, String... servletNames)
 	{
 
@@ -373,6 +374,7 @@ public class FilterConfigImpl implements FilterConfig, FilterRegistration.Dynami
 	 </filter-mapping>
 	
 	 */
+	@Override
 	public void addMappingForUrlPatterns(EnumSet<DispatcherType> dispatcherTypes, boolean isMatchAfter, String... urlPatterns)
 	{
 

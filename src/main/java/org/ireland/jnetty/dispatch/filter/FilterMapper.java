@@ -38,7 +38,6 @@ import javax.servlet.ServletException;
 
 import org.ireland.jnetty.config.ConfigException;
 import org.ireland.jnetty.dispatch.Invocation;
-import org.ireland.jnetty.dispatch.filterchain.FilterChainBuilder;
 import org.ireland.jnetty.dispatch.filterchain.FilterFilterChain;
 
 import java.util.ArrayList;
@@ -72,23 +71,21 @@ public class FilterMapper
 	private static final Logger log = Logger.getLogger(FilterMapper.class.getName());
 	private static final L10N L = new L10N(FilterMapper.class);
 
-	private ServletContext _servletContext;
+	private final ServletContext _servletContext;
 
-	private FilterManager _filterManager;
+	private final FilterManager _filterManager;
 
+	//FilterMapping按web.xml中的<filter-mapping>顺序排列
 	private ArrayList<FilterMapping> _filterMappings = new ArrayList<FilterMapping>();
 
-	private ArrayList<FilterChainBuilder> _topFilters = new ArrayList<FilterChainBuilder>();
 
-
-	/**
-	 * Sets the servlet context.
-	 */
-	public void setServletContext(ServletContext servletContext)
+	public FilterMapper(ServletContext servletContext,FilterManager filterManager)
 	{
 		_servletContext = servletContext;
+		_filterManager = filterManager;
 	}
 
+	//getter & setter------------------------------------------------------------------
 	/**
 	 * Gets the servlet context.
 	 */
@@ -104,15 +101,12 @@ public class FilterMapper
 	{
 		return _filterManager;
 	}
+	//getter & setter------------------------------------------------------------------
 
-	/**
-	 * Sets the filter manager.
-	 */
-	public void setFilterManager(FilterManager manager)
-	{
-		_filterManager = manager;
-	}
+	
+	
 
+	//---------------------------------------------------------------------------------
 	/**
 	 * Adds a filter mapping
 	 */
@@ -145,31 +139,33 @@ public class FilterMapper
 		}
 	}
 
-	/**
-	 * Adds a top-filter. Top filters are added to every request in the filter chain.
-	 */
-	public void addTopFilter(FilterChainBuilder filterBuilder)
-	{
-		_topFilters.add(filterBuilder);
-	}
+
 
 	/**
+	 * 
 	 * Fills in the invocation.
+	 * 
+	 * @param invocation
+	 * @param chain
+	 * @return
+	 * @throws ServletException
 	 */
 	public FilterChain buildDispatchChain(Invocation invocation, FilterChain chain) throws ServletException
 	{
+		//TODO: why first matche the ServletName and the Match the URI? why not match the FilterMapping'ServletName and  FilterMapping'urlPattern as the same time?
+		
+		//根据ServletName去查找匹配的FilterMapping,并将其Filter实例 添加到FilterChain中
 		synchronized (_filterMappings)
 		{
 			for (int i = _filterMappings.size() - 1; i >= 0; i--)
 			{
-				FilterMapping map = _filterMappings.get(i);
+				FilterMapping filterMapping = _filterMappings.get(i);
 
-				if (map.isMatch(invocation.getServletName()))
+				if (filterMapping.isMatch(invocation.getServletName()))
 				{
-					String filterName = map.getFilterConfig().getFilterName();
-
-					Filter filter = _filterManager.createFilter(filterName);
-					FilterConfigImpl config = _filterManager.getFilter(filterName);
+					FilterConfigImpl config = filterMapping.getFilterConfig();
+					
+					Filter filter = config.getInstance();
 
 					if (!config.isAsyncSupported())
 						invocation.clearAsyncSupported();
@@ -179,18 +175,18 @@ public class FilterMapper
 			}
 		}
 
+		//根据uri去查找匹配的FilterMapping,并将其Filter实例 添加到FilterChain中
 		synchronized (_filterMappings)
 		{
 			for (int i = _filterMappings.size() - 1; i >= 0; i--)
 			{
-				FilterMapping map = _filterMappings.get(i);
+				FilterMapping filterMapping = _filterMappings.get(i);
 
-				if (map.isMatch(invocation))
+				if (filterMapping.isMatch(invocation))
 				{
-					String filterName = map.getFilterConfig().getFilterName();
-
-					Filter filter = _filterManager.createFilter(filterName);
-					FilterConfigImpl config = _filterManager.getFilter(filterName);
+					FilterConfigImpl config = filterMapping.getFilterConfig();
+					
+					Filter filter = config.getInstance();
 
 					if (!config.isAsyncSupported())
 						invocation.clearAsyncSupported();
@@ -200,13 +196,6 @@ public class FilterMapper
 			}
 		}
 
-		for (int i = 0; i < _topFilters.size(); i++)
-		{
-			FilterChainBuilder filterBuilder;
-			filterBuilder = _topFilters.get(i);
-
-			chain = filterBuilder.build(chain, invocation);
-		}
 
 		invocation.setFilterChain(chain);
 
@@ -218,17 +207,18 @@ public class FilterMapper
 	 */
 	public FilterChain buildFilterChain(FilterChain chain, String servletName) throws ServletException
 	{
+		//根据ServletName去查找匹配的FilterMapping,并将其Filter实例 添加到FilterChain中
 		synchronized (_filterMappings)
 		{
 			for (int i = _filterMappings.size() - 1; i >= 0; i--)
 			{
-				FilterMapping map = _filterMappings.get(i);
+				FilterMapping filterMapping = _filterMappings.get(i);
 
-				if (map.isMatch(servletName))
+				if (filterMapping.isMatch(servletName))
 				{
-					String filterName = map.getFilterConfig().getFilterName();
-
-					Filter filter = _filterManager.createFilter(filterName);
+					FilterConfigImpl config = filterMapping.getFilterConfig();
+					
+					Filter filter = config.getInstance();
 
 					chain = addFilter(chain, filter);
 				}

@@ -96,6 +96,7 @@ import org.ireland.jnetty.config.WebXmlLoader;
 import org.ireland.jnetty.dispatch.Invocation;
 import org.ireland.jnetty.dispatch.InvocationBuilder;
 import org.ireland.jnetty.dispatch.filter.FilterConfigImpl;
+import org.ireland.jnetty.dispatch.filter.FilterConfigurator;
 import org.ireland.jnetty.dispatch.filter.FilterManager;
 import org.ireland.jnetty.dispatch.filter.FilterMapper;
 import org.ireland.jnetty.dispatch.filter.FilterMapping;
@@ -104,6 +105,7 @@ import org.ireland.jnetty.dispatch.filterchain.ExceptionFilterChain;
 import org.ireland.jnetty.dispatch.filterchain.FilterChainBuilder;
 import org.ireland.jnetty.dispatch.filterchain.RedirectFilterChain;
 import org.ireland.jnetty.dispatch.servlet.ServletConfigImpl;
+import org.ireland.jnetty.dispatch.servlet.ServletConfigurator;
 import org.ireland.jnetty.dispatch.servlet.ServletManager;
 import org.ireland.jnetty.dispatch.servlet.ServletMapper;
 import org.ireland.jnetty.dispatch.servlet.ServletMapping;
@@ -127,7 +129,7 @@ import com.caucho.util.LruCache;
 /**
  * Resin's webApp implementation.
  */
-public class WebApp extends ServletContextImpl implements InvocationBuilder
+public class WebApp extends ServletContextImpl implements InvocationBuilder,FilterConfigurator,ServletConfigurator
 {
 	private static final L10N L = new L10N(WebApp.class);
 	private static final Logger log = Logger.getLogger(WebApp.class.getName());
@@ -304,21 +306,13 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder
 
 		_filterManager = new FilterManager(this,this);
 		
-		_dispatchFilterMapper = new FilterMapper();
-		_dispatchFilterMapper.setServletContext(this);
-		_dispatchFilterMapper.setFilterManager(_filterManager);
+		_dispatchFilterMapper = new FilterMapper(this,_filterManager);
 
-		_includeFilterMapper = new FilterMapper();
-		_includeFilterMapper.setServletContext(this);
-		_includeFilterMapper.setFilterManager(_filterManager);
+		_includeFilterMapper = new FilterMapper(this,_filterManager);
 
-		_forwardFilterMapper = new FilterMapper();
-		_forwardFilterMapper.setServletContext(this);
-		_forwardFilterMapper.setFilterManager(_filterManager);
+		_forwardFilterMapper = new FilterMapper(this,_filterManager);
 
-		_errorFilterMapper = new FilterMapper();
-		_errorFilterMapper.setServletContext(this);
-		_errorFilterMapper.setFilterManager(_filterManager);
+		_errorFilterMapper = new FilterMapper(this,_filterManager);
 
 		// _errorPageManager = new ErrorPageManager(_server, this);
 
@@ -452,7 +446,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder
 	/**
 	 * Adds a servlet configuration.
 	 */
-
+	@Override
 	public void addServlet(ServletConfigImpl config) throws ServletException
 	{
 		checkServlerConfig(config);
@@ -502,9 +496,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder
 
 		try
 		{
-			servletClass = (Class) Class.forName(className, false,
-					getClassLoader());
-
+			servletClass = (Class) Class.forName(className, false,getClassLoader());
 		}
 		catch (ClassNotFoundException e)
 		{
@@ -604,8 +596,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder
 	}
 
 	@Override
-	public <T extends Filter> T createFilter(Class<T> filterClass)
-			throws ServletException
+	public <T extends Filter> T createFilter(Class<T> filterClass)throws ServletException
 	{
 		return beanFactory.createBean(filterClass);
 	}
@@ -702,6 +693,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder
 	 * 创建一个新的ServletConfigImpl
 	 * @return
 	 */
+	@Override
 	public ServletConfigImpl createNewServletConfig()
 	{
 		ServletConfigImpl config = new ServletConfigImpl(this,this,_servletManager,_servletMapper);
@@ -713,8 +705,10 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder
 	 * 创建一个新的ServletMapping
 	 * @return
 	 */
+	@Override
 	public ServletMapping createNewServletMapping(ServletConfigImpl config)
 	{
+		checkServlerConfig(config);
 		
 		ServletMapping servletMapping = new ServletMapping(config);
 		
@@ -727,6 +721,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder
 	 * 创建一个新的ServletConfigImpl
 	 * @return
 	 */
+	@Override
 	public FilterConfigImpl createNewFilterConfig()
 	{
 		FilterConfigImpl config = new FilterConfigImpl(this,this,_filterManager);
@@ -738,8 +733,10 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder
 	 * 创建一个新的ServletMapping
 	 * @return
 	 */
+	@Override
 	public FilterMapping createNewFilterMapping(FilterConfigImpl config)
 	{
+		checkFilterConfig(config);
 		
 		FilterMapping servletMapping = new FilterMapping(config);
 		
@@ -749,9 +746,8 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder
 	/**
 	 * Adds a servlet-mapping configuration.
 	 */
-
-	public void addServletMapping(ServletMapping servletMapping)
-			throws ServletException
+	@Override
+	public void addServletMapping(ServletMapping servletMapping) throws ServletException
 	{
 		checkServletMapping(servletMapping);
 
@@ -761,10 +757,10 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder
 	/**
 	 * Adds a filter configuration.
 	 */
-
+	@Override
 	public void addFilter(FilterConfigImpl config)
 	{
-		checkFilterConfigImpl(config);
+		checkFilterConfig(config);
 
 		_filterManager.addFilter(config);
 	}
@@ -773,7 +769,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder
 	 * 检查FilterConfigImpl里的webApp,servletContext,FilterManager是否符合本WebApp里的
 	 * @param config
 	 */
-	private void checkFilterConfigImpl(FilterConfigImpl config)
+	private void checkFilterConfig(FilterConfigImpl config)
 	{
 		Assert.notNull(config);
 		
@@ -790,7 +786,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder
 	{
 		Assert.notNull(filterMapping);
 		
-		checkFilterConfigImpl(filterMapping.getFilterConfig());
+		checkFilterConfig(filterMapping.getFilterConfig());
 	}
 
 	/**
@@ -798,7 +794,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder
 	 * 
 	 * 添加一个FilterMapping,相当于添加一个web.xml的<filter-mapping>标签
 	 */
-
+	@Override
 	public void addFilterMapping(FilterMapping filterMapping)throws ServletException
 	{
 		checkFilterMapping(filterMapping);
