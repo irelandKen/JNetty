@@ -34,8 +34,7 @@ public class HttpSnoopSocketChannelInitializer extends ChannelInitializer<Socket
     	
     	String host = "127.0.0.1";
     	
-    	String contextPath = "/";
- 	
+    	String contextPath = "ROOT";
     	
     	webApp = new WebApp(rootDirectory, host, contextPath);
     	

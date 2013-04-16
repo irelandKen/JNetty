@@ -278,7 +278,12 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 
 		_rootDirectory = rootDirectory;
 		_host = host;
-		_contextPath = contextPath;
+		
+
+		if(contextPath == null || contextPath.equals("ROOT") || contextPath.equals("/"))	//ROOT Context
+			_contextPath = "";
+		else
+			_contextPath = contextPath;
 
 		if (_host == null)
 			throw new IllegalStateException(L.l("{0} requires an active {1}",getClass().getSimpleName()));
