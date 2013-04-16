@@ -39,6 +39,7 @@ import javax.servlet.ServletException;
 import org.ireland.jnetty.config.ConfigException;
 import org.ireland.jnetty.dispatch.servlet.ServletConfigImpl;
 import org.ireland.jnetty.webapp.WebApp;
+import org.springframework.util.Assert;
 
 import com.caucho.util.L10N;
 
@@ -104,8 +105,16 @@ public class FilterConfigImpl implements FilterConfig, FilterRegistration.Dynami
 	/**
 	 * Creates a new filter configuration object.
 	 */
-	public FilterConfigImpl()
+
+	public FilterConfigImpl(WebApp _webApp, ServletContext _servletContext, FilterManager _filterManager)
 	{
+		Assert.notNull(_webApp);
+		Assert.notNull(_servletContext);
+		Assert.notNull(_filterManager);
+		
+		this._webApp = _webApp;	
+		this._servletContext = _servletContext;
+		this._filterManager = _filterManager;
 	}
 
 	/**

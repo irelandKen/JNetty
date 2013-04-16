@@ -58,6 +58,7 @@ import javax.servlet.annotation.MultipartConfig;
 
 import org.ireland.jnetty.dispatch.filterchain.ServletFilterChain;
 import org.ireland.jnetty.webapp.WebApp;
+import org.springframework.util.Assert;
 
 import com.caucho.util.L10N;
 
@@ -141,8 +142,17 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 	/**
 	 * Creates a new servlet configuration object.
 	 */
-	public ServletConfigImpl()
+	public ServletConfigImpl(WebApp _webApp, ServletContext _servletContext, ServletManager _servletManager, ServletMapper _servletMapper)
 	{
+		Assert.notNull(_webApp);
+		Assert.notNull(_servletContext);
+		Assert.notNull(_servletManager);
+		Assert.notNull(_servletMapper);
+		
+		this._webApp = _webApp;
+		this._servletContext = _servletContext;
+		this._servletManager = _servletManager;
+		this._servletMapper = _servletMapper;
 	}
 
 	protected void copyFrom(ServletConfigImpl source)
@@ -179,17 +189,6 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 	public String getName()
 	{
 		return getServletName();
-	}
-
-	public ServletConfigImpl createRegexpConfig(String servletName) throws ServletException
-	{
-		ServletConfigImpl config = new ServletConfigImpl();
-		config.setServletName(servletName);
-		config.setServletClass(servletName);
-
-		config.init();
-
-		return config;
 	}
 
 	@Override

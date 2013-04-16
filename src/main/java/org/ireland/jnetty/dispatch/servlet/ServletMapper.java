@@ -38,6 +38,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.servlet.FilterChain;
+import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
 
 import org.ireland.jnetty.config.ConfigException;
@@ -64,7 +65,11 @@ public class ServletMapper
 
 	private WebApp _webApp;
 
+	private ServletContext _servletContext;
+
 	private ServletManager _servletManager;
+	
+	private ServletMapper _servletMapper;
 
 	
 	//<urlPattern, ServletMapping>
@@ -365,10 +370,8 @@ public class ServletMapper
 		if (_servletManager.getServlet(servletName) != null)
 			return;
 
-		ServletConfigImpl config = new ServletConfigImpl();
-		config.setServletContext(_webApp);
-		config.setServletName(servletName);
-
+		ServletConfigImpl config = _webApp.createNewServletConfig();
+		
 		try
 		{
 			config.setServletClass(servletName);

@@ -95,7 +95,6 @@ import org.ireland.jnetty.config.ListenerConfig;
 import org.ireland.jnetty.config.WebXmlLoader;
 import org.ireland.jnetty.dispatch.Invocation;
 import org.ireland.jnetty.dispatch.InvocationBuilder;
-import org.ireland.jnetty.dispatch.SubInvocation;
 import org.ireland.jnetty.dispatch.filter.FilterConfigImpl;
 import org.ireland.jnetty.dispatch.filter.FilterManager;
 import org.ireland.jnetty.dispatch.filter.FilterMapper;
@@ -679,13 +678,8 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder
 	 */
 	public ServletConfigImpl createNewServletConfig()
 	{
-		ServletConfigImpl config = new ServletConfigImpl();
+		ServletConfigImpl config = new ServletConfigImpl(this,this,_servletManager,_servletMapper);
 		
-		config.setWebApp(this);
-		config.setServletContext(this);
-		config.setServletManager(_servletManager);
-		config.setServletMapper(_servletMapper);
-
 		return config;
 	}
 	
@@ -709,12 +703,8 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder
 	 */
 	public FilterConfigImpl createNewFilterConfig()
 	{
-		FilterConfigImpl config = new FilterConfigImpl();
+		FilterConfigImpl config = new FilterConfigImpl(this,this,_filterManager);
 		
-		config.setWebApp(this);
-		config.setServletContext(this);
-		config.setFilterManager(_filterManager);
-
 		return config;
 	}
 	

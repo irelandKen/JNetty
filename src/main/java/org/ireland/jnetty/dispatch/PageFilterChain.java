@@ -46,6 +46,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.ireland.jnetty.dispatch.servlet.ServletConfigImpl;
+import org.ireland.jnetty.webapp.WebApp;
 
 
 import com.caucho.jsp.Page;
@@ -60,6 +61,8 @@ public class PageFilterChain implements FilterChain
   private static final Logger log
     = Logger.getLogger(PageFilterChain.class.getName());
 
+  private WebApp _webApp;
+  
   private ServletContext _application;
   private QServlet _servlet;
   private String _jspFile;
@@ -243,7 +246,7 @@ public class PageFilterChain implements FilterChain
         newPage = _servlet.getPage(req, res);
 
         if (newPage != null && ! newPage.isInit()) {
-          ServletConfigImpl config = new ServletConfigImpl();
+          ServletConfigImpl config = _webApp.createNewServletConfig();
           config.setServletContext(_application);
           config.setServletName(req.getServletPath());
           newPage.caucho_init(config);
