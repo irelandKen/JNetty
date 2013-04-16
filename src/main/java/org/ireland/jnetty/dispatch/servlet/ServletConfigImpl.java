@@ -270,14 +270,14 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 
 			for (String urlPattern : urlPatterns)
 			{
-				ServletMapping map = _servletMapper.getServletMapping(urlPattern);
+				ServletMapping mapping = _servletMapper.getServletMapping(urlPattern);
 
-				if (map == null || map.isDefault())
+				if (mapping == null || mapping.isDefault())
 				{
 					continue;
 				}
 
-				String servletName = map.getServletConfig().getServletName();
+				String servletName = mapping.getServletConfig().getServletName();
 
 				if (!_servletName.equals(servletName) && servletName != null)
 				{
@@ -298,8 +298,6 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 			ServletMapping mapping = _webApp.createNewServletMapping(this);
 			
 			mapping.setIfAbsent(true);
-
-			mapping.getServletConfig().setServletName(getServletName());// TODO: need?
 
 			for (String urlPattern : urlPatterns)
 			{
