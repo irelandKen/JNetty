@@ -151,7 +151,7 @@ public class FilterMapping
 	}
 
 	/**
-	 * True if the dispatcher is for REQUEST.
+	 * True if the dispatcher is for REQUEST.(未指定dispatcherType时,默认是REQUEST)
 	 */
 	public boolean isRequest()
 	{

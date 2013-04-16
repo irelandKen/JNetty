@@ -75,11 +75,11 @@ public class FilterConfigImpl implements FilterConfig, FilterRegistration.Dynami
 	static L10N L = new L10N(ServletConfigImpl.class);
 	protected static final Logger log = Logger.getLogger(FilterConfigImpl.class.getName());
 	
-	private WebApp _webApp;
+	private final WebApp _webApp;
 
-	private ServletContext _servletContext;
+	private final ServletContext _servletContext;
 	
-	private FilterManager _filterManager;
+	private final FilterManager _filterManager;
 	
 	
 	//web.xml 配置
@@ -278,11 +278,12 @@ public class FilterConfigImpl implements FilterConfig, FilterRegistration.Dynami
 		return Collections.enumeration(_initParams.keySet());
 	}
 
-	public void setWebApp(WebApp webApp)
-	{
-		_webApp = webApp;
-	}
 
+	public WebApp getWebApp()
+	{
+		return _webApp;
+	}
+	
 	/**
 	 * Returns the servlet context.
 	 */
@@ -291,22 +292,10 @@ public class FilterConfigImpl implements FilterConfig, FilterRegistration.Dynami
 		return _servletContext;
 	}
 
-	/**
-	 * Sets the servlet context.
-	 */
-	public void setServletContext(ServletContext app)
-	{
-		_servletContext = app;
-	}
 
 	public FilterManager getFilterManager()
 	{
 		return _filterManager;
-	}
-
-	public void setFilterManager(FilterManager filterManager)
-	{
-		_filterManager = filterManager;
 	}
 
 	/**

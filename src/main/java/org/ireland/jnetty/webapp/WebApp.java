@@ -110,6 +110,7 @@ import org.ireland.jnetty.dispatch.servlet.ServletMapping;
 import org.ireland.jnetty.util.http.Encoding;
 import org.ireland.jnetty.util.http.URIDecoder;
 import org.ireland.jnetty.util.http.UrlMap;
+import org.springframework.util.Assert;
 
 import com.caucho.i18n.CharacterEncoding;
 
@@ -739,13 +740,29 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder
 
 	public void addFilter(FilterConfigImpl config)
 	{
-		config.setServletContext(this);
-
-		config.setFilterManager(_filterManager);
-		
-		config.setWebApp(this);
+		checkFilterConfigImpl(config);
 
 		_filterManager.addFilter(config);
+	}
+	
+	/**
+	 * 检查FilterConfigImpl里的webApp,servletContext,FilterManager是否符合本WebApp里的
+	 * @param config
+	 */
+	private void checkFilterConfigImpl(FilterConfigImpl config)
+	{
+		Assert.isTrue(config.getWebApp() == this);
+		Assert.isTrue(config.getServletContext() == this);
+		Assert.isTrue(config.getFilterManager() == this.getFilterManager());
+	}
+	
+	/**
+	 * 检查FilterMapping里的各属性是否符合本WebApp的属性
+	 * @param filterMapping
+	 */
+	private void checkFilterMapping(FilterMapping filterMapping)
+	{
+		checkFilterConfigImpl(filterMapping.getFilterConfig());
 	}
 
 	/**
@@ -756,7 +773,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder
 
 	public void addFilterMapping(FilterMapping filterMapping)throws ServletException
 	{
-		filterMapping.getFilterConfig().setServletContext(this);
+		checkFilterMapping(filterMapping);
 
 		_filterManager.addFilterMapping(filterMapping);
 
