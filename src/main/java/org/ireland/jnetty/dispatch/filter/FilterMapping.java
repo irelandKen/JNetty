@@ -83,9 +83,6 @@ public class FilterMapping
 	
 	private HashSet<DispatcherType> _dispatcherTypes;
 
-	// The match expressions
-	private final ArrayList<Match> _matchList = new ArrayList<Match>();
-
 	
 
 	/**
@@ -104,13 +101,6 @@ public class FilterMapping
 	}
 
 
-	/**
-	 * Sets the url pattern
-	 */
-	public URLPattern createUrlPattern() throws ServletException
-	{
-		return new URLPattern();
-	}
 
 	/**
 	 * Gets the url patterns
@@ -119,6 +109,11 @@ public class FilterMapping
 	public HashSet<String> getURLPatterns()
 	{
 		return _urlPatterns;
+	}
+	
+	public void addURLPattern(String pattern)
+	{
+		_urlPatterns.add(pattern);
 	}
 
 
@@ -247,119 +242,16 @@ public class FilterMapping
 		else
 			uri = servletPath + pathInfo;
 
-		int size = _matchList.size();
-
-		for (int i = 0; i < size; i++)
+		for(String urlPattern : _urlPatterns)
 		{
-			Match match = _matchList.get(i);
-
-			int value = match.match(uri);
-
-			switch (value)
-			{
-			case Match.INCLUDE:
+			if(matchFiltersURL(urlPattern, uri))
 				return true;
-			case Match.EXCLUDE:
-				return false;
-			}
 		}
 
 		return false;
 	}
 
-	/**
-	 * Converts a url-pattern to a regular expression
-	 * 
-	 * @param pattern
-	 *            the url-pattern to convert
-	 * @param flags
-	 *            the regexp flags, e.g. "i" for case insensitive
-	 * 
-	 * @return the equivalent regular expression
-	 */
-	private Pattern urlPatternToRegexp(String pattern, int flags) throws ServletException
-	{
-		if (pattern.length() == 0 || pattern.length() == 1 && pattern.charAt(0) == '/')
-		{
-			try
-			{
-				return Pattern.compile("^/$", flags);
-			}
-			catch (Exception e)
-			{
-				throw new ServletException(e);
-			}
-		}
-
-		int length = pattern.length();
-		boolean isExact = true;
-
-		if (pattern.charAt(0) != '/' && pattern.charAt(0) != '*')
-		{
-			pattern = "/" + pattern;
-			length++;
-		}
-
-		int prefixLength = -1;
-		boolean isShort = false;
-		CharBuffer cb = new CharBuffer();
-		cb.append("^");
-		for (int i = 0; i < length; i++)
-		{
-			char ch = pattern.charAt(i);
-
-			if (ch == '*' && i + 1 == length && i > 0)
-			{
-				isExact = false;
-
-				if (pattern.charAt(i - 1) == '/')
-				{
-					cb.setLength(cb.length() - 1);
-
-					if (prefixLength < 0)
-						prefixLength = i - 1;
-
-				}
-				else if (prefixLength < 0)
-					prefixLength = i;
-
-				if (prefixLength == 0)
-					prefixLength = 1;
-			}
-			else if (ch == '*')
-			{
-				isExact = false;
-				cb.append(".*");
-				if (prefixLength < 0)
-					prefixLength = i;
-
-				if (i == 0)
-					isShort = true;
-			}
-			else if (ch == '.' || ch == '[' || ch == '^' || ch == '$' || ch == '{' || ch == '}' || ch == '|' || ch == '(' || ch == ')' || ch == '?')
-			{
-				cb.append('\\');
-				cb.append(ch);
-			}
-			else
-				cb.append(ch);
-		}
-
-		if (isExact)
-			cb.append('$');
-		else
-			cb.append("(?=/)|" + cb.toString() + "$");
-
-		try
-		{
-			return Pattern.compile(cb.close(), flags);
-		}
-		catch (Exception e)
-		{
-			throw new ServletException(e);
-		}
-	}
-
+	
 	/**
 	 * Returns a printable representation of the filter config object.
 	 */
@@ -368,159 +260,56 @@ public class FilterMapping
 		return "FilterMapping[pattern=" + _urlPatterns + ",name=" + getFilterConfig().getFilterName() + "]";
 	}
 
-	public class URLPattern
-	{
-		boolean _hasInclude = false;
 
-		/**
-		 * Sets the singleton url-pattern.
-		 */
-		public URLPattern addText(String pattern) throws ServletException
-		{
-			pattern = pattern.trim();
+	//util Method---------------------------------------------------------------------------
+	
+    /**
+     * Return <code>true</code> if the context-relative request path
+     * matches the requirements of the specified filter mapping;
+     * otherwise, return <code>false</code>.
+     *
+     * @param urlPattern URL mapping being checked
+     * @param requestPath Context-relative request path of this request(without query String)
+     */
+    private static boolean matchFiltersURL(String urlPattern, String requestPath) {
+        
+        if (urlPattern == null)
+            return (false);
 
-			_urlPatterns.add(pattern);
+        // Case 1 - Exact Match
+        if (urlPattern.equals(requestPath))
+            return (true);
 
-			Pattern regexp;
+        // Case 2 - Path Match ("/.../*")
+        if (urlPattern.equals("/*"))
+            return (true);
+        if (urlPattern.endsWith("/*")) {
+            if (urlPattern.regionMatches(0, requestPath, 0, 
+                                       urlPattern.length() - 2)) {
+                if (requestPath.length() == (urlPattern.length() - 2)) {
+                    return (true);
+                } else if ('/' == requestPath.charAt(urlPattern.length() - 2)) {
+                    return (true);
+                }
+            }
+            return (false);
+        }
 
-			if (isCaseInsensitive)
-				regexp = urlPatternToRegexp(pattern, Pattern.CASE_INSENSITIVE);
-			else
-				regexp = urlPatternToRegexp(pattern, 0);
+        // Case 3 - Extension Match
+        if (urlPattern.startsWith("*.")) {
+            int slash = requestPath.lastIndexOf('/');
+            int period = requestPath.lastIndexOf('.');
+            if ((slash >= 0) && (period > slash) 
+                && (period != requestPath.length() - 1)
+                && ((requestPath.length() - period) 
+                    == (urlPattern.length() - 1))) {
+                return (urlPattern.regionMatches(2, requestPath, period + 1,
+                                               urlPattern.length() - 2));
+            }
+        }
 
-			_hasInclude = true;
+        // Case 4 - "Default" Match
+        return (false); // NOTE - Not relevant for selecting filters
 
-			_matchList.add(Match.createInclude(regexp));
-
-			return this;
-		}
-
-		/**
-		 * Adds an include pattern.
-		 */
-		public void addIncludePattern(String pattern) throws ServletException
-		{
-			pattern = pattern.trim();
-
-			Pattern regexp;
-
-			if (isCaseInsensitive)
-				regexp = urlPatternToRegexp(pattern, Pattern.CASE_INSENSITIVE);
-			else
-				regexp = urlPatternToRegexp(pattern, 0);
-
-			_hasInclude = true;
-
-			_matchList.add(Match.createInclude(regexp));
-		}
-
-		/**
-		 * Adds an exclude pattern.
-		 */
-		public void addExcludePattern(String pattern) throws ServletException
-		{
-			pattern = pattern.trim();
-
-			Pattern regexp;
-
-			if (isCaseInsensitive)
-				regexp = urlPatternToRegexp(pattern, Pattern.CASE_INSENSITIVE);
-			else
-				regexp = urlPatternToRegexp(pattern, 0);
-
-			_matchList.add(Match.createExclude(regexp));
-		}
-
-		/**
-		 * Adds an include regexp.
-		 */
-		public void addIncludeRegexp(String pattern)
-		{
-			pattern = pattern.trim();
-
-			Pattern regexp;
-
-			if (isCaseInsensitive)
-				regexp = Pattern.compile(pattern, Pattern.CASE_INSENSITIVE);
-			else
-				regexp = Pattern.compile(pattern, 0);
-
-			_hasInclude = true;
-
-			_matchList.add(Match.createInclude(regexp));
-		}
-
-		/**
-		 * Adds an exclude regexp.
-		 */
-		public void addExcludeRegexp(String pattern)
-		{
-			pattern = pattern.trim();
-
-			Pattern regexp;
-
-			if (isCaseInsensitive)
-				regexp = Pattern.compile(pattern, Pattern.CASE_INSENSITIVE);
-			else
-				regexp = Pattern.compile(pattern, 0);
-
-			_matchList.add(Match.createExclude(regexp));
-		}
-
-		/**
-		 * Initialize, adding the all-match for exclude patterns.
-		 */
-		@PostConstruct
-		public void init() throws Exception
-		{
-			if (_matchList.size() > 0 && !_hasInclude)
-			{
-				Pattern regexp = Pattern.compile("");
-				_matchList.add(Match.createInclude(regexp));
-			}
-		}
-	}
-
-	static class Match
-	{
-		static final int INCLUDE = 1;
-		static final int EXCLUDE = -1;
-		static final int NO_MATCH = 0;
-
-		private final Pattern _regexp;
-		private final int _value;
-
-		private Match(Pattern regexp, int value)
-		{
-			_regexp = regexp;
-			_value = value;
-		}
-
-		/**
-		 * Creates an include pattern.
-		 */
-		static Match createInclude(Pattern regexp)
-		{
-			return new Match(regexp, INCLUDE);
-		}
-
-		/**
-		 * Creates an exclude pattern.
-		 */
-		static Match createExclude(Pattern regexp)
-		{
-			return new Match(regexp, EXCLUDE);
-		}
-
-		/**
-		 * Returns the match value.
-		 */
-		int match(String uri)
-		{
-			if (_regexp.matcher(uri).find())
-				return _value;
-			else
-				return NO_MATCH;
-		}
-	}
+    }
 }

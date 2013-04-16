@@ -390,14 +390,14 @@ public class FilterConfigImpl implements FilterConfig, FilterRegistration.Dynami
 				}
 			}
 
-			FilterMapping.URLPattern urlPattern = mapping.createUrlPattern();
-
-			for (String pattern : urlPatterns)
+			if(urlPatterns != null)
 			{
-				urlPattern.addText(pattern);
+				for (String pattern : urlPatterns)
+				{
+					mapping.addURLPattern(pattern);
+				}
 			}
 
-			urlPattern.init();
 
 			_webApp.addFilterMapping(mapping); 
 		}
