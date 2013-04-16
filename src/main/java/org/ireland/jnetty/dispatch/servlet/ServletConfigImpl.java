@@ -100,13 +100,13 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 	protected static final Logger log = Logger.getLogger(ServletConfigImpl.class.getName());
 
 	
-	private WebApp _webApp;
+	private final WebApp _webApp;
 
-	private ServletContext _servletContext;
+	private final ServletContext _servletContext;
 
-	private ServletManager _servletManager;
+	private final ServletManager _servletManager;
 	
-	private ServletMapper _servletMapper;
+	private final ServletMapper _servletMapper;
 	
 	
 	
@@ -160,6 +160,11 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 		_initParams.putAll(source._initParams);
 	}
 
+	public WebApp getWebApp()
+	{
+		return _webApp;
+	}
+	
 	/**
 	 * Sets the config location.
 	 */
@@ -498,18 +503,6 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 		return _servletContext;
 	}
 
-	/**
-	 * Sets the servlet context.
-	 */
-	public void setServletContext(ServletContext app)
-	{
-		_servletContext = app;
-	}
-
-	public void setWebApp(WebApp webApp)
-	{
-		_webApp = webApp;
-	}
 
 	/**
 	 * Returns the servlet manager.
@@ -519,19 +512,7 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 		return _servletManager;
 	}
 
-	/**
-	 * Sets the servlet manager.
-	 */
-	public void setServletManager(ServletManager manager)
-	{
-		_servletManager = manager;
-	}
-
-	public void setServletMapper(ServletMapper servletMapper)
-	{
-		_servletMapper = servletMapper;
-	}
-
+	
 	/**
 	 * Sets the load-on-startup
 	 */
@@ -906,5 +887,12 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 	{
 		return null;
 	}
+
+	public ServletMapper getServletMapper()
+	{
+		return _servletMapper;
+	}
+
+
 
 }

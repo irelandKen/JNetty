@@ -455,9 +455,34 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder
 
 	public void addServlet(ServletConfigImpl config) throws ServletException
 	{
-		config.setServletContext(this);
+		checkServlerConfig(config);
 
 		_servletManager.addServlet(config);
+	}
+
+	/**
+	 * 检查ServletConfigImpl里的webApp,servletContext,ServletManager是否符合本WebApp里的
+	 * @param config
+	 */
+	private void checkServlerConfig(ServletConfigImpl config)
+	{
+		Assert.notNull(config);
+		
+		Assert.isTrue(config.getWebApp() == this);
+		Assert.isTrue(config.getServletContext() == this);
+		Assert.isTrue(config.getServletManager() == this._servletManager);
+		Assert.isTrue(config.getServletMapper() == this.getServletMapper());
+	}
+	
+	/**
+	 * 检查ServletConfigImpl里的webApp,servletContext,ServletManager是否符合本WebApp里的
+	 * @param config
+	 */
+	private void checkServletMapping(ServletMapping servletMapping)
+	{
+		Assert.notNull(servletMapping);
+		
+		checkServlerConfig(servletMapping.getServletConfig());
 	}
 
 	@Override
@@ -728,8 +753,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder
 	public void addServletMapping(ServletMapping servletMapping)
 			throws ServletException
 	{
-		// log.fine("adding servlet mapping: " + servletMapping);
-		servletMapping.getServletConfig().setServletContext(this);
+		checkServletMapping(servletMapping);
 
 		servletMapping.init(_servletMapper);
 	}
@@ -751,6 +775,8 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder
 	 */
 	private void checkFilterConfigImpl(FilterConfigImpl config)
 	{
+		Assert.notNull(config);
+		
 		Assert.isTrue(config.getWebApp() == this);
 		Assert.isTrue(config.getServletContext() == this);
 		Assert.isTrue(config.getFilterManager() == this.getFilterManager());
@@ -762,6 +788,8 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder
 	 */
 	private void checkFilterMapping(FilterMapping filterMapping)
 	{
+		Assert.notNull(filterMapping);
+		
 		checkFilterConfigImpl(filterMapping.getFilterConfig());
 	}
 

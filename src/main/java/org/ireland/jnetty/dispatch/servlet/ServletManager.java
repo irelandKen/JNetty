@@ -75,8 +75,6 @@ public class ServletManager
 		if (config.getServletContext() == null)
 			throw new NullPointerException();
 
-		config.setServletManager(this);
-
 		synchronized (_servlets)
 		{
 			ServletConfigImpl mergedConfig = null;

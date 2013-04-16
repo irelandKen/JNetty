@@ -247,7 +247,7 @@ public class PageFilterChain implements FilterChain
 
         if (newPage != null && ! newPage.isInit()) {
           ServletConfigImpl config = _webApp.createNewServletConfig();
-          config.setServletContext(_application);
+          
           config.setServletName(req.getServletPath());
           newPage.caucho_init(config);
         }
