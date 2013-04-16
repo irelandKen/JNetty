@@ -216,7 +216,7 @@ public class FilterMapper
 					{
 						FilterMapping filterMapping = mappings.get(i);
 		
-						addFilter(invocation, chain, filterMapping);
+						chain = addFilter(invocation, chain, filterMapping);
 					}
 				}
 				
@@ -232,7 +232,7 @@ public class FilterMapper
 					{
 						FilterMapping filterMapping = mappings.get(i);
 		
-						addFilter(invocation, chain, filterMapping);
+						chain = addFilter(invocation, chain, filterMapping);
 					}
 				}
 			}
@@ -249,7 +249,7 @@ public class FilterMapper
 	
 					if (filterMapping.isMatch(invocation))
 					{
-						addFilter(invocation, chain, filterMapping);
+						chain = addFilter(invocation, chain, filterMapping);
 					}
 				}
 			}
@@ -289,6 +289,14 @@ public class FilterMapper
 		return chain;
 	}
 
+	/**
+	 * 
+	 * @param invocation
+	 * @param chain
+	 * @param filterMapping
+	 * @return	增加了FilterChain节点的新的FilterChain
+	 * @throws ServletException
+	 */
 	private FilterChain addFilter(Invocation invocation,FilterChain chain, FilterMapping filterMapping) throws ServletException
 	{
 		FilterConfigImpl config = filterMapping.getFilterConfig();
