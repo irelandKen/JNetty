@@ -1,10 +1,10 @@
 package org.ireland.jnetty.config;
 
 import java.io.File;
-import java.nio.file.FileSystem;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.Set;
 
 import javax.servlet.DispatcherType;
@@ -14,6 +14,7 @@ import org.apache.commons.configuration.XMLConfiguration;
 import org.ireland.jnetty.dispatch.filter.FilterConfigImpl;
 import org.ireland.jnetty.dispatch.servlet.ServletConfigImpl;
 import org.ireland.jnetty.webapp.WebApp;
+import org.junit.Test;
 
 /**
  * A Loader to parse web.xml FilterConfig ,ServletConfig
@@ -25,8 +26,9 @@ import org.ireland.jnetty.webapp.WebApp;
  */
 public class WebXmlLoader
 {
-	private static final String DATA_FILE_NAME = System.getProperty("user.dir") + File.separatorChar+
-						"src"+File.separatorChar+"main"+File.separatorChar+"webapp"+File.separatorChar+"WEB-INF"+File.separatorChar+"web.xml";
+	private static final char SEPARATOR = File.separatorChar;
+	private static final String DATA_FILE_NAME = System.getProperty("user.dir") + SEPARATOR + "src" + SEPARATOR + "main" + SEPARATOR + "webapp" + SEPARATOR
+			+ "WEB-INF" + SEPARATOR + "web.xml";
 
 	private WebApp webApp;
 
@@ -46,12 +48,20 @@ public class WebXmlLoader
 		}
 	}
 
-	public void praseFilter() throws ClassNotFoundException
+	/**
+	 * 解释web.xml所有的<filter>元素,并返回一个<filterName,FilterConfigImpl>的map
+	 * 
+	 * @return
+	 * @throws ClassNotFoundException
+	 */
+	public LinkedHashMap<String, FilterConfigImpl> praseFilter() throws ClassNotFoundException
 	{
 
 		int cnt = 0;
 
 		String filterName = null;
+
+		LinkedHashMap<String, FilterConfigImpl> filterMap = new LinkedHashMap<String, FilterConfigImpl>();
 
 		// Find <filter>
 		while (((filterName = getString("filter(" + cnt + ").filter-name")) != null) && (filterName.trim().length() > 0))
@@ -59,7 +69,14 @@ public class WebXmlLoader
 			FilterConfigImpl config = webApp.createNewFilterConfig();
 
 			config.setFilterName(filterName);
-			config.setFilterClass(getString("filter(" + cnt + ").filter-class"));
+			
+			String filterClassName = getString("filter(" + cnt + ").filter-class");
+			
+			if(filterClassName == null || filterClassName.isEmpty())
+				throw new ConfigException("<filter-class> can not be empty");
+			
+			config.setFilterClass(filterClassName);
+			
 			config.setAsyncSupported(getBoolean("filter(" + cnt + ").async-supported"));
 			config.setDescription(getString("filter(" + cnt + ").description"));
 			config.setDisplayName(getString("filter(" + cnt + ").display-name"));
@@ -76,67 +93,82 @@ public class WebXmlLoader
 				i++;
 			}
 
-			// find <filter-mapping> for <filter>
-			int j = 0;
-
-			while (getString("filter-mapping(" + j + ").filter-name") != null)
-			{
-				String name = getString("filter-mapping(" + j + ").filter-name").trim();
-
-				// 只取有关联的
-				if (!name.equals(filterName))
-				{
-					j++;
-					continue;
-				}
-
-				String value;
-
-				// <filter-mapping>可以包含多个 <url-pattern>
-				Set<String> url_patterns = new HashSet<String>();
-				int q = 0;
-				while ((value = getString("filter-mapping(" + j + ").url-pattern(" + q + ")")) != null)
-				{
-					url_patterns.add(value);
-					q++;
-				}
-
-				// <filter-mapping>可以包含多个 <servlet-name>
-				Set<String> servlet_names = new HashSet<String>();
-				q = 0;
-				while ((value = getString("filter-mapping(" + j + ").servlet-name(" + q + ")")) != null)
-				{
-					servlet_names.add(value);
-					q++;
-				}
-
-				// 查找这个Filter的所有"<dispatcher>"标签,一个<filter-mapping>可以包含多个<dispatcher>标签
-				Set<DispatcherType> dispatcherTypes = new HashSet<DispatcherType>();
-				int k = 0;
-
-				while ((value = getString("filter-mapping(" + j + ").dispatcher(" + k + ")")) != null)
-				{
-					dispatcherTypes.add(DispatcherType.valueOf(value));
-					k++;
-				}
-
-				// 查找<filter-mapping>的所有<servlet-name>标签,一个<servlet-name>可以包含多个<servlet-name>标签
-				if (url_patterns.size() > 0)
-				{
-					config.addMappingForUrlPatterns(EnumSet.copyOf(dispatcherTypes), true, toArray(url_patterns));
-				}
-				
-				if (servlet_names.size() > 0)
-				{
-					config.addMappingForServletNames(EnumSet.copyOf(dispatcherTypes), true, toArray(servlet_names));
-				}
-
-				j++;
-			}
+			
+			
+			//
+			filterMap.put(filterName, config);
 
 			cnt++;
 		}
 
+		return filterMap;
+	}
+
+	/**
+	 * 1:调用praseFilter()取得所有filter 2:按顺序解释每个<filter-mapping>元素,在filterMap中找到对应的FilterConfigImpl,并配置到webApp中
+	 * 
+	 * @throws ClassNotFoundException
+	 */
+	@Test
+	public void parseFilterMapping() throws ClassNotFoundException
+	{
+		LinkedHashMap<String, FilterConfigImpl> filterMap = praseFilter();
+
+		// find <filter-mapping>
+		int cnt = 0;
+
+		while (getString("filter-mapping(" + cnt + ").filter-name") != null)
+		{
+			String filterName = getString("filter-mapping(" + cnt + ").filter-name").trim();
+
+			FilterConfigImpl config = filterMap.get(filterName);
+
+			if (config == null)
+				throw new ConfigException("the <filter> element with name[" + filterName + "] is not exist.");
+
+			String value;
+
+			// <filter-mapping>可以包含多个 <url-pattern>
+			Set<String> urlPatterns = new HashSet<String>();
+			int q = 0;
+			while ((value = getString("filter-mapping(" + cnt + ").url-pattern(" + q + ")")) != null)
+			{
+				urlPatterns.add(value);
+				q++;
+			}
+
+			// <filter-mapping>可以包含多个 <servlet-name>
+			Set<String> servletNames = new HashSet<String>();
+			q = 0;
+			while ((value = getString("filter-mapping(" + cnt + ").servlet-name(" + q + ")")) != null)
+			{
+				servletNames.add(value);
+				q++;
+			}
+
+			// 查找这个Filter的所有"<dispatcher>"标签,一个<filter-mapping>可以包含多个<dispatcher>标签
+			Set<DispatcherType> dispatcherTypes = new HashSet<DispatcherType>();
+			int k = 0;
+
+			while ((value = getString("filter-mapping(" + cnt + ").dispatcher(" + k + ")")) != null)
+			{
+				dispatcherTypes.add(DispatcherType.valueOf(value));
+				k++;
+			}
+
+			// 查找<filter-mapping>的所有<servlet-name>标签,一个<servlet-name>可以包含多个<servlet-name>标签
+			if (urlPatterns.size() > 0)
+			{
+				config.addMappingForUrlPatterns(EnumSet.copyOf(dispatcherTypes), true, toArray(urlPatterns));
+			}
+
+			if (servletNames.size() > 0)
+			{
+				config.addMappingForServletNames(EnumSet.copyOf(dispatcherTypes), true, toArray(servletNames));
+			}
+
+			cnt++;
+		}
 	}
 
 	/**
@@ -144,8 +176,9 @@ public class WebXmlLoader
 	 * 
 	 * @throws ClassNotFoundException
 	 */
-	public void praseServletConfig() throws ClassNotFoundException
+	public LinkedHashMap<String, ServletConfigImpl> praseServletConfig() throws ClassNotFoundException
 	{
+		LinkedHashMap<String, ServletConfigImpl> servletMap = new LinkedHashMap<String, ServletConfigImpl>();
 
 		int cnt = 0;
 
@@ -159,13 +192,19 @@ public class WebXmlLoader
 			ServletConfigImpl config = webApp.createNewServletConfig();
 
 			config.setServletName(servletName);
-			config.setServletClass(getString("servlet(" + cnt + ").servlet-class"));
+			
+			String servletClassName =  getString("servlet(" + cnt + ").servlet-class");
+			
+			if(servletClassName == null || servletClassName.isEmpty())
+				throw new ConfigException("<servlet-class> can not be empty");
+			
+			config.setServletClass(servletClassName);
 
 			config.setAsyncSupported(getBoolean("servlet(" + cnt + ").async-supported"));
 
 			config.setDescription(getString("servlet(" + cnt + ").description"));
 			config.setDisplayName(getString("servlet(" + cnt + ").display-name"));
-			config.setLoadOnStartup(getInt("servlet(" + cnt + ").load-on-startup",Integer.MIN_VALUE));
+			config.setLoadOnStartup(getInt("servlet(" + cnt + ").load-on-startup", Integer.MIN_VALUE));
 
 			int i = 0;
 
@@ -178,107 +217,113 @@ public class WebXmlLoader
 				i++;
 			}
 
-			/**
-			 * find <servlet-mapping> for <servlet> 查找 当前<servlet>标签 所关联 的所有 "<servlet-mapping>"标签
-			 */
-			int j = 0;
+			servletMap.put(servletName, config);
+			
+			cnt++;
+		}
 
-			String name;
+		return servletMap;
 
-			while ((name = getString("servlet-mapping(" + j + ").servlet-name")) != null && !name.trim().isEmpty())
+	}
+
+	public void parseServletMapping() throws ClassNotFoundException
+	{
+		LinkedHashMap<String, ServletConfigImpl> servletMap = praseServletConfig();
+
+		/**
+		 * find <servlet-mapping> for <servlet> 查找 当前<servlet>标签 所关联 的所有 "<servlet-mapping>"标签
+		 */
+		int j = 0;
+
+		String servletName;
+
+		while ((servletName = getString("servlet-mapping(" + j + ").servlet-name")) != null && !servletName.trim().isEmpty())
+		{
+			servletName = servletName.trim();
+
+			ServletConfigImpl config = servletMap.get(servletName);
+
+			if (config == null)
+				throw new ConfigException("the <servlet> element with name[" + servletName + "] is not exist.");
+
+			String value;
+
+			// 一个<servlet-mapping>可以包含多个 <url-pattern>
+			Set<String> url_patterns = new HashSet<String>();
+			int q = 0;
+			while ((value = getString("servlet-mapping(" + j + ").url-pattern(" + q + ")")) != null)
 			{
-				name = name.trim();
-
-				// 只取有关联的
-				if (!name.equals(servletName))
-				{
-					j++;
-					continue;
-				}
-
-				String value;
-
-				// 一个<servlet-mapping>可以包含多个 <url-pattern>
-				Set<String> url_patterns = new HashSet<String>();
-				int q = 0;
-				while ((value = getString("servlet-mapping(" + j + ").url-pattern(" + q + ")")) != null)
-				{
-					url_patterns.add(value);
-					q++;
-				}
-
-				if (url_patterns.size() > 0)
-				{
-					config.addMapping(toArray(url_patterns));
-				}
-
-				j++;
+				url_patterns.add(value);
+				q++;
 			}
 
-			cnt++;
+			if (url_patterns.size() > 0)
+			{
+				config.addMapping(toArray(url_patterns));
+			}
+
+			j++;
 		}
 
 	}
 
-	
+	// util
+	// method---------------------------------------------------------------------------------------------------------
 	private String getString(String node)
 	{
-		return getString(node,null);
+		return getString(node, null);
 	}
-	
-	private String getString(String node,String defaultValue)
+
+	private String getString(String node, String defaultValue)
 	{
 		String value = defaultValue;
-		
+
 		try
 		{
 			value = xmlConfig.getString(node);
 		}
-		catch(Exception ex)
+		catch (Exception ex)
 		{
 		}
-		
+
 		return value;
 	}
-	
+
 	private boolean getBoolean(String node)
 	{
 		return getBoolean(node, false);
 	}
-	
-	private boolean getBoolean(String node,boolean defaultValue)
+
+	private boolean getBoolean(String node, boolean defaultValue)
 	{
 		boolean value = defaultValue;
-		
+
 		try
 		{
 			value = xmlConfig.getBoolean(node);
 		}
-		catch(Exception ex)
+		catch (Exception ex)
 		{
 		}
-		
+
 		return value;
 	}
-	
-	private int getInt(String node,int defaultValue)
+
+	private int getInt(String node, int defaultValue)
 	{
 		int value = defaultValue;
-		
+
 		try
 		{
 			value = xmlConfig.getInt(node);
 		}
-		catch(Exception ex)
+		catch (Exception ex)
 		{
 		}
-		
+
 		return value;
 	}
-	
-	
 
-	
 	private static <E> String[] toArray(Collection<String> c)
 	{
 		String[] array = new String[c.size()];
