@@ -96,9 +96,9 @@ public class HttpHandler extends ChannelInboundMessageHandlerAdapter<FullHttpMes
     	DefaultHttpServletResponse response = new DefaultHttpServletResponse((SocketChannel)ctx.channel(), ctx, fullHttpResponse, fullHttpRequest);
     	
     	//
-    	String uri = fullHttpRequest.getUri();
+    	String rawUri = fullHttpRequest.getUri();
     	
-    	dispatch(uri,request, response);
+    	dispatch(rawUri,request, response);
 	}
 
 

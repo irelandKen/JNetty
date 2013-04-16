@@ -220,23 +220,32 @@ public class DefaultHttpServletRequest implements HttpServletRequest
     protected boolean cookiesParsed = false;
     
     
+    //rawUri = contextPath + servletPath + pathInfo +?+ queryString
     
-    
+    //如: /myweb
     private String _contextPath;
+    
+    //如: /myservlet
+    private String _servletPath;
+    
+    //如: /page.do 或 null
+    private String _pathInfo;
+    
+    //如: name=jack&pwd=123
+    private String _queryString;
+    
     private DispatcherType _dispatcherType;
     
     private HttpMethod _httpMethod;
-    
-    private String _httpMethodString;
-    
+        
     //Parameters from query string and form DefaultHttpServletRequest Body(application/x-www-form-urlencoded [POST | PUT])
     private Map<String, List<String>> _parameters;
     
-    private String _pathInfo;
+   
     private int _port;
     private HttpVersion _httpVersion = HttpVersion.HTTP_1_1;
     private String _queryEncoding;
-    private String _queryString;
+    
     
     private BufferedReader _reader;
     
@@ -248,7 +257,7 @@ public class DefaultHttpServletRequest implements HttpServletRequest
     private String _scheme = "http";
 
     private String _serverName;
-    private String _servletPath;
+    
     private HttpSession _session;
     private SessionManager _sessionManager;
     private long _timeStamp;
@@ -1667,7 +1676,6 @@ public class DefaultHttpServletRequest implements HttpServletRequest
 
         _cookiesExtracted = false;
         _serverName = null;
-        _httpMethodString = null;
         _pathInfo = null;
         _port = 0;
         _httpVersion = HttpVersion.HTTP_1_1;
@@ -1943,10 +1951,9 @@ public class DefaultHttpServletRequest implements HttpServletRequest
      * @param method
      *            The method to set.
      */
-    public void setMethod(HttpMethod httpMethod, String method)
+    public void setMethod(HttpMethod httpMethod)
     {
         _httpMethod=httpMethod;
-        _httpMethodString = method;
     }
 
     /* ------------------------------------------------------------ */

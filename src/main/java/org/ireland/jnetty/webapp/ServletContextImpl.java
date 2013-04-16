@@ -47,7 +47,7 @@ import java.util.logging.Logger;
 /**
  * Bare-bones servlet context implementation.
  */
-public class ServletContextImpl implements ServletContext
+public abstract class ServletContextImpl implements ServletContext
 {
 	static final Logger log = Logger.getLogger(ServletContextImpl.class.getName());
 	static final L10N L = new L10N(ServletContextImpl.class);
@@ -501,14 +501,7 @@ public class ServletContextImpl implements ServletContext
 		return null;
 	}
 
-	/**
-	 * Returns the dispatcher.
-	 */
-	@Override
-	public RequestDispatcher getRequestDispatcher(String uri)
-	{
-		return null;
-	}
+
 
 	/**
 	 * Returns a dispatcher for the named servlet.

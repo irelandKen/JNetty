@@ -418,6 +418,7 @@ public class FilterConfigImpl implements FilterConfig, FilterRegistration.Dynami
 		return Collections.unmodifiableSet(patterns);
 	}
 
+	@Override
 	public String getName()
 	{
 		return _filterName;

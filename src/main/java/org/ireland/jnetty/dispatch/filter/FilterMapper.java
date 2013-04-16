@@ -31,6 +31,7 @@ package org.ireland.jnetty.dispatch.filter;
 
 import com.caucho.util.L10N;
 
+import javax.servlet.DispatcherType;
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
 import javax.servlet.ServletContext;
@@ -41,6 +42,9 @@ import org.ireland.jnetty.dispatch.Invocation;
 import org.ireland.jnetty.dispatch.filterchain.FilterFilterChain;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
 
 /**
@@ -71,18 +75,28 @@ public class FilterMapper
 	private static final Logger log = Logger.getLogger(FilterMapper.class.getName());
 	private static final L10N L = new L10N(FilterMapper.class);
 
+	//本FilterMapper支持的匹配的DispatcherType
+	private final DispatcherType _sameDispatcherType;
+	
 	private final ServletContext _servletContext;
 
 	private final FilterManager _filterManager;
 
 	//FilterMapping按web.xml中的<filter-mapping>顺序排列
+	@Deprecated
 	private ArrayList<FilterMapping> _filterMappings = new ArrayList<FilterMapping>();
 
+	//持有<url-pattern>的<filter-mapping>对象
+    private List<FilterMapping> _filterMappingsWithUrl = new ArrayList<FilterMapping>();;
+    
+    //持有<servlet-name>的<filter-mapping>对象, KEY: servlet-name,VALUE: List<FilterMapping>
+    private Map<String,List<FilterMapping>> _filterMappingsWithServletName = new HashMap<String,List<FilterMapping>>();
 
-	public FilterMapper(ServletContext servletContext,FilterManager filterManager)
+	public FilterMapper(ServletContext servletContext,FilterManager filterManager,DispatcherType sameDispatcherType)
 	{
 		_servletContext = servletContext;
 		_filterManager = filterManager;
+		_sameDispatcherType = sameDispatcherType;
 	}
 
 	//getter & setter------------------------------------------------------------------
@@ -109,29 +123,60 @@ public class FilterMapper
 	//---------------------------------------------------------------------------------
 	/**
 	 * Adds a filter mapping
+	 * 
+	 * 被添加的FilterMapping必需持有共同的DispatcherType.
+	 * 
 	 */
-	public void addFilterMapping(FilterMapping mapping) throws ServletException
+	public void addFilterMapping(FilterMapping filterMapping) throws ServletException
 	{
 		try
 		{
-			String filterName = mapping.getFilterConfig().getFilterName();
+			if(!filterMapping.matchDispatcherType(_sameDispatcherType))
+				throw new IllegalArgumentException("The FilterMapping to be added should match "+_sameDispatcherType);
+			
+			FilterConfigImpl filterConfig = filterMapping.getFilterConfig();
+			
+			String filterName = filterConfig.getFilterName();
 
 			if (filterName == null)
-				filterName = mapping.getFilterConfig().getFilterClassName();
+				filterName = filterConfig.getFilterClassName();
 
 			
 			//如果FilterMapping不存在,则添加到FilterMapping中
-			if (mapping.getFilterConfig().getFilterClassName() != null && _filterManager.getFilter(filterName) == null)
+			if (filterConfig.getFilterClassName() != null && _filterManager.getFilter(filterName) == null)
 			{
-				_filterManager.addFilter(mapping.getFilterConfig());
+				_filterManager.addFilter(filterConfig);
 			}
 
 			if (_filterManager.getFilter(filterName) == null)
 				throw new ConfigException(L.l("'{0}' is an unknown filter-name.  filter-mapping requires that the named filter be defined in a <filter> configuration before the <filter-mapping>.",filterName));
 
-			_filterMappings.add(mapping);
+			//持有<url-pattern>元素,添加至_filterMappingsWithUrl
+			if(filterMapping.getURLPatterns() != null && !filterMapping.getURLPatterns().isEmpty())
+			{
+				_filterMappingsWithUrl.add(filterMapping);
+			}
+			
+			//持有<servlet-name>元素,添加至_filterMappingsWithUrl
+			if(filterMapping.getServletNames() != null && !filterMapping.getServletNames().isEmpty())
+			{
+				for(String servletName : filterMapping.getServletNames())
+				{
+					List<FilterMapping> list = _filterMappingsWithServletName.get(servletName);
+					
+					if(list == null)
+					{
+						list = new ArrayList<FilterMapping>();
+						
+						_filterMappingsWithServletName.put(servletName, list);
+					}
+					
+					list.add(filterMapping);
+				}
+			}
+			
 
-			log.fine("filter-mapping " + mapping + " -> " + filterName);
+			log.fine("filter-mapping " + filterMapping + " -> " + filterName);
 		}
 		catch (Exception e)
 		{
@@ -145,6 +190,9 @@ public class FilterMapper
 	 * 
 	 * Fills in the invocation.
 	 * 
+	 * 容器使用的用于构建应用到一个特定请求URI的过滤器链的顺序如下所示：
+	 * 1. 首先，    <url-pattern>按照在部署描述符中的出现顺序匹配过滤器映射。
+     * 2. 接下来，<servlet-name>按照在部署描述符中的出现顺序匹配过滤器映射。
 	 * @param invocation
 	 * @param chain
 	 * @return
@@ -154,53 +202,66 @@ public class FilterMapper
 	{
 		//TODO: why first matche the ServletName and the Match the URI? why not match the FilterMapping'ServletName and  FilterMapping'urlPattern as the same time?
 		
-		//根据ServletName去查找匹配的FilterMapping,并将其Filter实例 添加到FilterChain中
-		synchronized (_filterMappings)
+		//根据<servlet-name>去查找匹配的FilterMapping,并将其Filter实例 添加到FilterChain中
+		if(_filterMappingsWithServletName.size() > 0)
 		{
-			for (int i = _filterMappings.size() - 1; i >= 0; i--)
+			synchronized(_filterMappingsWithServletName)
 			{
-				FilterMapping filterMapping = _filterMappings.get(i);
-
-				if (filterMapping.isMatch(invocation.getServletName()))
+				//<servlet-name>*</servlet-name>会匹配所有Servlet
+				List<FilterMapping> mappings = 	_filterMappingsWithServletName.get("*");
+				
+				if(mappings != null)
 				{
-					FilterConfigImpl config = filterMapping.getFilterConfig();
-					
-					Filter filter = config.getInstance();
-
-					if (!config.isAsyncSupported())
-						invocation.clearAsyncSupported();
-
-					chain = addFilter(chain, filter);
+					for (int i = mappings.size() - 1; i >= 0; i--)
+					{
+						FilterMapping filterMapping = mappings.get(i);
+		
+						addFilter(invocation, chain, filterMapping);
+					}
+				}
+				
+				
+				//查找 指定servletName匹配的FilterMapping,并将其Filter实例 添加到FilterChain中
+				String servletName = invocation.getServletName();
+				
+				mappings = 	_filterMappingsWithServletName.get(servletName);
+				
+				if(mappings != null)
+				{
+					for (int i = mappings.size() - 1; i >= 0; i--)
+					{
+						FilterMapping filterMapping = mappings.get(i);
+		
+						addFilter(invocation, chain, filterMapping);
+					}
 				}
 			}
 		}
 
-		//根据uri去查找匹配的FilterMapping,并将其Filter实例 添加到FilterChain中
-		synchronized (_filterMappings)
+		//根据<url-pattern>去查找匹配的FilterMapping,并将其Filter实例 添加到FilterChain中
+		if(_filterMappingsWithUrl.size() > 0)
 		{
-			for (int i = _filterMappings.size() - 1; i >= 0; i--)
+			synchronized (_filterMappingsWithUrl)
 			{
-				FilterMapping filterMapping = _filterMappings.get(i);
-
-				if (filterMapping.isMatch(invocation))
+				for (int i = _filterMappingsWithUrl.size() - 1; i >= 0; i--)
 				{
-					FilterConfigImpl config = filterMapping.getFilterConfig();
-					
-					Filter filter = config.getInstance();
-
-					if (!config.isAsyncSupported())
-						invocation.clearAsyncSupported();
-
-					chain = addFilter(chain, filter);
+					FilterMapping filterMapping = _filterMappingsWithUrl.get(i);
+	
+					if (filterMapping.isMatch(invocation))
+					{
+						addFilter(invocation, chain, filterMapping);
+					}
 				}
 			}
 		}
-
+			
 
 		invocation.setFilterChain(chain);
 
 		return chain;
 	}
+	
+
 
 	/**
 	 * Fills in the invocation.
@@ -228,8 +289,26 @@ public class FilterMapper
 		return chain;
 	}
 
+	private FilterChain addFilter(Invocation invocation,FilterChain chain, FilterMapping filterMapping) throws ServletException
+	{
+		FilterConfigImpl config = filterMapping.getFilterConfig();
+		
+		Filter filter = config.getInstance();
+
+		if (!config.isAsyncSupported())
+			invocation.clearAsyncSupported();
+		
+		return addFilter(chain, filter);
+	}
+	
 	private FilterChain addFilter(FilterChain chain, Filter filter)
 	{
 		return new FilterFilterChain(chain, filter);
+	}
+
+	@Override
+	public String toString()
+	{
+		return "FilterMapper[" + _sameDispatcherType + "]";
 	}
 }

@@ -311,13 +311,13 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 
 		_filterManager = new FilterManager(this,this);
 		
-		_dispatchFilterMapper = new FilterMapper(this,_filterManager);
+		_dispatchFilterMapper = new FilterMapper(this,_filterManager,DispatcherType.REQUEST);
 
-		_includeFilterMapper = new FilterMapper(this,_filterManager);
+		_includeFilterMapper = new FilterMapper(this,_filterManager,DispatcherType.INCLUDE);
 
-		_forwardFilterMapper = new FilterMapper(this,_filterManager);
+		_forwardFilterMapper = new FilterMapper(this,_filterManager,DispatcherType.FORWARD);
 
-		_errorFilterMapper = new FilterMapper(this,_filterManager);
+		_errorFilterMapper = new FilterMapper(this,_filterManager,DispatcherType.ERROR);
 
 		// _errorPageManager = new ErrorPageManager(_server, this);
 

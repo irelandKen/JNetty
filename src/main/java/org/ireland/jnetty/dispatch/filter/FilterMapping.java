@@ -186,6 +186,22 @@ public class FilterMapping
 	{
 		return _dispatcherTypes != null && _dispatcherTypes.contains(DispatcherType.ERROR);
 	}
+	
+	/**
+	 * True if the dispatcher match specify dispatcherType .
+	 */
+	public boolean matchDispatcherType(DispatcherType dispatcherType)
+	{
+		Assert.notNull(dispatcherType);
+		
+		if(_dispatcherTypes == null)
+		{
+			return dispatcherType.equals(DispatcherType.REQUEST);
+		}
+		
+		//_dispatcherTypes != null
+		return _dispatcherTypes.contains(dispatcherType);
+	}
 
 	/**
 	 * Returns true if the filter map matches the invocation URL.
