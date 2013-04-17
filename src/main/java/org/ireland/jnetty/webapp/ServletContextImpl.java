@@ -36,8 +36,13 @@ import javax.servlet.*;
 import javax.servlet.descriptor.JspConfigDescriptor;
 
 import org.ireland.jnetty.config.ListenerConfig;
+import org.springframework.core.io.DefaultResourceLoader;
+import org.springframework.core.io.FileSystemResourceLoader;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.ResourceLoader;
 
 import java.io.*;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.*;
@@ -51,6 +56,8 @@ public abstract class ServletContextImpl implements ServletContext
 {
 	static final Logger log = Logger.getLogger(ServletContextImpl.class.getName());
 	static final L10N L = new L10N(ServletContextImpl.class);
+	
+	private final ResourceLoader resourceLoader = new FileSystemResourceLoader();
 
 	private String _name;
 
@@ -247,7 +254,7 @@ public abstract class ServletContextImpl implements ServletContext
 				}
 				catch (Exception e)
 				{
-					log.log(Level.FINE, e.toString(), e);
+					log(e.toString(), e);
 				}
 			}
 		}
@@ -302,6 +309,7 @@ public abstract class ServletContextImpl implements ServletContext
 		return getRootDirectory().lookup("./" + uri).getNativePath();
 	}
 
+	
 	/**
 	 * Returns a resource for the given uri.
 	 * 
@@ -309,37 +317,39 @@ public abstract class ServletContextImpl implements ServletContext
 	 * XXX: jdk 1.1.x doesn't appear to allow creation of private URL streams.
 	 */
 	@Override
-	public URL getResource(String name) throws java.net.MalformedURLException
+	public URL getResource(String path) throws java.net.MalformedURLException
 	{
-		if (!name.startsWith("/"))
-			throw new java.net.MalformedURLException(name);
-
-		String realPath = getRealPath(name);
-
-		Path rootDirectory = getRootDirectory();
-		Path path = rootDirectory.lookupNative(realPath);
-
-		URL url = new URL("jndi:/server" + getContextPath() + name);
-
-		if (path.exists() && name.startsWith("/resources/"))
-		{
-			return url;
+		Resource resource = this.resourceLoader.getResource(getResourceLocation(path));
+		
+		if (!resource.exists()) {
+			return null;
 		}
-		else if (path.isFile())
-		{
-			return url;
+		try {
+			return resource.getURL();
 		}
-		else if (getClassLoader().getResource("META-INF/resources/" + realPath) != null)
-		{
-			return url;
+		catch (MalformedURLException ex) {
+			throw ex;
 		}
-		else if (path.exists())
-		{
-			return new URL(path.getURL());
+		catch (IOException ex) {
+			log.log(Level.FINEST,"Couldn't get URL for " + resource, ex);
+			return null;
 		}
-
-		return null;
 	}
+	
+	/**
+	 * Build a full resource location for the given path,
+	 * prepending the resource base path of this MockServletContext.
+	 * @param path the path as specified
+	 * @return the full resource path
+	 */
+	protected String getResourceLocation(String path) {
+		if (!path.startsWith("/")) {
+			path = "/" + path;
+		}
+		return  System.getProperty("user.dir") + SEPARATOR + "src" + SEPARATOR + "main" + SEPARATOR + "webapp" + SEPARATOR + path;
+	}
+	
+	private static final char SEPARATOR = File.separatorChar;
 
 	public URLConnection getResource(URL url) throws IOException
 	{
@@ -417,26 +427,18 @@ public abstract class ServletContextImpl implements ServletContext
 	/**
 	 * Returns the resource for a uripath as an input stream.
 	 */
-	public InputStream getResourceAsStream(String uripath)
+	@Override
+	public InputStream getResourceAsStream(String path)
 	{
-		Path rootDirectory = getRootDirectory();
-		Path path = rootDirectory.lookupNative(getRealPath(uripath));
-
-		try
-		{
-			if (path.canRead())
-				return path.openRead();
-			else
-			{
-				String resource = "META-INF/resources" + uripath;
-
-				return getClassLoader().getResourceAsStream(resource);
-			}
+		Resource resource = this.resourceLoader.getResource(getResourceLocation(path));
+		if (!resource.exists()) {
+			return null;
 		}
-		catch (IOException e)
-		{
-			log.log(Level.FINEST, e.toString(), e);
-
+		try {
+			return resource.getInputStream();
+		}
+		catch (IOException ex) {
+			log.log(null,"Couldn't open InputStream for " + resource, ex);
 			return null;
 		}
 	}
