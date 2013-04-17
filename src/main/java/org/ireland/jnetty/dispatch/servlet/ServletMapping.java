@@ -30,6 +30,9 @@
 package org.ireland.jnetty.dispatch.servlet;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
 
 import javax.servlet.ServletException;
 
@@ -60,12 +63,11 @@ public class ServletMapping
 	private final ServletConfigImpl servletConfig;
 
 	// <url-pattern> 列表
-	private ArrayList<String> _urlPatternList = new ArrayList<String>();
+	private ArrayList<String> _urlPatterns = new ArrayList<String>();
 
 	// 是否严格匹配
 	private boolean _isStrictMapping;
 
-	private boolean _ifAbsent;
 	private boolean _isDefault;
 
 	/**
@@ -83,9 +85,13 @@ public class ServletMapping
 		return servletConfig;
 	}
 
-	public void setIfAbsent(boolean ifAbsent)
+	/**
+	 * Gets the url patterns
+	 */
+
+	public Collection<String> getURLPatterns()
 	{
-		_ifAbsent = ifAbsent;
+		return _urlPatterns;
 	}
 
 	/**
@@ -98,7 +104,10 @@ public class ServletMapping
 			throw new ConfigException(L.l("'url-pattern' cannot contain newline"));
 		}
 
-		_urlPatternList.add(pattern);
+		if(_urlPatterns.contains(pattern))		//not to add the exist parrern
+			return;
+		
+		_urlPatterns.add(pattern);
 
 		// server/13f4
 		if (servletConfig.getServletNameDefault() == null)
@@ -137,40 +146,7 @@ public class ServletMapping
 		return _isDefault;
 	}
 
-	/**
-	 * initialize.
-	 */
-	public void init(ServletMapper mapper) throws ServletException
-	{
-		boolean hasInit = false;
 
-		if (servletConfig.getServletName() == null)
-			servletConfig.setServletName(servletConfig.getServletNameDefault());
-
-		for (int i = 0; i < _urlPatternList.size(); i++)
-		{
-
-			String urlPattern = _urlPatternList.get(i);
-
-			if (servletConfig.getServletName() == null && servletConfig.getServletClassName() != null && urlPattern != null)
-			{
-				servletConfig.setServletName(urlPattern);
-			}
-
-			if (urlPattern != null && !hasInit)
-			{
-				hasInit = true;
-				servletConfig.init();
-
-				if (servletConfig.getServletClass() != null)
-					mapper.getServletManager().addServlet(servletConfig);
-			}
-
-			if (urlPattern != null)
-				mapper.addUrlMapping(urlPattern, this, _ifAbsent);
-		}
-
-	}
 
 	// ------------------------------------------------------------------
 
@@ -211,7 +187,7 @@ public class ServletMapping
 	 */
 	public boolean isMatch(String uri)
 	{
-		for (String urlPattern : _urlPatternList)
+		for (String urlPattern : _urlPatterns)
 		{
 			if (matchServletURL(uri,urlPattern) )
 				return true;
@@ -288,9 +264,9 @@ public class ServletMapping
 
 		builder.append("ServletMapping[");
 
-		for (int i = 0; i < _urlPatternList.size(); i++)
+		for (int i = 0; i < _urlPatterns.size(); i++)
 		{
-			String urlPattern = _urlPatternList.get(i);
+			String urlPattern = _urlPatterns.get(i);
 
 			if (urlPattern != null)
 			{

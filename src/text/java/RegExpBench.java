@@ -95,6 +95,7 @@ public class RegExpBench
 	private static Pattern pattern2 = urlPatternToRegexp("/*",Pattern.CASE_INSENSITIVE);
 	private static Pattern pattern3 = urlPatternToRegexp("/myspace",Pattern.CASE_INSENSITIVE);
 	private static Pattern pattern4 = urlPatternToRegexp("*.jsp",Pattern.CASE_INSENSITIVE);
+	private static Pattern pattern5 = urlPatternToRegexp("/",Pattern.CASE_INSENSITIVE);
 
 	@Test//16.547S
 	public void RegBench()
@@ -144,6 +145,22 @@ public class RegExpBench
 		}
 		
 		
+	}
+	
+	
+	@Test
+	// 1.083S
+	public void RegBench2()
+	{
+
+
+		boolean b;
+		String uri = "/page/123";
+
+
+		b = pattern5.matcher(uri).find();
+		
+
 	}
 	
 }

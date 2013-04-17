@@ -29,7 +29,6 @@
 
 package org.ireland.jnetty.dispatch.filter;
 
-import com.caucho.util.CharBuffer;
 import com.caucho.util.L10N;
 
 import javax.annotation.PostConstruct;
@@ -70,8 +69,6 @@ public class FilterMapping
 
 
 	private final FilterConfigImpl filterConfig;
-
-	private boolean isCaseInsensitive = true;
 
 	
 	//urlPatterns按<filter-mapping>里的顺序排列

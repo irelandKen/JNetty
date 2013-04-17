@@ -29,8 +29,6 @@
 
 package org.ireland.jnetty.dispatch.filterchain;
 
-import com.caucho.server.http.CauchoRequest;
-import com.caucho.server.http.HttpServletRequestImpl;
 
 import javax.servlet.FilterChain;
 import javax.servlet.Servlet;

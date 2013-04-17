@@ -70,9 +70,6 @@ public class ServletManager
 	public void addServlet(ServletConfigImpl config) throws ServletException
 	{
 
-		if (config.getServletContext() == null)
-			throw new NullPointerException();
-
 		synchronized (_servlets)
 		{
 

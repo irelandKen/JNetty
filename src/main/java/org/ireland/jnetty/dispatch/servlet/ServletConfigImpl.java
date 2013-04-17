@@ -297,8 +297,6 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 
 			ServletMapping mapping = _webApp.createNewServletMapping(this);
 			
-			mapping.setIfAbsent(true);
-
 			for (String urlPattern : urlPatterns)
 			{
 				mapping.addURLPattern(urlPattern);

@@ -100,5 +100,21 @@ public class AntPathBench
 		}
 
 	}
+	
+	@Test
+	// 1.083S
+	public void AntBench2()
+	{
+		String antPattern = "/";
+
+
+		boolean b;
+		String uri = "/page/123";
+
+
+		b = matchFiltersURL(antPattern, uri);
+		
+
+	}
 
 }

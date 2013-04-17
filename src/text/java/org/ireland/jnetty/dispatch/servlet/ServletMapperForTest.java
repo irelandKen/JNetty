@@ -1,3 +1,4 @@
+package org.ireland.jnetty.dispatch.servlet;
 /*
  * Copyright (c) 1998-2012 Caucho Technology -- all rights reserved
  *
@@ -27,7 +28,7 @@
  * @author Scott Ferguson
  */
 
-package org.ireland.jnetty.dispatch.servlet;
+
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -49,6 +50,9 @@ import javax.servlet.ServletException;
 import org.ireland.jnetty.config.ConfigException;
 import org.ireland.jnetty.dispatch.ServletInvocation;
 import org.ireland.jnetty.dispatch.filterchain.ErrorFilterChain;
+import org.ireland.jnetty.dispatch.servlet.ServletConfigImpl;
+import org.ireland.jnetty.dispatch.servlet.ServletManager;
+import org.ireland.jnetty.dispatch.servlet.ServletMapping;
 import org.ireland.jnetty.util.http.UrlMap;
 import org.ireland.jnetty.webapp.WebApp;
 import org.springframework.util.Assert;
@@ -61,11 +65,11 @@ import com.caucho.util.L10N;
  * Servlet匹配器
  * 
  */
-public class ServletMapper
+public class ServletMapperForTest
 {
-	private static final Logger LOG = Logger.getLogger(ServletMapper.class.getName());
+	private static final Logger LOG = Logger.getLogger(ServletMapperForTest.class.getName());
 
-	private static final L10N L = new L10N(ServletMapper.class);
+	private static final L10N L = new L10N(ServletMapperForTest.class);
 
 	private final WebApp _webApp;
 
@@ -73,6 +77,9 @@ public class ServletMapper
 
 	private final ServletManager _servletManager;
 
+	// <urlPattern, ServletMapping>
+	@Deprecated
+	private UrlMap<ServletMapping> _servletMappings = new UrlMap<ServletMapping>();
 
 	// 记录 urlPattern 到 <servlet-mapping>的映射关系(用于URL精确匹配)
 	// 1:ServletMappings for Exact Match <urlPattern,ServletMapping>
@@ -91,11 +98,11 @@ public class ServletMapper
 	// Servlet 3.0 maps serletName to urlPattern <serletName,Set<urlPattern>>
 	private Map<String, Set<String>> _urlPatterns = new HashMap<String, Set<String>>();
 
-	public ServletMapper(WebApp webApp, ServletContext servletContext, ServletManager servletManager)
+	public ServletMapperForTest(WebApp webApp, ServletContext servletContext, ServletManager servletManager)
 	{
-		Assert.notNull(webApp);
+/*		Assert.notNull(webApp);
 		Assert.notNull(servletContext);
-		Assert.notNull(servletManager);
+		Assert.notNull(servletManager);*/
 
 		_webApp = webApp;
 		_servletContext = servletContext;
@@ -122,22 +129,6 @@ public class ServletMapper
 	// Getter and Setter---------------------------------------------------
 
 	/**
-	 * Add a servletMapping
-	 * @param mapping
-	 * @throws ServletException
-	 */
-	public void addServletMapping(ServletMapping mapping) throws ServletException
-	{
-		if(mapping.getURLPatterns() != null)
-		{
-			for(String urlPattern : mapping.getURLPatterns())
-			{
-				addUrlMapping(urlPattern, mapping);
-			}
-		}
-	}
-	
-	/**
 	 * Adds a servlet mapping Specification: Servlet-3_1-PFD chapter 12.1
 	 * 
 	 * 增加 urlPattern + " -> " + ServletMapping 的映射关系
@@ -147,14 +138,13 @@ public class ServletMapper
 	{
 		try
 		{
-			ServletConfigImpl config = mapping.getServletConfig();
 
-			String servletName = config.getServletName();
+			String servletName = mapping.getServletConfig().getServletName();
 
-			if (_servletManager.getServlet(servletName) == null)
-			{
-				_servletManager.addServlet(config);
-			}
+/*			if (_servletManager.getServlet(servletName) == null)
+				throw new ConfigException(
+						L.l("'{0}' is an unknown servlet-name.  servlet-mapping requires that the named servlet be defined in a <servlet> configuration before the <servlet-mapping>.",
+								servletName));*/
 
 			if ("/".equals(urlPattern)) // Default servlet
 			{
@@ -166,7 +156,7 @@ public class ServletMapper
 			_exactServletMappings.put(urlPattern, mapping); 
 
 			
-			// 添加到前缀匹配的分类/../*
+			// 添加到前缀匹配的分类
 			if (urlPattern.endsWith("/*")) 
 			{
 				_prefixServletMappings.put(urlPattern, mapping);
@@ -236,22 +226,26 @@ public class ServletMapper
 	public FilterChain createServletChain(ServletInvocation invocation) throws ServletException
 	{
 		String contextURI = invocation.getContextURI();
-		
+
+		String servletName = null;
 
 		ServletConfigImpl config = null;
 
+		ArrayList<String> vars = new ArrayList<String>();
 
 		// 1-2-3:查找与contextURI最佳匹配的Servlet
 		config = mapServlet(contextURI);
 
 		// 4:默认的Servlet(urlPattern为"/",当无法找到匹配的Servlet或jsp时,则默认匹配的Servlet)
-		if (config == null)
+		if (config == null && servletName == null)
 		{
 			config = _defaultServlet;
+
+			vars.add(contextURI);
 		}
 
 		// 5:无法找到合适的Servlet,返回404
-		if (config == null)
+		if (config == null && servletName == null)
 		{
 			LOG.fine(L.l("'{0}' has no default servlet defined", contextURI));
 
@@ -266,8 +260,6 @@ public class ServletMapper
 			invocation.setPathInfo(contextURI.substring(servletPath.length()));
 		else
 			invocation.setPathInfo(null);
-		
-		String servletName = config.getServletName();
 
 		invocation.setServletName(servletName);
 
@@ -277,10 +269,11 @@ public class ServletMapper
 		}
 
 		// 创建FilterChain
-		FilterChain chain = null;
-		
+		FilterChain chain;
 		if (config != null)
 			chain = _servletManager.createServletChain(config, invocation);
+		else
+			chain = _servletManager.createServletChain(servletName, invocation);
 
 		// JSP
 		/*
@@ -352,10 +345,32 @@ public class ServletMapper
 		return null;
 	}
 
+	@Deprecated
+	public String getServletPattern(String uri)
+	{
+
+		Object value = null;
+
+		if (_servletMappings != null)
+			value = _servletMappings.map(uri);
+
+		if (value != null)
+			return uri;
+		else
+			return null;
+	}
 
 
 
+	/**
+	 * Returns the servlet matching patterns.
+	 */
+	public ArrayList<String> getURLPatterns()
+	{
+		ArrayList<String> patterns = _servletMappings.getURLPatterns();
 
+		return patterns;
+	}
 
 	public ServletMapping getServletMapping(String pattern)
 	{

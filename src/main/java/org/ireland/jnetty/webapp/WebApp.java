@@ -750,12 +750,12 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 	/**
 	 * Adds a servlet-mapping configuration.
 	 */
-	@Override//TODO: 这里要重构一下,addServletMapping应该引到ServletMapper里
+	@Override
 	public void addServletMapping(ServletMapping servletMapping) throws ServletException
 	{
 		checkServletMapping(servletMapping);
 
-		servletMapping.init(_servletMapper);
+		_servletMapper.addServletMapping(servletMapping);
 	}
 
 	/**
@@ -1298,21 +1298,9 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 		return this;
 	}
 
-	/**
-	 * Returns the best matching servlet pattern.
-	 */
-	public String getServletPattern(String uri)
-	{
-		return _servletMapper.getServletPattern(uri);
-	}
 
-	/**
-	 * Returns the best matching servlet pattern.
-	 */
-	public ArrayList<String> getServletMappingPatterns()
-	{
-		return _servletMapper.getURLPatterns();
-	}
+
+
 
 	/**
 	 * Fills the servlet instance. (Generalize?)
@@ -1361,7 +1349,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 				}
 				else
 				{
-					chain = _servletMapper.mapServlet(invocation);
+					chain = _servletMapper.createServletChain(invocation);
 
 					// server/13s[o-r]
 					_dispatchFilterMapper.buildDispatchChain(invocation, chain);
@@ -1493,7 +1481,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 			}
 			else
 			{
-				chain = _servletMapper.mapServlet(invocation);
+				chain = _servletMapper.createServletChain(invocation);
 				chain = filterMapper.buildDispatchChain(invocation, chain);
 
 			}
