@@ -39,7 +39,6 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpServletResponseWrapper;
 
 import org.ireland.jnetty.dispatch.Invocation;
-import org.ireland.jnetty.dispatch.SubInvocation;
 import org.ireland.jnetty.http.DefaultHttpServletResponse;
 import org.ireland.jnetty.util.http.URIDecoder;
 
@@ -89,7 +88,7 @@ public class RequestDispatcherImpl implements RequestDispatcher
 		//build invocation,if not exist
 		if(_forwardInvocation == null)
 		{
-			_forwardInvocation = new SubInvocation();
+			_forwardInvocation = new Invocation();
 			
 			buildForwardInvocation(_forwardInvocation,_rawURI);
 		}
@@ -120,7 +119,7 @@ public class RequestDispatcherImpl implements RequestDispatcher
 		//build invocation,if not exist
 		if(_dispatchInvocation == null)
 		{
-			_dispatchInvocation = new SubInvocation();
+			_dispatchInvocation = new Invocation();
 			
 			buildDispatchInvocation(_dispatchInvocation,_rawURI);
 		}
@@ -196,7 +195,7 @@ public class RequestDispatcherImpl implements RequestDispatcher
 		//build invocation,if not exist
 		if(_errorInvocation == null)
 		{
-			_errorInvocation = new SubInvocation();
+			_errorInvocation = new Invocation();
 			
 			buildErrorInvocation(_errorInvocation,_rawURI);
 		}
@@ -395,7 +394,7 @@ public class RequestDispatcherImpl implements RequestDispatcher
 		//build invocation,if not exist
 		if(_includeInvocation == null)
 		{
-			_includeInvocation = new SubInvocation();
+			_includeInvocation = new Invocation();
 			
 			buildIncludeInvocation(_includeInvocation,_rawURI);
 		}
