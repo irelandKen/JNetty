@@ -15,6 +15,7 @@
  */
 package org.ireland.jnetty;
 
+
 import org.ireland.jnetty.webapp.WebApp;
 
 import io.netty.channel.ChannelInitializer;
@@ -38,16 +39,7 @@ public class HttpSnoopSocketChannelInitializer extends ChannelInitializer<Socket
     	
     	webApp = new WebApp(rootDirectory, host, contextPath);
     	
-    	try
-		{
-			webApp.init();
-		}
-		catch (Exception e)
-		{
-			e.printStackTrace();
-		}
-    	
-    	webApp.parseWebXml();
+		webApp.init();
     	
     	webApp.start();
 	}

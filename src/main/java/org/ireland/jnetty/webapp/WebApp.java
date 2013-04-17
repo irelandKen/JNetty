@@ -42,9 +42,11 @@ import java.util.EventListener;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -760,9 +762,10 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 
 	/**
 	 * Adds a filter configuration.
+	 * @throws ServletException 
 	 */
 	@Override
-	public void addFilter(FilterConfigImpl config)
+	public void addFilter(FilterConfigImpl config) throws ServletException
 	{
 		checkFilterConfig(config);
 
@@ -977,8 +980,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 	{
 		try
 		{
-			Class listenerClass = Class.forName(className, false,
-					getClassLoader());
+			Class listenerClass = Class.forName(className, false,getClassLoader());
 
 			addListener(listenerClass);
 		}
@@ -1164,7 +1166,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 	 * Initializes.
 	 */
 	@PostConstruct
-	public void init() throws Exception
+	public void init()
 	{
 
 		//setAttribute("javax.servlet.context.tempdir", new File(_tempDir));
@@ -1182,15 +1184,25 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 	}
 
 	
-	public void parseWebXml()
+	public void parseWebXml() throws ServletException
 	{
 		WebXmlLoader loader = new WebXmlLoader(this);
 		
 		try
 		{
-			loader.parseFilterMapping();
+			LinkedHashMap<String, FilterConfigImpl> filterConfigMap = loader.praseFilter();
 			
-			loader.parseServletMapping();
+			for(Entry<String,FilterConfigImpl> e : filterConfigMap.entrySet())
+			{
+				addFilter(e.getValue());
+			}
+			
+			loader.parseFilterMapping(filterConfigMap);
+			
+			
+			LinkedHashMap<String, ServletConfigImpl> servletConfigMap =  loader.praseServletConfig();
+			
+			loader.parseServletMapping(servletConfigMap);
 		}
 		catch (ClassNotFoundException e)
 		{
@@ -1208,6 +1220,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 
 		try
 		{
+			parseWebXml();
 
 			//初始化SeccionManager
 /*			try
@@ -1684,23 +1697,16 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 
 			if (_sessionManager == null)
 			{
-				Thread thread = Thread.currentThread();
-				ClassLoader oldLoader = thread.getContextClassLoader();
 
 				try
 				{
-					thread.setContextClassLoader(getClassLoader());
-
 					//_sessionManager = new SessionManager(this);  ken
 				}
 				catch (Throwable e)
 				{
 					throw ConfigException.create(e);
 				}
-				finally
-				{
-					thread.setContextClassLoader(oldLoader);
-				}
+
 			}
 		}
 
@@ -1798,71 +1804,58 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 	 */
 	public void stop()
 	{
-		Thread thread = Thread.currentThread();
-		ClassLoader oldLoader = thread.getContextClassLoader();
 
-		try
+
+		long beginStop = CurrentTime.getCurrentTime();
+
+		clearCache();
+
+		ServletContextEvent event = new ServletContextEvent(this);
+
+		SessionManager sessionManager = _sessionManager;
+		_sessionManager = null;
+
+		if (sessionManager != null)
 		{
-			thread.setContextClassLoader(getClassLoader());
+			sessionManager.close();
+		}
 
-			long beginStop = CurrentTime.getCurrentTime();
+		if (_servletManager != null)
+			_servletManager.destroy();
+		if (_filterManager != null)
+			_filterManager.destroy();
 
-			clearCache();
-
-			ServletContextEvent event = new ServletContextEvent(this);
-
-			SessionManager sessionManager = _sessionManager;
-			_sessionManager = null;
-
-			if (sessionManager != null)
+		// server/10g8 -- webApp listeners after session
+		if (_webAppListeners != null)
+		{
+			for (int i = _webAppListeners.size() - 1; i >= 0; i--)
 			{
-				sessionManager.close();
-			}
-
-			if (_servletManager != null)
-				_servletManager.destroy();
-			if (_filterManager != null)
-				_filterManager.destroy();
-
-			// server/10g8 -- webApp listeners after session
-			if (_webAppListeners != null)
-			{
-				for (int i = _webAppListeners.size() - 1; i >= 0; i--)
-				{
-					ServletContextListener listener = _webAppListeners.get(i);
-
-					try
-					{
-						listener.contextDestroyed(event);
-					}
-					catch (Exception e)
-					{
-						log.log(Level.WARNING, e.toString(), e);
-					}
-				}
-			}
-
-			// server/10g8 -- webApp listeners after session
-			for (int i = _listeners.size() - 1; i >= 0; i--)
-			{
-				ListenerConfig listener = _listeners.get(i);
+				ServletContextListener listener = _webAppListeners.get(i);
 
 				try
 				{
-					listener.destroy();
+					listener.contextDestroyed(event);
 				}
 				catch (Exception e)
 				{
 					log.log(Level.WARNING, e.toString(), e);
 				}
 			}
-
 		}
-		finally
-		{
-			thread.setContextClassLoader(oldLoader);
 
-			clearCache();
+		// server/10g8 -- webApp listeners after session
+		for (int i = _listeners.size() - 1; i >= 0; i--)
+		{
+			ListenerConfig listener = _listeners.get(i);
+
+			try
+			{
+				listener.destroy();
+			}
+			catch (Exception e)
+			{
+				log.log(Level.WARNING, e.toString(), e);
+			}
 		}
 	}
 

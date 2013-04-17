@@ -109,10 +109,8 @@ public class WebXmlLoader
 	 * 
 	 * @throws ClassNotFoundException
 	 */
-	@Test
-	public void parseFilterMapping() throws ClassNotFoundException
+	public void parseFilterMapping(LinkedHashMap<String, FilterConfigImpl> filterMap) throws ClassNotFoundException
 	{
-		LinkedHashMap<String, FilterConfigImpl> filterMap = praseFilter();
 
 		// find <filter-mapping>
 		int cnt = 0;
@@ -226,9 +224,8 @@ public class WebXmlLoader
 
 	}
 
-	public void parseServletMapping() throws ClassNotFoundException
+	public void parseServletMapping(LinkedHashMap<String, ServletConfigImpl> servletMap) throws ClassNotFoundException
 	{
-		LinkedHashMap<String, ServletConfigImpl> servletMap = praseServletConfig();
 
 		/**
 		 * find <servlet-mapping> for <servlet> 查找 当前<servlet>标签 所关联 的所有 "<servlet-mapping>"标签

@@ -31,7 +31,8 @@ public interface FilterConfigurator
 
 	/**
 	 * Adds a filter configuration.
+	 * @throws ServletException 
 	 */
-	void addFilter(FilterConfigImpl config);
+	void addFilter(FilterConfigImpl config) throws ServletException;
 
 }

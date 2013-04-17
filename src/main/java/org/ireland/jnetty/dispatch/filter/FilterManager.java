@@ -31,6 +31,7 @@ package org.ireland.jnetty.dispatch.filter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -45,6 +46,7 @@ import javax.servlet.ServletException;
 
 import org.ireland.jnetty.dispatch.servlet.ServletConfigImpl;
 import org.ireland.jnetty.webapp.WebApp;
+import org.springframework.util.Assert;
 
 
 
@@ -64,7 +66,7 @@ public class FilterManager
 	
 
 	//<filterName,FilterConfigImpl>
-	private HashMap<String, FilterConfigImpl> _filters = new HashMap<String, FilterConfigImpl>();
+	private LinkedHashMap<String, FilterConfigImpl> _filters = new LinkedHashMap<String, FilterConfigImpl>();
 
 	
 	
@@ -89,9 +91,8 @@ public class FilterManager
 	 */
 	public void addFilter(FilterConfigImpl config)
 	{
-		if (config.getServletContext() == null)
-			throw new NullPointerException();
-
+		Assert.notNull(config);
+		
 		_filters.put(config.getFilterName(), config);
 	}
 
@@ -180,7 +181,7 @@ public class FilterManager
 	 * 
 	 * @return the initialized filter.
 	 */
-	public Filter createFilter(String filterName) throws ServletException
+	private Filter createFilter(String filterName) throws ServletException
 	{
 		FilterConfigImpl config = _filters.get(filterName);
 

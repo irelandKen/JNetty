@@ -604,46 +604,11 @@ public abstract class ServletContextImpl implements ServletContext
 		throw new UnsupportedOperationException("unimplemented");
 	}
 
-	@Override
-	public FilterRegistration.Dynamic addFilter(String filterName, String className)
-	{
-		throw new UnsupportedOperationException("unimplemented");
-	}
 
-	@Override
-	public FilterRegistration.Dynamic addFilter(String filterName, Filter filter)
-	{
-		throw new UnsupportedOperationException("unimplemented");
-	}
 
-	@Override
-	public FilterRegistration.Dynamic addFilter(String filterName, Class<? extends Filter> filterClass)
-	{
-		throw new UnsupportedOperationException("unimplemented");
-	}
 
-	@Override
-	public <T extends Filter> T createFilter(Class<T> c) throws ServletException
-	{
-		throw new UnsupportedOperationException("unimplemented");
-	}
 
-	@Override
-	public FilterRegistration getFilterRegistration(String filterName)
-	{
-		throw new UnsupportedOperationException("unimplemented");
-	}
 
-	/**
-	 * Returns filter registrations
-	 * 
-	 * @return
-	 */
-	@Override
-	public Map<String, ? extends FilterRegistration> getFilterRegistrations()
-	{
-		throw new UnsupportedOperationException("unimplemented");
-	}
 
 	public void addListener(ListenerConfig config) throws Exception
 	{

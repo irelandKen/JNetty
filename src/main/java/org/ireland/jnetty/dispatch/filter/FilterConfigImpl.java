@@ -199,24 +199,23 @@ public class FilterConfigImpl implements FilterConfig, FilterRegistration.Dynami
 	/*
 	 * 
 	 * 
-	 * 实例化一个Filter,并初始化它
+	 * 如果Filter未实例化,则实例化一个Filter,并初始化它
 	 * 
 	 * Filter.init(this);
 	 */
-	private Filter createFilterAndInit() throws ServletException
+	public Filter createFilterAndInit() throws ServletException
 	{
+		if(_filter != null)
+			return _filter;
 
 		Class<? extends Filter> filterClass = getFilterClass();
 
-		Filter filter;
-
 		if (filterClass == null)
 			throw new NullPointerException(L.l("Null servlet class for '{0}'.", _filterName));
-
 		
 		try
 		{
-			filter = filterClass.newInstance();
+			_filter = filterClass.newInstance();
 		}
 		catch (Exception e)
 		{
@@ -225,15 +224,15 @@ public class FilterConfigImpl implements FilterConfig, FilterRegistration.Dynami
 			
 
 		// 配置Filter
-		configureFilter(filter);
+		configureFilter(_filter);
 
 		//初始化
-		filter.init(this);
+		_filter.init(this);
 
 		if (log.isLoggable(Level.FINE))
 			log.finer("Filter[" + _filterName + "] instantiated and inited");
 		
-		return filter;
+		return _filter;
 	}
 
 	/**
