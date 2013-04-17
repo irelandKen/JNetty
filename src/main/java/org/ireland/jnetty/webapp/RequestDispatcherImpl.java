@@ -31,7 +31,6 @@ package org.ireland.jnetty.webapp;
 
 import com.caucho.server.http.CauchoResponse;
 
-
 import javax.servlet.*;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletRequestWrapper;
@@ -62,7 +61,7 @@ public class RequestDispatcherImpl implements RequestDispatcher
 	private final WebApp _webApp;
 
 	private final String _rawURI;
-	
+
 	private Invocation _includeInvocation;
 	private Invocation _forwardInvocation;
 	private Invocation _errorInvocation;
@@ -70,12 +69,13 @@ public class RequestDispatcherImpl implements RequestDispatcher
 
 	// private Invocation _asyncInvocation;
 
-	public RequestDispatcherImpl(WebApp webApp,String rowURI,Invocation includeInvocation, Invocation forwardInvocation, Invocation errorInvocation, Invocation dispatchInvocation)
+	public RequestDispatcherImpl(WebApp webApp, String rowURI, Invocation includeInvocation, Invocation forwardInvocation, Invocation errorInvocation,
+			Invocation dispatchInvocation)
 	{
 		_webApp = webApp;
-		
+
 		_rawURI = rowURI;
-		
+
 		_includeInvocation = includeInvocation;
 		_forwardInvocation = forwardInvocation;
 		_errorInvocation = errorInvocation;
@@ -85,15 +85,82 @@ public class RequestDispatcherImpl implements RequestDispatcher
 	@Override
 	public void forward(ServletRequest request, ServletResponse response) throws ServletException, IOException
 	{
-		//build invocation,if not exist
-		if(_forwardInvocation == null)
+		// build invocation,if not exist
+		if (_forwardInvocation == null)
 		{
 			_forwardInvocation = new Invocation();
-			
-			buildForwardInvocation(_forwardInvocation,_rawURI);
+
+			buildForwardInvocation(_forwardInvocation, _rawURI);
 		}
+
+		doForward((HttpServletRequest) request, (HttpServletResponse) response, _forwardInvocation);
+	}
+
+	/**
+	 * Forwards the request to the servlet named by the request dispatcher.
+	 * 
+	 * @param topRequest
+	 *            the servlet request.
+	 * @param response
+	 *            the servlet response.
+	 * @param method
+	 *            special to tell if from error.
+	 */
+	private void doForward(HttpServletRequest request, HttpServletResponse response, Invocation invocation) throws ServletException, IOException
+	{
+		// jsp/15m8
+		if (response.isCommitted())
+		{
+			throw new IllegalStateException("forward() not allowed after buffer has committed.");
+		}
+
+		// Reset any output that has been buffered, but keep headers/cookies
+		response.resetBuffer(); // Servlet-3_1-PFD 9.4
+
+		ForwardRequest wrequest = new ForwardRequest(request, response, invocation);
+
 		
-		forward(request, response, null, _forwardInvocation, DispatcherType.FORWARD);
+		//If we have already been forwarded previously, then keep using the established
+        //original value. Otherwise, this is the first forward and we need to establish the values.
+        //Note: the established value on the original request for pathInfo and
+        //for queryString is allowed to be null, but cannot be null for the other values.
+		if (request.getAttribute(RequestDispatcher.FORWARD_REQUEST_URI) == null)			
+		{
+			//只有在第一次请求转发,记下最开始的请求的相关属性
+			wrequest.setAttribute(RequestDispatcher.FORWARD_REQUEST_URI, request.getRequestURI());
+
+			wrequest.setAttribute(RequestDispatcher.FORWARD_CONTEXT_PATH, request.getContextPath());
+			wrequest.setAttribute(RequestDispatcher.FORWARD_SERVLET_PATH, request.getServletPath());
+			wrequest.setAttribute(RequestDispatcher.FORWARD_PATH_INFO, request.getPathInfo());
+			wrequest.setAttribute(RequestDispatcher.FORWARD_QUERY_STRING, request.getQueryString());
+		}
+
+		
+
+		boolean isValid = false;
+
+		try
+		{
+
+			invocation.service(wrequest, response);
+
+			isValid = true;
+		}
+		finally
+		{
+			if (request.getAsyncContext() != null)
+			{
+				// An async request was started during the forward, don't close the
+				// response as it may be written to during the async handling
+				return;
+			}
+
+			// server/106r, ioc/0310
+			if (isValid)
+			{
+				finishResponse(response);
+			}
+		}
 	}
 
 	/**
@@ -114,65 +181,35 @@ public class RequestDispatcherImpl implements RequestDispatcher
 		// jsp/15m8
 		if (response.isCommitted())
 			throw new IllegalStateException("dispatch() not allowed after buffer has committed.");
-		
 
-		//build invocation,if not exist
-		if(_dispatchInvocation == null)
+		// build invocation,if not exist
+		if (_dispatchInvocation == null)
 		{
 			_dispatchInvocation = new Invocation();
-			
-			buildDispatchInvocation(_dispatchInvocation,_rawURI);
-		}
-		
 
-		//到这里,response的buffer一定为空的,TODO: need resetBuffer()?
+			buildDispatchInvocation(_dispatchInvocation, _rawURI);
+		}
+
+		// 到这里,response的buffer一定为空的,TODO: need resetBuffer()?
 		response.resetBuffer();
-		
-		
-		HttpServletRequest parentReq;
-
-		if (request instanceof ServletRequestWrapper)
-		{
-			parentReq = (HttpServletRequest) unwarp(request);
-		}
-		else 
-		{
-			parentReq = request;
-		}
-
-
-		HttpServletResponse parentRes;
-
-		if (response instanceof ServletResponseWrapper)
-		{
-			parentRes = (HttpServletResponse) unwarp(response);
-		}
-		else 
-		{
-			parentRes = response;
-		}
-		
-		DispatchRequest subRequest = new DispatchRequest(parentReq, parentRes, _dispatchInvocation);
-	
-
-
 
 
 		boolean isValid = false;
 
-		subRequest.startRequest();
-
 		try
 		{
-
 
 			_dispatchInvocation.service(request, response);
 			isValid = true;
 		}
 		finally
 		{
-
-			subRequest.finishRequest(isValid);
+			if (request.getAsyncContext() != null)
+			{
+				// An async request was started during the forward, don't close the
+				// response as it may be written to during the async handling
+				return;
+			}
 
 			// server/106r, ioc/0310
 			if (isValid)
@@ -192,15 +229,15 @@ public class RequestDispatcherImpl implements RequestDispatcher
 	 */
 	public void error(ServletRequest request, ServletResponse response) throws ServletException, IOException
 	{
-		//build invocation,if not exist
-		if(_errorInvocation == null)
+		// build invocation,if not exist
+		if (_errorInvocation == null)
 		{
 			_errorInvocation = new Invocation();
-			
-			buildErrorInvocation(_errorInvocation,_rawURI);
+
+			buildErrorInvocation(_errorInvocation, _rawURI);
 		}
-		
-		forward(request, response, "error", _errorInvocation, DispatcherType.ERROR);
+
+		doError(request, response, "error", _errorInvocation, DispatcherType.ERROR);
 	}
 
 	/**
@@ -213,7 +250,7 @@ public class RequestDispatcherImpl implements RequestDispatcher
 	 * @param method
 	 *            special to tell if from error.
 	 */
-	public void forward(ServletRequest topRequest, ServletResponse topResponse, String method, Invocation invocation, DispatcherType type)
+	private void doError(ServletRequest topRequest, ServletResponse topResponse, String method, Invocation invocation, DispatcherType type)
 			throws ServletException, IOException
 	{
 		CauchoResponse cauchoResp = null;
@@ -258,7 +295,7 @@ public class RequestDispatcherImpl implements RequestDispatcher
 
 				while (resp != null)
 				{
-					if (isAllowForwardAfterFlush )//if (isAllowForwardAfterFlush && resp instanceof IncludeResponse)
+					if (isAllowForwardAfterFlush)// if (isAllowForwardAfterFlush && resp instanceof IncludeResponse)
 					{
 						// server/10yh
 						break;
@@ -361,7 +398,7 @@ public class RequestDispatcherImpl implements RequestDispatcher
 
 		boolean isValid = false;
 
-		subRequest.startRequest();
+		//subRequest.startRequest();
 
 		try
 		{
@@ -378,7 +415,7 @@ public class RequestDispatcherImpl implements RequestDispatcher
 			if (resWrapper != null)
 				resWrapper.setResponse(parentRes);
 
-			subRequest.finishRequest(isValid);
+			//subRequest.finishRequest(isValid);
 
 			// server/106r, ioc/0310
 			if (isValid)
@@ -391,21 +428,21 @@ public class RequestDispatcherImpl implements RequestDispatcher
 	@Override
 	public void include(ServletRequest request, ServletResponse response) throws ServletException, IOException
 	{
-		//build invocation,if not exist
-		if(_includeInvocation == null)
+		// build invocation,if not exist
+		if (_includeInvocation == null)
 		{
 			_includeInvocation = new Invocation();
-			
-			buildIncludeInvocation(_includeInvocation,_rawURI);
+
+			buildIncludeInvocation(_includeInvocation, _rawURI);
 		}
-		
-		include(request, response,_includeInvocation, null);
+
+		doInclude(request, response, _includeInvocation, null);
 	}
 
 	/**
 	 * Include a request into the current page.
 	 */
-	public void include(ServletRequest topRequest, ServletResponse topResponse,Invocation invocation, String method) throws ServletException, IOException
+	private void doInclude(ServletRequest topRequest, ServletResponse topResponse, Invocation invocation, String method) throws ServletException, IOException
 	{
 
 		HttpServletRequest parentReq;
@@ -500,77 +537,72 @@ public class RequestDispatcherImpl implements RequestDispatcher
 			subRequest.finishRequest();
 		}
 	}
-	
-	
-//-----------------------------------------------------------------------------------
-	
+
+	// -----------------------------------------------------------------------------------
+
 	/**
 	 * Fills the invocation with uri.
-	 * @throws IOException 
+	 * 
+	 * @throws IOException
 	 */
-	private void buildDispatchInvocation(Invocation invocation,String rawURI)
-			throws ServletException, IOException
+	private void buildDispatchInvocation(Invocation invocation, String rawURI) throws ServletException, IOException
 	{
 		URIDecoder decoder = _webApp.getURIDecoder();
 
 		decoder.splitQuery(invocation, rawURI);
-			
+
 		_webApp.buildDispatchInvocation(invocation);
 	}
-	
+
 	/**
 	 * Fills the invocation for a forward request.
-	 * @throws IOException 
+	 * 
+	 * @throws IOException
 	 */
-	private void buildForwardInvocation(Invocation invocation,String rawURI)
-			throws ServletException, IOException
+	private void buildForwardInvocation(Invocation invocation, String rawURI) throws ServletException, IOException
 	{
 		URIDecoder decoder = _webApp.getURIDecoder();
 
 		decoder.splitQuery(invocation, rawURI);
-			
+
 		_webApp.buildForwardInvocation(invocation);
 	}
 
-	
 	/**
 	 * Fills the invocation for an include request.
-	 * @throws IOException 
+	 * 
+	 * @throws IOException
 	 */
-	private void buildIncludeInvocation(Invocation invocation,String rawURI)
-			throws ServletException, IOException
+	private void buildIncludeInvocation(Invocation invocation, String rawURI) throws ServletException, IOException
 	{
 		URIDecoder decoder = _webApp.getURIDecoder();
 
 		decoder.splitQuery(invocation, rawURI);
-			
+
 		_webApp.buildIncludeInvocation(invocation);
 	}
 
-
 	/**
 	 * Fills the invocation for an error request.
-	 * @throws IOException 
+	 * 
+	 * @throws IOException
 	 */
-	private void buildErrorInvocation(Invocation invocation,String rawURI)
-			throws ServletException, IOException
+	private void buildErrorInvocation(Invocation invocation, String rawURI) throws ServletException, IOException
 	{
 		URIDecoder decoder = _webApp.getURIDecoder();
 
 		decoder.splitQuery(invocation, rawURI);
-			
+
 		_webApp.buildErrorInvocation(invocation);
 	}
 
-
-
-//------------------------------------------------------------------------------------
+	// ------------------------------------------------------------------------------------
 	private void finishResponse(ServletResponse res) throws ServletException, IOException
 	{
 
 		if (res instanceof DefaultHttpServletResponse)
 		{
-			res.flushBuffer();								//we sure that all data has already put to the ByteBuf?
+			res.flushBuffer(); // we sure that all data has already put to the ByteBuf?
 		}
 		else
 		{
@@ -599,42 +631,44 @@ public class RequestDispatcherImpl implements RequestDispatcher
 	{
 		return (getClass().getSimpleName() + "[" + _dispatchInvocation.getRawURI() + "]");
 	}
-	
-//Util------------------------------------------------------------
-	
+
+	// Util------------------------------------------------------------
+
 	/**
 	 * 将reques解包装,返回未包装的ServletRequest
+	 * 
 	 * @param request
 	 * @return
 	 */
 	private static ServletRequest unwarp(ServletRequest request)
 	{
-		
+
 		ServletRequest _request = request;
-		
+
 		while (_request instanceof ServletRequestWrapper)
 		{
 			_request = ((ServletRequestWrapper) _request).getRequest();
 		}
-		
+
 		return _request;
 	}
-	
+
 	/**
 	 * 将response解包装,返回未包装的ServletResponse
+	 * 
 	 * @param response
 	 * @return
 	 */
 	private static ServletResponse unwarp(ServletResponse response)
 	{
-		
+
 		ServletResponse _response = response;
-		
+
 		while (_response instanceof ServletResponseWrapper)
 		{
 			_response = ((ServletResponseWrapper) _response).getResponse();
 		}
-		
+
 		return _response;
 	}
 }

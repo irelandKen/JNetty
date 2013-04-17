@@ -159,8 +159,6 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 
 	private String _moduleName = "default";
 
-	// The context path
-	private String _baseContextPath = "";
 
 	private String _servletVersion;
 
@@ -292,7 +290,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 
 		_uriDecoder = new URIDecoder();
 
-		_moduleName = _baseContextPath;
+		_moduleName = _contextPath;
 
 		if ("".equals(_moduleName))
 			_moduleName = "ROOT";
@@ -1439,32 +1437,6 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 
 	}
 
-	/**
-	 * Fills the invocation for an include request.
-	 */
-	public void buildIncludeInvocation(Invocation invocation)
-			throws ServletException
-	{
-		buildDispatchInvocation(invocation, _includeFilterMapper);
-	}
-
-	/**
-	 * Fills the invocation for a forward request.
-	 */
-	public void buildForwardInvocation(Invocation invocation)
-			throws ServletException
-	{
-		buildDispatchInvocation(invocation, _forwardFilterMapper);
-	}
-
-	/**
-	 * Fills the invocation for an error request.
-	 */
-	public void buildErrorInvocation(Invocation invocation)
-			throws ServletException
-	{
-		buildDispatchInvocation(invocation, _errorFilterMapper);
-	}
 
 	/**
 	 * Fills the invocation for a rewrite-dispatch/dispatch request.
@@ -1473,13 +1445,44 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 			throws ServletException
 	{
 
-		buildDispatchInvocation(invocation, _dispatchFilterMapper);
+		buildInvocation(invocation, _dispatchFilterMapper);
 	}
+	
+	/**
+	 * Fills the invocation for a forward request.
+	 */
+	public void buildForwardInvocation(Invocation invocation)
+			throws ServletException
+	{
+		buildInvocation(invocation, _forwardFilterMapper);
+	}
+	
+	
+	/**
+	 * Fills the invocation for an include request.
+	 */
+	public void buildIncludeInvocation(Invocation invocation)
+			throws ServletException
+	{
+		buildInvocation(invocation, _includeFilterMapper);
+	}
+
+
+
+	/**
+	 * Fills the invocation for an error request.
+	 */
+	public void buildErrorInvocation(Invocation invocation)
+			throws ServletException
+	{
+		buildInvocation(invocation, _errorFilterMapper);
+	}
+
 
 	/**
 	 * Fills the invocation for subrequests.
 	 */
-	public void buildDispatchInvocation(Invocation invocation,FilterMapper filterMapper) throws ServletException
+	void buildInvocation(Invocation invocation,FilterMapper filterMapper) throws ServletException
 	{
 		invocation.setWebApp(this);
 

@@ -29,14 +29,19 @@
 
 package org.ireland.jnetty.webapp;
 
+import io.netty.handler.codec.http.QueryStringDecoder;
+
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import javax.servlet.AsyncContext;
 import javax.servlet.DispatcherType;
-import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletRequestWrapper;
@@ -44,27 +49,22 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.ireland.jnetty.dispatch.Invocation;
 
-import com.caucho.util.HashMapImpl;
-import com.caucho.util.IntMap;
 import com.caucho.util.L10N;
 
 public class ForwardRequest extends HttpServletRequestWrapper
 {
-	private static final IntMap _forwardAttributeMap = new IntMap();
 	private static final L10N L = new L10N(ForwardRequest.class);
 
-	private static final int REQUEST_URI_CODE = 1;
-	private static final int CONTEXT_PATH_CODE = 2;
-	private static final int SERVLET_PATH_CODE = 3;
-	private static final int PATH_INFO_CODE = 4;
-	private static final int QUERY_STRING_CODE = 5;
+
+	private Invocation _invocation;
 
 	// the wrapped request
-	private Invocation _invocation;
+	private HttpServletRequest _request;
 
 	private HttpServletResponse _response;
 
-	private HashMapImpl<String, String[]> _fwdFilledForm;
+	//paremeters from the QueryString of forward + Original Parameters
+	private Map<String, String[]> _parameters;
 
 	public ForwardRequest(HttpServletRequest request)
 	{
@@ -75,6 +75,7 @@ public class ForwardRequest extends HttpServletRequestWrapper
 	{
 		super(request);
 
+		_request = request;
 		_response = response;
 
 		_invocation = invocation;
@@ -85,22 +86,6 @@ public class ForwardRequest extends HttpServletRequestWrapper
 		return _invocation;
 	}
 
-	/**
-	 * Starts the request
-	 */
-	public void startRequest()
-	{
-		/* _response.startRequest(); */
-	}
-
-	public void finishRequest(boolean isValid) throws IOException
-	{
-		/*
-		 * finishRequest();
-		 * 
-		 * if (isValid) _response.finishRequest();
-		 */
-	}
 
 	public HttpServletResponse getResponse()
 	{
@@ -155,46 +140,17 @@ public class ForwardRequest extends HttpServletRequestWrapper
 
 	protected String calculateQueryString()
 	{
-		/*
-		 * // server/10j2 // server/1ks7 vs server/1233
-		 * 
-		 * String queryString = _invocation.getQueryString();
-		 * 
-		 * if (queryString != null) return queryString;
-		 * 
-		 * return getRequest().getQueryString();
-		 */
-		return null;
+		// server/10j2
+		// server/1ks7 vs server/1233
+
+		String queryString = _invocation.getQueryString();
+
+		if (queryString != null)
+			return queryString;
+
+		return _request.getQueryString();
 	}
 
-	//
-	// CauchoRequest
-	//
-
-	public String getPageURI()
-	{
-		return _invocation.getURI();
-	}
-
-	public String getPageContextPath()
-	{
-		return _invocation.getContextPath();
-	}
-
-	public String getPageServletPath()
-	{
-		return _invocation.getServletPath();
-	}
-
-	public String getPagePathInfo()
-	{
-		return _invocation.getPathInfo();
-	}
-
-	public String getPageQueryString()
-	{
-		return getQueryString();
-	}
 
 	public WebApp getWebApp()
 	{
@@ -227,39 +183,7 @@ public class ForwardRequest extends HttpServletRequestWrapper
 			return null;
 	}
 
-	/*
-	 * public ServletResponse getServletResponse() { CauchoRequest cRequest = (CauchoRequest) _request;
-	 * 
-	 * return cRequest.getServletResponse(); }
-	 */
 
-	//
-	// attributes
-	//
-
-	public Object getAttribute(String name)
-	{
-		switch (_forwardAttributeMap.get(name))
-		{
-		case REQUEST_URI_CODE:
-			return unwrapRequest().getRequestURI();
-
-		case CONTEXT_PATH_CODE:
-			return unwrapRequest().getContextPath();
-
-		case SERVLET_PATH_CODE:
-			return unwrapRequest().getServletPath();
-
-		case PATH_INFO_CODE:
-			return unwrapRequest().getPathInfo();
-
-		case QUERY_STRING_CODE:
-			return unwrapRequest().getQueryString();
-
-		default:
-			return super.getAttribute(name);
-		}
-	}
 
 	public HttpServletRequest unwrapRequest()
 	{
@@ -283,12 +207,12 @@ public class ForwardRequest extends HttpServletRequestWrapper
 	@Override
 	public Enumeration<String> getParameterNames()
 	{
-		if (_fwdFilledForm == null)
+		if (_parameters == null)
 		{
-			_fwdFilledForm = parseQuery();
+			_parameters = calculateQuery();
 		}
 
-		return Collections.enumeration(_fwdFilledForm.keySet());
+		return Collections.enumeration(_parameters.keySet());
 	}
 
 	/**
@@ -297,12 +221,12 @@ public class ForwardRequest extends HttpServletRequestWrapper
 	@Override
 	public Map<String, String[]> getParameterMap()
 	{
-		if (_fwdFilledForm == null)
+		if (_parameters == null)
 		{
-			_fwdFilledForm = parseQuery();
+			_parameters = calculateQuery();
 		}
 
-		return Collections.unmodifiableMap(_fwdFilledForm);
+		return Collections.unmodifiableMap(_parameters);
 	}
 
 	/**
@@ -315,12 +239,13 @@ public class ForwardRequest extends HttpServletRequestWrapper
 	@Override
 	public String[] getParameterValues(String name)
 	{
-		if (_fwdFilledForm == null)
+		if (_parameters == null)
 		{
-			_fwdFilledForm = parseQuery();
+			_parameters = calculateQuery();
 		}
+		
 
-		return _fwdFilledForm.get(name);
+		return _parameters.get(name);
 	}
 
 	/**
@@ -336,66 +261,88 @@ public class ForwardRequest extends HttpServletRequestWrapper
 		else
 			return null;
 	}
-
-	private HashMapImpl<String, String[]> parseQuery()
+	
+	
+	////////---------参数合并处理-------------------------------------------------------------
+	private Map<String, String[]> calculateQuery()
 	{
-		/*
-		 * HashMapImpl<String,String[]> form = new HashMapImpl<String,String[]>();
-		 * 
-		 * Map <String,String[]> map = ser
-		 * 
-		 * //server/162r form.putAll(map);
-		 * 
-		 * map = getRequest().getParameterMap();
-		 * 
-		 * mergeParameters(map, form);
-		 */
+		Map<String, List<String>> newParameters = parseQuery();
+		
+		if(newParameters == null || newParameters.isEmpty())
+			return super.getParameterMap();
+		
+		Map<String, String[]> oldParameters =  super.getParameterMap();
+		
+		if(oldParameters == null || oldParameters.isEmpty())
+			return convenMap(newParameters);
+		
+		return mergeParameters(newParameters,oldParameters);
+	}
+	
 
-		/*
-		 * String javaEncoding = Encoding.getJavaName(getCharacterEncoding());
-		 * 
-		 * Form formParser = Form.allocate();
-		 * 
-		 * try { String queryString = _invocation.getQueryString(); String oldQueryString =
-		 * getRequest().getQueryString();
-		 * 
-		 * if (queryString != null && ! queryString.equals(oldQueryString)) { formParser.parseQueryString(form,
-		 * queryString, javaEncoding, false); } } catch (Exception e) { throw new RuntimeException(e); }
-		 */
-
-		return null;
+	private Map<String, List<String>> parseQuery()
+	{
+		String queryString = _invocation.getQueryString();
+		
+		if(queryString == null || queryString.isEmpty())
+			return null;
+		
+		Map<String, List<String>> newParameters = new QueryStringDecoder(queryString,false).parameters();
+		
+		return newParameters;
+	}
+	
+	/**
+	 * 合并新旧参数,新的参数优先
+	 * @param newParameters
+	 * @param oldParameters
+	 * @return
+	 */
+	private Map<String,String[]> mergeParameters(Map<String, List<String>> newParameters,Map<String, String[]> oldParameters)
+	{
+		for(Entry<String, String[]> e : oldParameters.entrySet())
+		{
+			if(e.getValue() != null && e.getValue().length > 0)
+			{
+				List<String> list = newParameters.get(e.getKey());
+				
+				if(list == null)
+					list = new ArrayList<String>(e.getValue().length);
+				
+				for(String str : e.getValue())
+				{
+					list.add(str);
+				}
+				
+				newParameters.put(e.getKey(), list);
+			}
+		}
+		
+		return convenMap(newParameters);
 	}
 
-	protected void parsePostQueryImpl(HashMapImpl<String, String[]> form)
+	private Map<String, String[]> convenMap(Map<String, List<String>> map)
 	{
-		/*
-		 * // server/1637, server/162r AbstractHttpRequest request = getAbstractHttpRequest();
-		 * 
-		 * if (request == null) return;
-		 * 
-		 * CharSegment contentType = request.getContentTypeBuffer();
-		 * 
-		 * if (contentType == null || ! "POST".equalsIgnoreCase(getMethod())) { return; }
-		 * 
-		 * if (getWebApp().isMultipartFormEnabled()) { // server/1637 - original request would have handle it return; }
-		 * 
-		 * ServletInvocation invocation = getInvocation();
-		 * 
-		 * MultipartConfigElement multipartConfig = invocation.getMultipartConfig();
-		 * 
-		 * 
-		 * if ((getWebApp().isMultipartFormEnabled() || multipartConfig != null) &&
-		 * contentType.startsWith("multipart/form-data")) { // server/162r super.parsePostQueryImpl(form); }
-		 */
+		Map<String, String[]> newMap = new HashMap<String, String[]>(map.size());
+		
+		for(Entry<String, List<String>> e : map.entrySet())
+		{
+			if(e.getValue() != null)
+			{
+				List<String> list = e.getValue();
+				
+				String[] strs = new String[list.size()];
+				for(int i=0; i<list.size(); i++)
+				{
+					strs[i] = list.get(i);
+				}
+				
+				newMap.put(e.getKey(), strs);
+			}
+		}
+		
+		return newMap;
 	}
-
-	static
-	{
-		_forwardAttributeMap.put(RequestDispatcher.FORWARD_REQUEST_URI, REQUEST_URI_CODE);
-		_forwardAttributeMap.put(RequestDispatcher.FORWARD_CONTEXT_PATH, CONTEXT_PATH_CODE);
-		_forwardAttributeMap.put(RequestDispatcher.FORWARD_SERVLET_PATH, SERVLET_PATH_CODE);
-		_forwardAttributeMap.put(RequestDispatcher.FORWARD_PATH_INFO, PATH_INFO_CODE);
-		_forwardAttributeMap.put(RequestDispatcher.FORWARD_QUERY_STRING, QUERY_STRING_CODE);
-	}
+	//------------------------------------------------------------------------------------
 
 }

@@ -34,7 +34,7 @@ import org.ireland.jnetty.webapp.WebApp;
 import com.caucho.server.http.HttpServletRequestImpl;
 
 /**
- * A repository for request information gleaned from the uri. KEN
+ * A repository for request information gleaned from the uri.
  */
 public class Invocation extends ServletInvocation
 {

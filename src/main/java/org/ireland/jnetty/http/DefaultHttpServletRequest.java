@@ -451,7 +451,8 @@ public class DefaultHttpServletRequest implements HttpServletRequest
         if (continuation.isInitial() && !continuation.isAsync())
             throw new IllegalStateException(continuation.getStatusString());
         return continuation;*/
-    	throw new UnsupportedOperationException();
+    	//throw new UnsupportedOperationException();
+    	return null;
     }
 
 
