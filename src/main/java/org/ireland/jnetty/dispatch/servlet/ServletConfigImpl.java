@@ -681,12 +681,12 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 
 	public FilterChain createServletChain() throws ServletException
 	{
-		synchronized (this)
+		synchronized (this)						
 		{
-			if (_servletChain != null)
-				return _servletChain;
-			else
-				return createServletChainImpl();
+			if (_servletChain == null)
+				_servletChain =  createServletChainImpl();
+				
+			return _servletChain;							//Servlet是单例的,ServletFilterChain也可以是单例的,免去了每次都创建ServletFilterChain
 		}
 	}
 
