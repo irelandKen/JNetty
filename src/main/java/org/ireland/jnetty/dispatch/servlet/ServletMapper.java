@@ -46,6 +46,7 @@ import org.ireland.jnetty.dispatch.ServletInvocation;
 import org.ireland.jnetty.dispatch.filterchain.ErrorFilterChain;
 import org.ireland.jnetty.util.http.UrlMap;
 import org.ireland.jnetty.webapp.WebApp;
+import org.springframework.util.Assert;
 
 import com.caucho.util.L10N;
 
@@ -63,13 +64,12 @@ public class ServletMapper
 	private static final L10N L = new L10N(ServletMapper.class);
 
 
-	private WebApp _webApp;
+	private final WebApp _webApp;
 
-	private ServletContext _servletContext;
+	private final ServletContext _servletContext;
 
-	private ServletManager _servletManager;
+	private final ServletManager _servletManager;
 	
-	private ServletMapper _servletMapper;
 
 	
 	//<urlPattern, ServletMapping>
@@ -94,9 +94,15 @@ public class ServletMapper
 	
 	
 	
-	public ServletMapper(WebApp webApp)
+	public ServletMapper(WebApp webApp,ServletContext servletContext,ServletManager servletManager)
 	{
+		Assert.notNull(webApp);
+		Assert.notNull(servletContext);
+		Assert.notNull(servletManager);
+		
 		_webApp = webApp;
+		_servletContext = servletContext;
+		_servletManager = servletManager;
 	}
 
 //Getter and Setter---------------------------------------------------	
@@ -116,13 +122,7 @@ public class ServletMapper
 		return _servletManager;
 	}
 
-	/**
-	 * Sets the servlet manager.
-	 */
-	public void setServletManager(ServletManager manager)
-	{
-		_servletManager = manager;
-	}
+
 //Getter and Setter---------------------------------------------------	
 	
 	

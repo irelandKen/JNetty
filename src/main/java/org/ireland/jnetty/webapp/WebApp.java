@@ -306,8 +306,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 		// Path _rootDirectory = getRootDirectory();
 
 		_servletManager = new ServletManager();
-		_servletMapper = new ServletMapper(this);
-		_servletMapper.setServletManager(_servletManager);
+		_servletMapper = new ServletMapper(this,this,_servletManager);
 
 		_filterManager = new FilterManager(this,this);
 		
