@@ -33,9 +33,8 @@ import java.util.ArrayList;
 
 import javax.servlet.ServletException;
 
+import org.ireland.jnetty.dispatch.ServletInvocation;
 import org.springframework.util.Assert;
-
-
 
 import com.caucho.config.ConfigException;
 import com.caucho.util.L10N;
@@ -57,13 +56,13 @@ public class ServletMapping
 {
 	private static final L10N L = new L10N(ServletMapping.class);
 
-	//<servlet>
+	// <servlet>
 	private final ServletConfigImpl servletConfig;
-	
-	//<url-pattern> 列表
+
+	// <url-pattern> 列表
 	private ArrayList<String> _urlPatternList = new ArrayList<String>();
 
-	//是否严格匹配
+	// 是否严格匹配
 	private boolean _isStrictMapping;
 
 	private boolean _ifAbsent;
@@ -75,7 +74,7 @@ public class ServletMapping
 	public ServletMapping(ServletConfigImpl servletConfig)
 	{
 		Assert.notNull(servletConfig);
-		
+
 		this.servletConfig = servletConfig;
 	}
 
@@ -83,7 +82,6 @@ public class ServletMapping
 	{
 		return servletConfig;
 	}
-
 
 	public void setIfAbsent(boolean ifAbsent)
 	{
@@ -97,8 +95,7 @@ public class ServletMapping
 	{
 		if (pattern.indexOf('\n') > -1)
 		{
-			throw new ConfigException(
-					L.l("'url-pattern' cannot contain newline"));
+			throw new ConfigException(L.l("'url-pattern' cannot contain newline"));
 		}
 
 		_urlPatternList.add(pattern);
@@ -170,11 +167,115 @@ public class ServletMapping
 			}
 
 			if (urlPattern != null)
-				mapper.addUrlMapping(urlPattern, this,_ifAbsent);
+				mapper.addUrlMapping(urlPattern, this, _ifAbsent);
 		}
 
 	}
 
+	// ------------------------------------------------------------------
+
+	/**
+	 * Returns true if the servlet-mapping matches the invocation URL.
+	 * 
+	 * @param invocation
+	 *            the request's invocation
+	 */
+	boolean isMatch(ServletInvocation invocation)
+	{
+		return isMatch(invocation.getServletPath(), invocation.getPathInfo());
+	}
+	
+
+	/**
+	 * Returns true if the servlet-mapping matches the servlet path and path info.
+	 * */
+	public boolean isMatch(String servletPath, String pathInfo)
+	{
+		String uri;
+
+		if (pathInfo == null)
+			uri = servletPath;
+		else if (servletPath == null)
+			uri = pathInfo;
+		else
+			uri = servletPath + pathInfo;
+
+		return isMatch(uri);
+	}
+	
+	/**
+	 * Returns true if the servlet-mapping matches the URI
+	 * 
+	 * @param uri
+	 *            the request's uri(= servletPath + pathInfo)
+	 */
+	public boolean isMatch(String uri)
+	{
+		for (String urlPattern : _urlPatternList)
+		{
+			if (matchServletURL(uri,urlPattern) )
+				return true;
+		}
+
+		return false;
+	}
+
+
+	/**
+	 * Return <code>true</code> if the context-relative request path matches the requirements of the specified filter
+	 * mapping; otherwise, return <code>false</code>.
+	 * 
+	 * 
+	 * @param requestPath
+	 *            Context-relative request path of this request(without query String)
+	 * 
+	 * @param urlPattern
+	 *            URL mapping being checked
+	 */
+	private static boolean matchServletURL(String requestPath , String urlPattern)
+	{
+
+		if (urlPattern == null)
+			return (false);
+
+		// Case 1 - Exact Match
+		if (urlPattern.equals(requestPath))
+			return (true);
+
+		// Case 2 - Path Match ("/.../*")
+		if (urlPattern.equals("/*"))
+			return (true);
+		if (urlPattern.endsWith("/*"))
+		{
+			if (urlPattern.regionMatches(0, requestPath, 0, urlPattern.length() - 2))
+			{
+				if (requestPath.length() == (urlPattern.length() - 2))
+				{
+					return (true);
+				}
+				else if ('/' == requestPath.charAt(urlPattern.length() - 2))
+				{
+					return (true);
+				}
+			}
+			return (false);
+		}
+
+		// Case 3 - Extension Match
+		if (urlPattern.startsWith("*."))
+		{
+			int slash = requestPath.lastIndexOf('/');
+			int period = requestPath.lastIndexOf('.');
+			if ((slash >= 0) && (period > slash) && (period != requestPath.length() - 1) && ((requestPath.length() - period) == (urlPattern.length() - 1)))
+			{
+				return (urlPattern.regionMatches(2, requestPath, period + 1, urlPattern.length() - 2));
+			}
+		}
+
+		// Case 4 - "Default" Match
+		return (false); // NOTE - Not relevant for selecting filters
+
+	}
 
 	// ------------------------------------------------------------
 

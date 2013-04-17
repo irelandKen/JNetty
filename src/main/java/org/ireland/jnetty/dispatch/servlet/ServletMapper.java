@@ -72,6 +72,11 @@ public class ServletMapper
 	
 
 	
+	//记录 urlPattern 到 <servlet-mapping>的映射关系(用于URL精确匹配)
+	// Servlet 3.0 urlPattern to servletName  <urlPattern,ServletMapping>
+	private Map<String, ServletMapping> _servletUrlMap = new HashMap<String, ServletMapping>();
+	
+	
 	//<urlPattern, ServletMapping>
 	private UrlMap<ServletMapping> _servletMappings = new UrlMap<ServletMapping>();
 
@@ -80,12 +85,6 @@ public class ServletMapper
 	//记录 ServletName 到 urlPattern 之间的映射关系 
 	// Servlet 3.0 maps serletName to urlPattern   <serletName,Set<urlPattern>>
 	private Map<String, Set<String>> _urlPatterns = new HashMap<String, Set<String>>();
-
-	
-	
-	//记录 urlPattern 到 <servlet-mapping>的映射关系(用于URL精确匹配)
-	// Servlet 3.0 urlPattern to servletName  <urlPattern,ServletMapping>
-	private Map<String, ServletMapping> _servletUrlMap = new HashMap<String, ServletMapping>();
 
 	
 	

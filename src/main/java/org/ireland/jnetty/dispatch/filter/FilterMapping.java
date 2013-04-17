@@ -243,7 +243,7 @@ public class FilterMapping
 
 		for(String urlPattern : _urlPatterns)
 		{
-			if(matchFiltersURL(urlPattern, uri))
+			if(matchFiltersURL(uri,urlPattern))
 				return true;
 		}
 
@@ -267,10 +267,13 @@ public class FilterMapping
      * matches the requirements of the specified filter mapping;
      * otherwise, return <code>false</code>.
      *
-     * @param urlPattern URL mapping being checked
+     * 
      * @param requestPath Context-relative request path of this request(without query String)
+     * 
+     * @param urlPattern URL mapping being checked
+     * 
      */
-    private static boolean matchFiltersURL(String urlPattern, String requestPath) {
+    private static boolean matchFiltersURL(String requestPath , String urlPattern) {
         
         if (urlPattern == null)
             return (false);
