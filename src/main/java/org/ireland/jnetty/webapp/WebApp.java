@@ -76,6 +76,7 @@ import javax.servlet.ServletRequestAttributeListener;
 import javax.servlet.ServletRequestListener;
 import javax.servlet.ServletSecurityElement;
 import javax.servlet.SessionCookieConfig;
+import javax.servlet.SessionTrackingMode;
 import javax.servlet.UnavailableException;
 import javax.servlet.annotation.HandlesTypes;
 import javax.servlet.annotation.ServletSecurity;
@@ -91,6 +92,7 @@ import javax.servlet.http.HttpSessionAttributeListener;
 import javax.servlet.http.HttpSessionEvent;
 import javax.servlet.http.HttpSessionListener;
 
+import org.apache.tomcat.InstanceManager;
 import org.ireland.jnetty.beans.BeanFactory;
 import org.ireland.jnetty.config.ConfigException;
 import org.ireland.jnetty.config.ListenerConfig;
@@ -111,6 +113,7 @@ import org.ireland.jnetty.dispatch.servlet.ServletConfigurator;
 import org.ireland.jnetty.dispatch.servlet.ServletManager;
 import org.ireland.jnetty.dispatch.servlet.ServletMapper;
 import org.ireland.jnetty.dispatch.servlet.ServletMapping;
+import org.ireland.jnetty.server.session.SessionManager;
 import org.ireland.jnetty.util.http.Encoding;
 import org.ireland.jnetty.util.http.URIDecoder;
 import org.ireland.jnetty.util.http.UrlMap;
@@ -120,7 +123,6 @@ import com.caucho.i18n.CharacterEncoding;
 
 
 
-import com.caucho.server.session.SessionManager;
 import com.caucho.server.webapp.CacheMapping;
 import com.caucho.server.webapp.MultipartForm;
 
@@ -153,7 +155,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 	private int _serverPort = 0;
 
 	// The webbeans container
-	private BeanFactory beanFactory;
+	private BeanFactory _beanFactory;
 
 	private URIDecoder _uriDecoder;
 
@@ -304,6 +306,8 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 	{
 	
 		// Path _rootDirectory = getRootDirectory();
+		
+		_beanFactory = new BeanFactory();
 
 		_servletManager = new ServletManager();
 		_servletMapper = new ServletMapper(this,this,_servletManager);
@@ -320,10 +324,23 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 
 		// _errorPageManager = new ErrorPageManager(_server, this);
 
-		beanFactory = new BeanFactory();
+		
+		// Use JVM temp dir as ServletContext temp dir.
+		_tempDir = System.getProperty(TEMPDIR);
+		
+		_sessionManager = new SessionManager(this); 
 
 	}
 
+	
+  /**
+   * Gets the webApp directory.
+   */
+  public String getRootDirectory()
+  {
+    return _rootDirectory;
+  }
+	
 	/**
 	 * Returns the webApp's canonical context path, e.g. /foo-1.0
 	 */
@@ -487,7 +504,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 	public <T extends Servlet> T createServlet(Class<T> servletClass)
 			throws ServletException
 	{
-		return beanFactory.createBean(servletClass);
+		return _beanFactory.createBean(servletClass);
 	}
 
 
@@ -602,7 +619,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 	@Override
 	public <T extends Filter> T createFilter(Class<T> filterClass)throws ServletException
 	{
-		return beanFactory.createBean(filterClass);
+		return _beanFactory.createBean(filterClass);
 	}
 
 	@Override
@@ -969,7 +986,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 	public <T extends EventListener> T createListener(Class<T> listenerClass)
 			throws ServletException
 	{
-	  return beanFactory.createBean(listenerClass);
+	  return _beanFactory.createBean(listenerClass);
 
 	}
 
@@ -991,7 +1008,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 	@Override
 	public void addListener(Class<? extends EventListener> listenerClass)
 	{
-		addListener(beanFactory.createBean(listenerClass));
+		addListener(_beanFactory.createBean(listenerClass));
 	}
 
 	@Override
@@ -1167,7 +1184,10 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 	public void init()
 	{
 
-		//setAttribute("javax.servlet.context.tempdir", new File(_tempDir));
+		
+		setAttribute("javax.servlet.context.tempdir", new File(_tempDir));
+		setAttribute(InstanceManager.class.getName(), _beanFactory);
+		
 
 		_characterEncoding = CharacterEncoding.getLocalEncoding();
 
@@ -1220,17 +1240,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 		{
 			parseWebXml();
 
-			//初始化SeccionManager
-/*			try
-			{
-				if (getSessionManager() != null)
-					getSessionManager().start();
-			}
-			catch (Throwable e)
-			{
-				log.log(Level.WARNING, e.toString(), e);
-			}
-*/
+
 			ServletContextEvent event = new ServletContextEvent(this);
 
 			//初始化Listener
@@ -1497,7 +1507,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 			}
 			else
 			{
-				chain = _servletMapper.createServletChain(invocation);
+				chain = _servletMapper.createServletChain(invocation);			//测试了Jetty和Tomcat,就是无法找到合适的Sevlet来匹配,也要调用匹配的Filter
 				chain = filterMapper.buildDispatchChain(invocation, chain);
 
 			}
@@ -1647,6 +1657,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 	/**
 	 * Returns the mime type for a uri
 	 */
+	@Override
 	public String getMimeType(String uri)
 	{
 		if (uri == null)
@@ -1695,24 +1706,6 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 	 */
 	public SessionManager getSessionManager()
 	{
-		if (_sessionManager == null)
-		{
-
-			if (_sessionManager == null)
-			{
-
-				try
-				{
-					//_sessionManager = new SessionManager(this);  ken
-				}
-				catch (Throwable e)
-				{
-					throw ConfigException.create(e);
-				}
-
-			}
-		}
-
 		return _sessionManager;
 	}
 
@@ -1979,5 +1972,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 		else
 			log.info(this + " " + message);
 	}
+
+
 
 }

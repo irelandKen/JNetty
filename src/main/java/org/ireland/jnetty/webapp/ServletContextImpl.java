@@ -35,11 +35,14 @@ import com.caucho.vfs.Path;
 import javax.servlet.*;
 import javax.servlet.descriptor.JspConfigDescriptor;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.ireland.jnetty.config.ListenerConfig;
 import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.core.io.FileSystemResourceLoader;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
+import org.springframework.util.ObjectUtils;
 
 import java.io.*;
 import java.net.MalformedURLException;
@@ -54,12 +57,13 @@ import java.util.logging.Logger;
  */
 public abstract class ServletContextImpl implements ServletContext
 {
-	static final Logger log = Logger.getLogger(ServletContextImpl.class.getName());
+	static final Log log = LogFactory.getLog(ServletContextImpl.class);
+	
 	static final L10N L = new L10N(ServletContextImpl.class);
 	
 	private final ResourceLoader resourceLoader = new FileSystemResourceLoader();
 
-	private String _name;
+	private String _name = "";
 
 	private HashMap<String, Object> _attributes = new HashMap<String, Object>();
 
@@ -67,7 +71,7 @@ public abstract class ServletContextImpl implements ServletContext
 
 	private HashMap<String, String> _initParams = new HashMap<String, String>();
 
-	public Path getRootDirectory()
+	public String getRootDirectory()
 	{
 		throw new UnsupportedOperationException();
 	}
@@ -83,6 +87,7 @@ public abstract class ServletContextImpl implements ServletContext
 	/**
 	 * Gets the servlet context name
 	 */
+	@Override
 	public String getServletContextName()
 	{
 		return _name;
@@ -91,6 +96,7 @@ public abstract class ServletContextImpl implements ServletContext
 	/**
 	 * Gets the servlet context name
 	 */
+	@Override
 	public String getContextPath()
 	{
 		return _name;
@@ -110,6 +116,7 @@ public abstract class ServletContextImpl implements ServletContext
 	/**
 	 * Returns the server information
 	 */
+	@Override
 	public String getServerInfo()
 	{
 		return "JNetty/" + getMajorVersion() + "." + getMinorVersion();
@@ -118,11 +125,13 @@ public abstract class ServletContextImpl implements ServletContext
 	/**
 	 * Returns the servlet major version
 	 */
+	@Override
 	public int getMajorVersion()
 	{
 		return 3;
 	}
 
+	@Override
 	public int getEffectiveMajorVersion()
 	{
 		return 3;
@@ -131,11 +140,13 @@ public abstract class ServletContextImpl implements ServletContext
 	/**
 	 * Returns the servlet minor version
 	 */
+	@Override
 	public int getMinorVersion()
 	{
 		return 0;
 	}
 
+	@Override
 	public int getEffectiveMinorVersion()
 	{
 		return 0;
@@ -144,6 +155,7 @@ public abstract class ServletContextImpl implements ServletContext
 	/**
 	 * Sets an init param
 	 */
+	@Override
 	public boolean setInitParameter(String name, String value)
 	{
 
@@ -171,6 +183,7 @@ public abstract class ServletContextImpl implements ServletContext
 	/**
 	 * Gets the init params
 	 */
+	@Override
 	public String getInitParameter(String name)
 	{
 		return _initParams.get(name);
@@ -179,6 +192,7 @@ public abstract class ServletContextImpl implements ServletContext
 	/**
 	 * Gets the init params
 	 */
+	@Override
 	public Enumeration<String> getInitParameterNames()
 	{
 		return Collections.enumeration(_initParams.keySet());
@@ -187,6 +201,7 @@ public abstract class ServletContextImpl implements ServletContext
 	/**
 	 * Returns the named attribute.
 	 */
+	@Override
 	public Object getAttribute(String name)
 	{
 		synchronized (_attributes)
@@ -200,6 +215,7 @@ public abstract class ServletContextImpl implements ServletContext
 	/**
 	 * Returns an enumeration of the attribute names.
 	 */
+	@Override
 	public Enumeration<String> getAttributeNames()
 	{
 		synchronized (_attributes)
@@ -216,6 +232,7 @@ public abstract class ServletContextImpl implements ServletContext
 	 * @param value
 	 *            the value of the attribute
 	 */
+	@Override
 	public void setAttribute(String name, Object value)
 	{
 		Object oldValue;
@@ -266,6 +283,7 @@ public abstract class ServletContextImpl implements ServletContext
 	 * @param name
 	 *            the name of the attribute to remove.
 	 */
+	@Override
 	public void removeAttribute(String name)
 	{
 		Object oldValue;
@@ -295,26 +313,49 @@ public abstract class ServletContextImpl implements ServletContext
 				}
 				catch (Throwable e)
 				{
-					log.log(Level.FINE, e.toString(), e);
+					log.debug(e.toString(), e);
 				}
 			}
 		}
 	}
+	
+	/**
+	 * Build a full resource location for the given path,
+	 * prepending the resource base path of this MockServletContext.
+	 * @param path the path as specified
+	 * @return the full resource path
+	 * @see org.springframework.mock.web.MockServletContext
+	 */
+	protected String getResourceLocation(String path) {
+		if (!path.startsWith("/")) {
+			path = "/" + path;
+		}
+		return  getRootDirectory() + SEPARATOR + "src" + SEPARATOR + "main" + SEPARATOR + "webapp" + SEPARATOR + path;
+	}
 
 	/**
 	 * Maps from a URI to a real path.
+	 * @see org.springframework.mock.web.MockServletContext
 	 */
-	public String getRealPath(String uri)
+	@Override
+	public String getRealPath(String path)
 	{
-		return getRootDirectory().lookup("./" + uri).getNativePath();
+		Resource resource = this.resourceLoader.getResource(getResourceLocation(path));
+		try {
+			return resource.getFile().getAbsolutePath();
+		}
+		catch (IOException ex) {
+			log("Couldn't determine real path of resource " + resource, ex);
+			return null;
+		}
 	}
 
 	
 	/**
 	 * Returns a resource for the given uri.
 	 * 
-	 * <p>
-	 * XXX: jdk 1.1.x doesn't appear to allow creation of private URL streams.
+	 *
+	 * @see org.springframework.mock.web.MockServletContext
 	 */
 	@Override
 	public URL getResource(String path) throws java.net.MalformedURLException
@@ -331,101 +372,20 @@ public abstract class ServletContextImpl implements ServletContext
 			throw ex;
 		}
 		catch (IOException ex) {
-			log.log(Level.FINEST,"Couldn't get URL for " + resource, ex);
+			log.info("Couldn't get URL for " + resource, ex);
 			return null;
 		}
 	}
 	
-	/**
-	 * Build a full resource location for the given path,
-	 * prepending the resource base path of this MockServletContext.
-	 * @param path the path as specified
-	 * @return the full resource path
-	 */
-	protected String getResourceLocation(String path) {
-		if (!path.startsWith("/")) {
-			path = "/" + path;
-		}
-		return  System.getProperty("user.dir") + SEPARATOR + "src" + SEPARATOR + "main" + SEPARATOR + "webapp" + SEPARATOR + path;
-	}
+
 	
 	private static final char SEPARATOR = File.separatorChar;
 
-	public URLConnection getResource(URL url) throws IOException
-	{
-		if (!"jndi".equals(url.getProtocol()))
-			return null;
 
-		// handle jndi:/server (single slash) parsing (gf)
-		String file = url.getFile();
-
-		if ("".equals(url.getHost()) && file.startsWith("/server"))
-		{
-			file = file.substring(7, file.length());
-
-			if (file.startsWith(getContextPath()))
-				file = file.substring(getContextPath().length());
-			else
-			{
-				// server/102p
-				int p = file.indexOf('/', 1);
-
-				if (p > 0)
-				{
-					String contextPath = file.substring(0, p);
-					WebApp webApp = (WebApp) getContext(contextPath);
-
-					if (webApp != null)
-						return webApp.getResource(url);
-				}
-			}
-		}
-
-		String realPath = getRealPath(file);
-		Path rootDirectory = getRootDirectory();
-		Path path = rootDirectory.lookup(realPath);
-
-		if (path.exists())
-			return new URL(path.getURL()).openConnection();
-
-		int fileIdx;
-
-		URLConnection connection = null;
-
-		if (file.length() > 1 && (fileIdx = file.indexOf("/", 1)) > -1)
-		{
-			String context = file.substring(0, file.indexOf("/", 1));
-
-			if (context.equals(getContextPath()))
-			{// disable cross-context lookup
-
-				file = file.substring(fileIdx, file.length());
-				realPath = getRealPath(file);
-				path = rootDirectory.lookup(realPath);
-
-				if (path.exists())
-					connection = new URL(path.getURL()).openConnection();
-			}
-		}
-
-		if (connection != null)
-			return connection;
-
-		return new FileNotFoundURLConnection(url);
-	}
-
-	public Path getCauchoPath(String name)
-	{
-		String realPath = getRealPath(name);
-
-		Path rootDirectory = getRootDirectory();
-		Path path = rootDirectory.lookupNative(realPath);
-
-		return path;
-	}
 
 	/**
 	 * Returns the resource for a uripath as an input stream.
+	 * @see org.springframework.mock.web.MockServletContext
 	 */
 	@Override
 	public InputStream getResourceAsStream(String path)
@@ -438,70 +398,51 @@ public abstract class ServletContextImpl implements ServletContext
 			return resource.getInputStream();
 		}
 		catch (IOException ex) {
-			log.log(null,"Couldn't open InputStream for " + resource, ex);
+			log.debug("Couldn't open InputStream for " + resource, ex);
 			return null;
 		}
 	}
 
 	/**
 	 * Returns an enumeration of all the resources.
+	 * @see  org.springframework.mock.web.MockServletContext.getResourcePaths(String path)
 	 */
-	public Set<String> getResourcePaths(String prefix)
+	@Override
+	public Set<String> getResourcePaths(String path)
 	{
-		if (!prefix.endsWith("/"))
-			prefix = prefix + "/";
-
-		Path path = getRootDirectory().lookup(getRealPath(prefix));
-
-		HashSet<String> set = new HashSet<String>();
-
-		try
-		{
-			String[] list = path.list();
-
-			for (int i = 0; i < list.length; i++)
-			{
-				if (path.lookup(list[i]).isDirectory())
-					set.add(prefix + list[i] + '/');
-				else
-					set.add(prefix + list[i]);
+		String actualPath = (path.endsWith("/") ? path : path + "/");
+		Resource resource = this.resourceLoader.getResource(getResourceLocation(actualPath));
+		try {
+			File file = resource.getFile();
+			String[] fileList = file.list();
+			if (ObjectUtils.isEmpty(fileList)) {
+				return null;
 			}
+			Set<String> resourcePaths = new LinkedHashSet<String>(fileList.length);
+			for (String fileEntry : fileList) {
+				String resultPath = actualPath + fileEntry;
+				if (resource.createRelative(fileEntry).getFile().isDirectory()) {
+					resultPath += "/";
+				}
+				resourcePaths.add(resultPath);
+			}
+			return resourcePaths;
 		}
-		catch (IOException e)
-		{
+		catch (IOException ex) {
+			log.warn("Couldn't get resource paths for " + resource, ex);
+			return null;
 		}
-
-		/*
-		 * try { Enumeration<URL> paths = getClassLoader().getResources(resourceName);
-		 * 
-		 * while (paths.hasMoreElements()) { URL subPath = paths.nextElement();
-		 * 
-		 * String subPathName = subPath.toString();
-		 * 
-		 * int p = subPathName.indexOf("META-INF/resources");
-		 * 
-		 * if (p >= 0) set.add(subPathName.substring(p + "META-INF/resources".length())); } } catch (IOException e) {
-		 * log.log(Level.FINER, e.toString(), e); }
-		 */
-
-		return set;
 	}
 
 	/**
 	 * Returns the servlet context for the name.
 	 */
+	@Override
 	public ServletContext getContext(String uri)
 	{
 		return this;
 	}
 
-	/**
-	 * Returns the mime type for the name.
-	 */
-	public String getMimeType(String uri)
-	{
-		return null;
-	}
 
 
 
@@ -523,6 +464,7 @@ public abstract class ServletContextImpl implements ServletContext
 	 * @param msg
 	 *            the message to log
 	 */
+	@Override
 	public final void log(String message)
 	{
 		log(message, null);
@@ -531,6 +473,7 @@ public abstract class ServletContextImpl implements ServletContext
 	/**
 	 * @deprecated
 	 */
+	@Override
 	public final void log(Exception e, String msg)
 	{
 		log(msg, e);
@@ -544,10 +487,11 @@ public abstract class ServletContextImpl implements ServletContext
 	 * @param e
 	 *            stack trace of the error
 	 */
+	@Override
 	public void log(String message, Throwable e)
 	{
 		if (e != null)
-			log.log(Level.WARNING, message, e);
+			log.debug(message, e);
 		else
 			log.info(message);
 	}
@@ -555,12 +499,15 @@ public abstract class ServletContextImpl implements ServletContext
 	//
 	// Deprecated methods
 	//
-
+	@Deprecated
+	@Override
 	public Servlet getServlet(String name)
 	{
 		throw new UnsupportedOperationException("getServlet is deprecated");
 	}
 
+	@Deprecated
+	@Override
 	public Enumeration<String> getServletNames()
 	{
 		throw new UnsupportedOperationException("getServletNames is deprecated");
@@ -569,41 +516,6 @@ public abstract class ServletContextImpl implements ServletContext
 	public Enumeration<Servlet> getServlets()
 	{
 		throw new UnsupportedOperationException("getServlets is deprecated");
-	}
-
-	public void setSessionTrackingModes(Set<SessionTrackingMode> modes)
-	{
-		throw new UnsupportedOperationException("unimplemented");
-	}
-
-	public ServletRegistration.Dynamic addServlet(String servletName, String className)
-	{
-		throw new UnsupportedOperationException("unimplemented");
-	}
-
-	public ServletRegistration.Dynamic addServlet(String servletName, Servlet servlet)
-	{
-		throw new UnsupportedOperationException("unimplemented");
-	}
-
-	public ServletRegistration.Dynamic addServlet(String servletName, Class<? extends Servlet> servletClass)
-	{
-		throw new UnsupportedOperationException("unimplemented");
-	}
-
-	public <T extends Servlet> T createServlet(Class<T> c) throws ServletException
-	{
-		throw new UnsupportedOperationException("unimplemented");
-	}
-
-	public ServletRegistration getServletRegistration(String servletName)
-	{
-		throw new UnsupportedOperationException("unimplemented");
-	}
-
-	public Map<String, ServletRegistration> getServletRegistrations()
-	{
-		throw new UnsupportedOperationException("unimplemented");
 	}
 
 
@@ -644,7 +556,7 @@ public abstract class ServletContextImpl implements ServletContext
 
 	protected boolean isActive()
 	{
-		throw new UnsupportedOperationException("unimplemented");
+		return true;
 	}
 
 	/*
@@ -659,30 +571,6 @@ public abstract class ServletContextImpl implements ServletContext
 		return null;
 	}
 
-	class FileNotFoundURLConnection extends URLConnection
-	{
-		FileNotFoundURLConnection(URL url)
-		{
-			super(url);
-		}
-
-		@Override
-		public void connect() throws IOException
-		{
-		}
-
-		@Override
-		public InputStream getInputStream() throws IOException
-		{
-			throw new FileNotFoundException(url.toString());
-		}
-
-		@Override
-		public String toString()
-		{
-			return getClass().getSimpleName() + "[" + url + "]";
-		}
-	}
 
 	@Override
 	public SessionCookieConfig getSessionCookieConfig()
@@ -696,6 +584,13 @@ public abstract class ServletContextImpl implements ServletContext
 	{
 		// TODO Auto-generated method stub
 		return null;
+	}
+	
+	@Override
+	public void setSessionTrackingModes(Set<SessionTrackingMode> sessionTrackingModes)
+	{
+		// TODO Auto-generated method stub
+		
 	}
 
 	@Override

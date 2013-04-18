@@ -31,7 +31,7 @@ import java.nio.charset.Charset;
  */
 public class ByteBufPrintWriter extends PrintWriter {
 
-	private DefaultHttpServletResponse defaultHttpServletResponse;
+	private HttpServletResponseImpl httpServletResponseImpl;
 	
 
 
@@ -45,12 +45,12 @@ public class ByteBufPrintWriter extends PrintWriter {
     // ----------------------------------------------------------- Constructors
 
 
-    public ByteBufPrintWriter(DefaultHttpServletResponse defaultHttpServletResponse,String charsetName) throws UnsupportedEncodingException, IOException {
-        super(new OutputStreamWriter(defaultHttpServletResponse.getOutputStream(), charsetName));
+    public ByteBufPrintWriter(HttpServletResponseImpl httpServletResponseImpl,String charsetName) throws UnsupportedEncodingException, IOException {
+        super(new OutputStreamWriter(httpServletResponseImpl.getOutputStream(), charsetName));
     }
 
-    public ByteBufPrintWriter(DefaultHttpServletResponse defaultHttpServletResponse,Charset cs) throws IOException{
-        super(new OutputStreamWriter(defaultHttpServletResponse.getOutputStream(), cs));
+    public ByteBufPrintWriter(HttpServletResponseImpl httpServletResponseImpl,Charset cs) throws IOException{
+        super(new OutputStreamWriter(httpServletResponseImpl.getOutputStream(), cs));
     }
 
     // --------------------------------------------------------- Public Methods

@@ -59,15 +59,15 @@ import org.ireland.jnetty.util.http.ServletServerCookieEncoder;
 
 /**
  * <p>
- * {@link DefaultHttpServletResponse} provides the implementation for {@link HttpServletResponse}.
+ * {@link HttpServletResponseImpl} provides the implementation for {@link HttpServletResponse}.
  * </p>
  */
-public class DefaultHttpServletResponse implements HttpServletResponse
+public class HttpServletResponseImpl implements HttpServletResponse
 {
 	/**
 	 * Logger available to subclasses.
 	 */
-	protected static final Log LOG = LogFactory.getLog(DefaultHttpServletResponse.class);
+	protected static final Log LOG = LogFactory.getLog(HttpServletResponseImpl.class);
 
 	// ----------------------------------------------------- Class Variables
 
@@ -148,8 +148,8 @@ public class DefaultHttpServletResponse implements HttpServletResponse
 	private PrintWriter _writer;
 	private long _contentLength = -1;
 
-	public DefaultHttpServletResponse(SocketChannel socketChannel, ChannelHandlerContext ctx,
-			FullHttpResponse response, FullHttpRequest request)
+	public HttpServletResponseImpl(SocketChannel socketChannel, ChannelHandlerContext ctx,
+												FullHttpResponse response, FullHttpRequest request)
 	{
 		this.socketChannel = socketChannel;
 		this.ctx = ctx;

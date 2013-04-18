@@ -48,8 +48,8 @@ import java.util.Set;
 import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletException;
 
-import org.ireland.jnetty.http.DefaultHttpServletRequest;
-import org.ireland.jnetty.http.DefaultHttpServletResponse;
+import org.ireland.jnetty.http.HttpServletRequestImpl;
+import org.ireland.jnetty.http.HttpServletResponseImpl;
 import org.ireland.jnetty.webapp.RequestDispatcherImpl;
 import org.ireland.jnetty.webapp.WebApp;
 
@@ -92,8 +92,10 @@ public class HttpHandler extends ChannelInboundMessageHandlerAdapter<FullHttpMes
 
     private void handle(ChannelHandlerContext ctx,FullHttpRequest fullHttpRequest, FullHttpResponse fullHttpResponse) throws ServletException, IOException
 	{
-    	DefaultHttpServletRequest request =   new DefaultHttpServletRequest(webApp,(SocketChannel)ctx.channel(), ctx, fullHttpResponse, fullHttpRequest);
-    	DefaultHttpServletResponse response = new DefaultHttpServletResponse((SocketChannel)ctx.channel(), ctx, fullHttpResponse, fullHttpRequest);
+    	HttpServletResponseImpl response = new HttpServletResponseImpl((SocketChannel)ctx.channel(), ctx, fullHttpResponse, fullHttpRequest);
+    	
+    	HttpServletRequestImpl request =   new HttpServletRequestImpl(webApp,webApp,(SocketChannel)ctx.channel(), ctx, fullHttpResponse, fullHttpRequest,response);
+    	
     	
     	//
     	String rawUri = fullHttpRequest.getUri();
@@ -110,7 +112,7 @@ public class HttpHandler extends ChannelInboundMessageHandlerAdapter<FullHttpMes
      * @throws IOException 
      * @throws ServletException 
      */
-	private void dispatch(String rawUri, DefaultHttpServletRequest request, DefaultHttpServletResponse response) throws ServletException, IOException
+	private void dispatch(String rawUri, HttpServletRequestImpl request, HttpServletResponseImpl response) throws ServletException, IOException
 	{
 		
     	RequestDispatcherImpl dispatcher = webApp.getRequestDispatcher(rawUri);

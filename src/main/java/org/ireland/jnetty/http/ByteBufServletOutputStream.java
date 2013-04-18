@@ -9,14 +9,14 @@ import javax.servlet.ServletOutputStream;
 
 public class ByteBufServletOutputStream extends ServletOutputStream
 {
-	private DefaultHttpServletResponse defaultHttpServletResponse;
+	private HttpServletResponseImpl httpServletResponseImpl;
 	
 	private ByteBuf out;
 
-	public ByteBufServletOutputStream(DefaultHttpServletResponse defaultHttpServletResponse, ByteBuf out)
+	public ByteBufServletOutputStream(HttpServletResponseImpl httpServletResponseImpl, ByteBuf out)
 	{
 		super();
-		this.defaultHttpServletResponse = defaultHttpServletResponse;
+		this.httpServletResponseImpl = httpServletResponseImpl;
 		this.out = out;
 	}
 	
@@ -65,12 +65,12 @@ public class ByteBufServletOutputStream extends ServletOutputStream
     /**
      * Will send the buffer to the client.
      * 
-     * Flush the buffer and commit this defaultHttpServletResponse.
+     * Flush the buffer and commit this httpServletResponseImpl.
      */
     @Override
     public void flush()throws IOException 
     {
-    	defaultHttpServletResponse.flushBuffer();
+    	httpServletResponseImpl.flushBuffer();
     }
 
 
@@ -78,7 +78,7 @@ public class ByteBufServletOutputStream extends ServletOutputStream
     @Override
     public void close()throws IOException 
     {
-    	defaultHttpServletResponse.channel().close();
+    	httpServletResponseImpl.channel().close();
     }
 
 }

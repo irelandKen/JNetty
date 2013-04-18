@@ -38,7 +38,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpServletResponseWrapper;
 
 import org.ireland.jnetty.dispatch.Invocation;
-import org.ireland.jnetty.http.DefaultHttpServletResponse;
+import org.ireland.jnetty.http.HttpServletResponseImpl;
 import org.ireland.jnetty.util.http.URIDecoder;
 
 import java.io.IOException;
@@ -600,7 +600,7 @@ public class RequestDispatcherImpl implements RequestDispatcher
 	private void finishResponse(ServletResponse res) throws ServletException, IOException
 	{
 
-		if (res instanceof DefaultHttpServletResponse)
+		if (res instanceof HttpServletResponseImpl)
 		{
 			res.flushBuffer(); // we sure that all data has already put to the ByteBuf?
 		}
