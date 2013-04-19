@@ -1610,7 +1610,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder, Fil
 	/**
 	 * Maps from a URI to a real path.
 	 */
-	@Override
+/*	@Override
 	public String getRealPath(String uri)
 	{
 		// server/10m7
@@ -1650,6 +1650,29 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder, Fil
 			log.debug("real-path " + uri + " -> " + realPath);
 
 		_realPathCache.put(uri, realPath);
+
+		return realPath;
+	}*/
+	
+	@Override
+	public String getRealPath(String uri)
+	{
+		// server/10m7
+		if (uri == null)
+			return null;
+
+		String realPath = _realPathCache.get(uri);
+
+		if (realPath != null)
+			return realPath;
+
+		realPath = super.getRealPath(uri);
+
+		if (log.isDebugEnabled())
+			log.debug("real-path " + uri + " -> " + realPath);
+
+		if(realPath != null)
+			_realPathCache.put(uri, realPath);
 
 		return realPath;
 	}

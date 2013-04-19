@@ -17,6 +17,7 @@ import org.ireland.jnetty.dispatch.filter.FilterConfigImpl;
 import org.ireland.jnetty.dispatch.servlet.ServletConfigImpl;
 import org.ireland.jnetty.webapp.WebApp;
 import org.junit.Test;
+import org.springframework.util.Assert;
 
 /**
  * A Loader to parse web.xml FilterConfig ,ServletConfig
@@ -31,10 +32,10 @@ public class WebXmlLoader
 	private static final Log log = LogFactory.getLog(WebXmlLoader.class);
 	
 	private static final char SEPARATOR = File.separatorChar;
-	private static final String DATA_FILE_NAME = System.getProperty("user.dir") + SEPARATOR + "src" + SEPARATOR + "main" + SEPARATOR + "webapp" + SEPARATOR
+	private static String DATA_FILE_NAME = System.getProperty("user.dir") + SEPARATOR + "src" + SEPARATOR + "main" + SEPARATOR + "webapp" + SEPARATOR
 			+ "WEB-INF" + SEPARATOR + "web.xml";
 
-	private static final String DATA_FILE_NAME2 = System.getProperty("user.dir") + SEPARATOR+ "WEB-INF" + SEPARATOR + "web.xml";
+	private static String DATA_FILE_NAME2 = System.getProperty("user.dir") + SEPARATOR+ "WEB-INF" + SEPARATOR + "web.xml";
 	
 	private WebApp webApp;
 
@@ -42,10 +43,14 @@ public class WebXmlLoader
 
 	public WebXmlLoader(WebApp webApp)
 	{
+		Assert.notNull(webApp);
+		
 		this.webApp = webApp;
 
 		try
 		{
+			WebXmlLoader.DATA_FILE_NAME = webApp.getRealPath("/WEB-INF/web.xml");
+			
 			xmlConfig = new XMLConfiguration(DATA_FILE_NAME);
 		}
 		catch (ConfigurationException e)

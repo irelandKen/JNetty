@@ -67,6 +67,10 @@ public abstract class ServletContextImpl implements ServletContext
 
 	private HashMap<String, String> _initParams = new HashMap<String, String>();
 
+	/**
+	 * 
+	 * @return Gets the webApp directory.
+	 */
 	public String getRootDirectory()
 	{
 		throw new UnsupportedOperationException();
@@ -326,7 +330,8 @@ public abstract class ServletContextImpl implements ServletContext
 		if (!path.startsWith("/")) {
 			path = "/" + path;
 		}
-		return  getRootDirectory() + SEPARATOR + "src" + SEPARATOR + "main" + SEPARATOR + "webapp" + SEPARATOR + path;
+		
+		return  getRootDirectory() + SLASH + path;
 	}
 
 	/**
@@ -375,7 +380,7 @@ public abstract class ServletContextImpl implements ServletContext
 	
 
 	
-	private static final char SEPARATOR = File.separatorChar;
+	private static final char SLASH = File.separatorChar;
 
 
 

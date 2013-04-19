@@ -16,6 +16,10 @@
 package org.ireland.jnetty;
 
 
+import java.io.File;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.ireland.jnetty.webapp.WebApp;
 
 import io.netty.channel.ChannelInitializer;
@@ -26,12 +30,16 @@ import io.netty.handler.codec.http.HttpServerCodec;
 
 public class JNettySocketChannelInitializer extends ChannelInitializer<SocketChannel> 
 {
+	private static final Log log = LogFactory.getLog(JNettySocketChannelInitializer.class.getName());
+	
+	private static final char SLASH = File.separatorChar;
+	
 	private static WebApp webApp;
 	
 	static 
 	{
     	
-    	String rootDirectory = System.getProperty("user.dir");
+    	String rootDirectory = log.isDebugEnabled() ? System.getProperty("user.dir") + SLASH + "src" + SLASH + "main" + SLASH + "webapp" : System.getProperty("user.dir");
     	
     	String host = "127.0.0.1";
     	
