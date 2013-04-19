@@ -226,7 +226,7 @@ public class WebXmlLoader
 	}
 
 	/**
-	 * 解释web.xml中的"<servlet>"和<servlet-mapping>标签
+	 * 解释web.xml中的<servlet>标签
 	 * 
 	 * @throws ClassNotFoundException
 	 */
@@ -312,7 +312,7 @@ public class WebXmlLoader
 
 			if (url_patterns.size() > 0)
 			{
-				config.addMapping(toArray(url_patterns));
+				config.addMapping(toArray(url_patterns));			//添加<servlet-mapping>
 			}
 
 			j++;

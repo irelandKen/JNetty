@@ -243,6 +243,13 @@ public class ServletMapper
 
 		// 1-2-3:查找与contextURI最佳匹配的Servlet
 		config = mapServlet(contextURI);
+		
+		//3.5查找是否与相关jsp页面匹配
+		if(config == null)
+		{
+			config = mapJspServlet(contextURI);
+		}
+		
 
 		// 4:默认的Servlet(urlPattern为"/",当无法找到匹配的Servlet或jsp时,则默认匹配的Servlet)
 		if (config == null)
@@ -293,6 +300,21 @@ public class ServletMapper
 	}
 
 	/**
+	 * 查找与contextURI最佳匹配的Jsp,默认返回一个组合模式实现的JspServletComposite的ServletConfig
+	 * @param contextURI
+	 * @return
+	 */
+	protected ServletConfigImpl mapJspServlet(String contextURI)
+	{
+		if(contextURI != null && contextURI.endsWith(".jsp"))
+		{
+			return _servletManager.getJspServletCompositeConfig();
+		}
+		
+		return null;
+	}
+
+	/**
 	 * 查找与contextURI最佳匹配的Servlet Specification: Servlet-3_1-PFD chapter 12.1
 	 * 
 	 * @param contextURI
@@ -329,7 +351,7 @@ public class ServletMapper
 			}
 		}
 
-		// Rule 3 -- Extension Match : 像.do,.jsp等基于扩展名的匹配
+		// Rule 3 -- Extension Match : 像.do等基于扩展名的匹配
 		if (_extensionServletMappings.size() > 0)
 		{
 			String extensionPattern;

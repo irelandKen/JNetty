@@ -38,6 +38,8 @@ import javax.servlet.ServletException;
 
 import org.ireland.jnetty.config.ConfigException;
 import org.ireland.jnetty.dispatch.ServletInvocation;
+import org.ireland.jnetty.jsp.JspServletComposite;
+import org.ireland.jnetty.webapp.WebApp;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -60,10 +62,38 @@ public class ServletManager
 
 	private ArrayList<ServletConfigImpl> _servletList = new ArrayList<ServletConfigImpl>();
 
-	public ServletManager()
+	private final WebApp _webApp;
+	
+	//special ServletConfigImpl for JspServletComposite
+	private ServletConfigImpl _jspServletCompositeConfig;
+	
+	public ServletManager(WebApp webApp)
 	{
+		_webApp = webApp;
 	}
 
+	/**
+	 * 取得JspServletComposite的ServletConfig配置信息
+	 * @return
+	 */
+	ServletConfigImpl getJspServletCompositeConfig()
+	{
+		if(_jspServletCompositeConfig == null)
+		{
+			_jspServletCompositeConfig = _webApp.createNewServletConfig();
+			
+			_jspServletCompositeConfig.setServletName(JspServletComposite.class.getName());
+			_jspServletCompositeConfig.setServletClass(JspServletComposite.class);
+			
+			//缺省情况下,关闭development模式,提高性能
+			_jspServletCompositeConfig.setInitParameter("development", "false");
+		}
+		
+		return _jspServletCompositeConfig;
+	}
+	
+	
+	
 	/**
 	 * Adds a servlet to the servlet manager. 如果已经存在同名的ServletConfig,旧的会被覆盖
 	 */

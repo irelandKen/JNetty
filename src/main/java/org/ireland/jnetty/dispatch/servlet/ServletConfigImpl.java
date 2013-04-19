@@ -266,9 +266,9 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 		{
 			Set<String> result = new HashSet<String>();
 
+			
 			// server/12t8 vs server/12uc
-
-			for (String urlPattern : urlPatterns)
+			for (String urlPattern : urlPatterns)		
 			{
 				ServletMapping mapping = _servletMapper.getServletMapping(urlPattern);
 
@@ -279,7 +279,7 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 
 				String servletName = mapping.getServletConfig().getServletName();
 
-				if (!_servletName.equals(servletName) && servletName != null)
+				if (!_servletName.equals(servletName) && servletName != null)				//检查存在urlPattern冲突(同一个urlPattern映射多个Servlet)
 				{
 					if (log.isLoggable(Level.FINE))
 					{
@@ -294,7 +294,9 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 			{
 				return result;
 			}
+			
 
+			//创建并添加ServletMapping到ServletContext
 			ServletMapping mapping = _webApp.createNewServletMapping(this);
 			
 			for (String urlPattern : urlPatterns)
@@ -413,12 +415,13 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 
 	public void setServletClass(Class<? extends Servlet> servletClass)
 	{
-		if (_servletClass == null)
+		if (servletClass == null)
 		{
 			throw new NullPointerException();
 		}
 
 		_servletClass = servletClass;
+		_servletClassName = servletClass.getName();
 	}
 
 	/**

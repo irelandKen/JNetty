@@ -304,7 +304,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder, Fil
 
 		_beanFactory = new BeanFactory();
 
-		_servletManager = new ServletManager();
+		_servletManager = new ServletManager(this);
 		_servletMapper = new ServletMapper(this, this, _servletManager);
 
 		_filterManager = new FilterManager(this, this);
@@ -1190,9 +1190,15 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder, Fil
 
 		try
 		{
+			//加载 <context-param>参数
 			loader.loadInitParam();
+			
+			
+			//加载<listener>标签
 			loader.loadListener();
 
+			
+			//解释web.xml所有的<filter>元素
 			LinkedHashMap<String, FilterConfigImpl> filterConfigMap = loader.praseFilter();
 
 			for (Entry<String, FilterConfigImpl> e : filterConfigMap.entrySet())
@@ -1200,10 +1206,15 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder, Fil
 				addFilter(e.getValue());
 			}
 
+			//解释web.xml所有的<filter-mapping>元素
 			loader.parseFilterMapping(filterConfigMap);
 
+			
+			//解释web.xml中的<servlet>标签
 			LinkedHashMap<String, ServletConfigImpl> servletConfigMap = loader.praseServletConfig();
 
+			
+			//解释web.xml中的<servlet-mapping>标签
 			loader.parseServletMapping(servletConfigMap);
 		}
 		catch (ClassNotFoundException e)
@@ -1221,9 +1232,11 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder, Fil
 
 		try
 		{
+			//加载web.xml
 			parseWebXml();
 
-			ServletContextEvent event = new ServletContextEvent(this);
+			
+			
 
 			// 初始化Listener
 			for (ListenerConfig listener : _listeners)
@@ -1238,6 +1251,10 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder, Fil
 				}
 			}
 
+			
+			//发布ServletContextListener#contextInitialized事件
+			ServletContextEvent event = new ServletContextEvent(this);
+			
 			for (int i = 0; i < _webAppListeners.size(); i++)
 			{
 				ServletContextListener listener = _webAppListeners.get(i);
@@ -1252,6 +1269,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder, Fil
 				}
 			}
 
+			
 			// Servlet 3.0
 
 			try
