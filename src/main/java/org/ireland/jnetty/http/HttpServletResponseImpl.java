@@ -430,7 +430,7 @@ public class HttpServletResponseImpl implements HttpServletResponse
 			writer.write(". Reason:\n<pre>    ");
 			writer.write(message);
 			writer.write("</pre>");
-			writer.write("</p>\n<hr /><i><small>Powered by Jetty://</small></i>");
+			writer.write("</p>\n<hr /><i><small>Powered by JNetty(IrelandKen)://</small></i>");
 			writer.write("\n</body>\n</html>\n");
 
 			writer.flush();
