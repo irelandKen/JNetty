@@ -227,8 +227,16 @@ public class HttpServletRequestImpl implements HttpServletRequest
 	// 如: /page.do 或 null
 	private String _pathInfo = null;
 
+	
+	
 	// 如: name=jack&pwd=123
 	private String _queryString;
+	
+    /**
+     * Request QueryString Extracted flag.
+     */
+    private boolean _queryStringExtracted;
+    
 
 	private DispatcherType _dispatcherType;
 
@@ -1132,7 +1140,24 @@ public class HttpServletRequestImpl implements HttpServletRequest
 	// OK
 	public String getQueryString()
 	{
-		if (_queryString == null)
+		if (!_queryStringExtracted)
+		{
+			parseRequestURIAndQueryString();
+		}
+
+		return _queryString;
+	}
+	
+
+    
+	
+	/**
+	 * 从原生的uri中分离出不带参数的RequestURI和参数QueryString
+	 * @return
+	 */
+	boolean parseRequestURIAndQueryString()
+	{
+		if (_queryString == null  || _requestURI == null)
 		{
 			if (_queryEncoding == null)
 			{
@@ -1142,11 +1167,22 @@ public class HttpServletRequestImpl implements HttpServletRequest
 
 				if (p != -1)
 					_queryString = uri.substring(p + 1);
+				
+				//同时也设置requestURI
+				if(p == -1)
+					_requestURI = uri;
+				else
+					_requestURI = uri.substring(0, p);
+			}
+			else
+			{
+				//TODO: what about other queryEncoding?
 			}
 		}
-
-		return _queryString;
+		
+		return true;
 	}
+	
 
 	/* ------------------------------------------------------------ */
 	/*
@@ -1307,8 +1343,11 @@ public class HttpServletRequestImpl implements HttpServletRequest
 	// waiting
 	public String getRequestURI()
 	{
-		// if (_requestURI == null && _uri != null)
-		// _requestURI = _uri.getPathAndParam();
+		if (_requestURI == null)
+		{
+			parseRequestURIAndQueryString();
+		}
+		
 		return _requestURI;
 	}
 
