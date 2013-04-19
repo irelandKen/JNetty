@@ -43,10 +43,12 @@ import javax.servlet.http.Cookie;
  * res.setHeader("Set-Cookie", {@link ServletServerCookieEncoder}.encode("JSESSIONID", "1234"));
  * </pre>
  *
+ * this is the special version of ServerCookieEncoder that can handle javax.servlet.http.Cookie directly.
+ *
  * @see io.netty.handler.codec.http.CookieDecoder
  * @see io.netty.handler.codec.http.ServerCookieEncoder
  * 
- * this is the special version of ServerCookieEncoder that can handle javax.servlet.http.Cookie directly.
+ * 
  */
 public final class ServletServerCookieEncoder {
 
