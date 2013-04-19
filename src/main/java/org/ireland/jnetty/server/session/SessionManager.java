@@ -1126,7 +1126,9 @@ public final class SessionManager implements SessionCookieConfig
 		cookie = new Cookie(_cookieName, id);
 
 		cookie.setComment(_cookieComment);
-		cookie.setDomain(_cookieDomain);
+		
+		if(_cookieDomain != null)
+			cookie.setDomain(_cookieDomain);
 
 		cookie.setHttpOnly(isHttpOnly());
 		cookie.setMaxAge((int) _cookieMaxAge);
