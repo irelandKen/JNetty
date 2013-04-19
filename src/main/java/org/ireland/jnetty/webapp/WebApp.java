@@ -90,6 +90,7 @@ import javax.servlet.http.HttpSessionActivationListener;
 import javax.servlet.http.HttpSessionAttributeListener;
 import javax.servlet.http.HttpSessionEvent;
 import javax.servlet.http.HttpSessionListener;
+import javax.validation.OverridesAttribute;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -235,19 +236,21 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder, Fil
 	private ArrayList<ListenerConfig> _listeners = new ArrayList<ListenerConfig>();
 
 	// List of the ServletContextListeners from the configuration file
-	private ArrayList<ServletContextListener> _webAppListeners = new ArrayList<ServletContextListener>();
+	private ArrayList<ServletContextListener> _contextListeners = new ArrayList<ServletContextListener>();
 
 	// List of the ServletContextAttributeListeners from the configuration file
-	private ArrayList<ServletContextAttributeListener> _attributeListeners = new ArrayList<ServletContextAttributeListener>();
+	private ArrayList<ServletContextAttributeListener> _contextAttributeListeners = new ArrayList<ServletContextAttributeListener>();
 
 	// List of the ServletRequestListeners from the configuration file
 	private ArrayList<ServletRequestListener> _requestListeners = new ArrayList<ServletRequestListener>();
 
+	@Deprecated
 	private ServletRequestListener[] _requestListenerArray = new ServletRequestListener[0];
 
 	// List of the ServletRequestAttributeListeners from the configuration file
 	private ArrayList<ServletRequestAttributeListener> _requestAttributeListeners = new ArrayList<ServletRequestAttributeListener>();
 
+	@Deprecated
 	private ServletRequestAttributeListener[] _requestAttributeListenerArray = new ServletRequestAttributeListener[0];
 
 	// listeners-----------------------------------------------
@@ -329,6 +332,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder, Fil
 	/**
 	 * Gets the webApp directory.
 	 */
+	@Override
 	public String getRootDirectory()
 	{
 		return _rootDirectory;
@@ -994,7 +998,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder, Fil
 	@Override
 	public <T extends EventListener> void addListener(T listener)
 	{
-		addListenerObject(listener, true);
+		addListenerObject(listener, false);
 	}
 
 	/**
@@ -1023,7 +1027,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder, Fil
 		if (listenerObj instanceof ServletContextListener)
 		{
 			ServletContextListener scListener = (ServletContextListener) listenerObj;
-			_webAppListeners.add(scListener);
+			_contextListeners.add(scListener);
 
 			//发布 ServletContextEvent#contextInitialized 事件
 			if (start)
@@ -1081,6 +1085,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder, Fil
 	/**
 	 * Returns the request listeners.
 	 */
+	@Deprecated
 	public ServletRequestListener[] getRequestListeners()
 	{
 		return _requestListenerArray;
@@ -1089,6 +1094,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder, Fil
 	/**
 	 * Returns the request attribute listeners.
 	 */
+	@Deprecated
 	public ServletRequestAttributeListener[] getRequestAttributeListeners()
 	{
 		return _requestAttributeListenerArray;
@@ -1251,23 +1257,10 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder, Fil
 				}
 			}
 
+			//
+			publishContextInitializedEvent();
 			
-			//发布ServletContextListener#contextInitialized事件
-			ServletContextEvent event = new ServletContextEvent(this);
-			
-			for (int i = 0; i < _webAppListeners.size(); i++)
-			{
-				ServletContextListener listener = _webAppListeners.get(i);
 
-				try
-				{
-					listener.contextInitialized(event);
-				}
-				catch (Exception e)
-				{
-					log.warn(e.toString(), e);
-				}
-			}
 
 			
 			// Servlet 3.0
@@ -1296,6 +1289,33 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder, Fil
 
 		}
 	}
+
+    /* ------------------------------------------------------------ */
+	/**
+	 * 发布publish ContextInitialized Event 事件
+	 */
+    protected void publishContextInitializedEvent()
+    {
+    	log.debug("publish ContextInitialized Event");
+    	
+		//发布ServletContextListener#contextInitialized事件
+		ServletContextEvent event = new ServletContextEvent(this);
+		
+		for (int i = 0; i < _contextListeners.size(); i++)
+		{
+			ServletContextListener listener = _contextListeners.get(i);
+
+			try
+			{
+				listener.contextInitialized(event);
+			}
+			catch (Exception e)
+			{
+				log.warn(e.toString(), e);
+			}
+		}
+    }
+
 
 	/**
 	 * Returns the servlet context for the URI.
@@ -1800,23 +1820,12 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder, Fil
 		if (_filterManager != null)
 			_filterManager.destroy();
 
+		
 		// server/10g8 -- webApp listeners after session
-		if (_webAppListeners != null)
-		{
-			for (int i = _webAppListeners.size() - 1; i >= 0; i--)
-			{
-				ServletContextListener listener = _webAppListeners.get(i);
+		
+		//发布 ServletContextListener#contextDestroyed事件 
+		publishContextDestroyedEvent(event);
 
-				try
-				{
-					listener.contextDestroyed(event);
-				}
-				catch (Exception e)
-				{
-					log.warn(e.toString(), e);
-				}
-			}
-		}
 
 		// server/10g8 -- webApp listeners after session
 		for (int i = _listeners.size() - 1; i >= 0; i--)
@@ -1849,6 +1858,29 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder, Fil
 		}
 
 	}
+	
+    /**
+     * 发布publish ContextDestroyed Event 事件
+     */
+    protected void publishContextDestroyedEvent(ServletContextEvent event)
+    {
+		if (_contextListeners != null)
+		{
+			for (int i = _contextListeners.size() - 1; i >= 0; i--)
+			{
+				ServletContextListener listener = _contextListeners.get(i);
+
+				try
+				{
+					listener.contextDestroyed(event);
+				}
+				catch (Exception e)
+				{
+					log.warn(e.toString(), e);
+				}
+			}
+		}
+    }
 
 	// /static-----------------------------------------------------------------------------
 
