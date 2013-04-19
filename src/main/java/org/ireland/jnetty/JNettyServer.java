@@ -42,7 +42,7 @@ public class JNettyServer
 			
 			bootstrap.group(bossGroup, workerGroup)
 			         .channel(AioServerSocketChannel.class)
-			         .childHandler(new HttpSnoopSocketChannelInitializer());
+			         .childHandler(new JNettySocketChannelInitializer());
 
 			Channel ch = bootstrap.bind(HOST, PORT).sync().channel();
 			ch.closeFuture().sync();

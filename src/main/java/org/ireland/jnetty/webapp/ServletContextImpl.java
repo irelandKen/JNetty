@@ -525,10 +525,6 @@ public abstract class ServletContextImpl implements ServletContext
 
 	}
 
-	public void addListener(String className)
-	{
-		throw new UnsupportedOperationException(getClass().getName());
-	}
 
 	public <T extends EventListener> void addListener(T t)
 	{

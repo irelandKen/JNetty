@@ -124,8 +124,6 @@ import org.springframework.util.Assert;
 
 import com.caucho.i18n.CharacterEncoding;
 
-
-
 import com.caucho.server.webapp.CacheMapping;
 import com.caucho.server.webapp.MultipartForm;
 
@@ -136,7 +134,7 @@ import com.caucho.util.LruCache;
 /**
  * Resin's webApp implementation.
  */
-public class WebApp extends ServletContextImpl implements InvocationBuilder,FilterConfigurator,ServletConfigurator
+public class WebApp extends ServletContextImpl implements InvocationBuilder, FilterConfigurator, ServletConfigurator
 {
 	private static final L10N L = new L10N(WebApp.class);
 	private static final Log log = LogFactory.getLog(WebApp.class.getName());
@@ -164,7 +162,6 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 
 	private String _moduleName = "default";
 
-
 	private String _servletVersion;
 
 	// -----servlet--------------------------
@@ -183,23 +180,21 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 	// The filter manager
 	private FilterManager _filterManager;
 
-	
-	// The dispatch filter mapper                  (DispatcherType#REQUEST)
+	// The dispatch filter mapper (DispatcherType#REQUEST)
 	private FilterMapper _dispatchFilterMapper;
 
-	// The include filter mapper                   (DispatcherType#INCLUDE)
+	// The include filter mapper (DispatcherType#INCLUDE)
 	private FilterMapper _includeFilterMapper;
 
-	// The forward filter mapper                   (DispatcherType#FORWARD)
+	// The forward filter mapper (DispatcherType#FORWARD)
 	private FilterMapper _forwardFilterMapper;
 
-	// The error filter mapper                     (DispatcherType#ERROR)
+	// The error filter mapper (DispatcherType#ERROR)
 	private FilterMapper _errorFilterMapper;
 	// -----filter--------------------------
 
 	private FilterChainBuilder _securityBuilder;
 
-	
 	// The session manager
 	private SessionManager _sessionManager;
 
@@ -207,7 +202,6 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 
 	private int _formParameterMax = 10000;
 
-	
 	// The cache
 
 	// 用LRU算法Cache最近最常使用的url与FilterChain之间的映射关系()
@@ -225,8 +219,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 
 	private String errorPage;
 
-	private LruCache<String, String> _realPathCache = new LruCache<String, String>(
-			1024);
+	private LruCache<String, String> _realPathCache = new LruCache<String, String>(1024);
 
 	// real-path mapping
 	// private RewriteRealPath _rewriteRealPath;
@@ -278,20 +271,19 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 	 */
 	public WebApp(String rootDirectory, String host, String contextPath)
 	{
-		
+
 		_classLoader = this.getClass().getClassLoader();
 
 		_rootDirectory = rootDirectory;
 		_host = host;
-		
 
-		if(contextPath == null || contextPath.equals("ROOT") || contextPath.equals("/"))	//ROOT Context
+		if (contextPath == null || contextPath.equals("ROOT") || contextPath.equals("/")) // ROOT Context
 			_contextPath = "";
 		else
 			_contextPath = contextPath;
 
 		if (_host == null)
-			throw new IllegalStateException(L.l("{0} requires an active {1}",getClass().getSimpleName()));
+			throw new IllegalStateException(L.l("{0} requires an active {1}", getClass().getSimpleName()));
 
 		_uriDecoder = new URIDecoder();
 
@@ -307,43 +299,41 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 
 	private void initConstructor()
 	{
-	
+
 		// Path _rootDirectory = getRootDirectory();
-		
+
 		_beanFactory = new BeanFactory();
 
 		_servletManager = new ServletManager();
-		_servletMapper = new ServletMapper(this,this,_servletManager);
+		_servletMapper = new ServletMapper(this, this, _servletManager);
 
-		_filterManager = new FilterManager(this,this);
-		
-		_dispatchFilterMapper = new FilterMapper(this,_filterManager,DispatcherType.REQUEST);
+		_filterManager = new FilterManager(this, this);
 
-		_includeFilterMapper = new FilterMapper(this,_filterManager,DispatcherType.INCLUDE);
+		_dispatchFilterMapper = new FilterMapper(this, _filterManager, DispatcherType.REQUEST);
 
-		_forwardFilterMapper = new FilterMapper(this,_filterManager,DispatcherType.FORWARD);
+		_includeFilterMapper = new FilterMapper(this, _filterManager, DispatcherType.INCLUDE);
 
-		_errorFilterMapper = new FilterMapper(this,_filterManager,DispatcherType.ERROR);
+		_forwardFilterMapper = new FilterMapper(this, _filterManager, DispatcherType.FORWARD);
+
+		_errorFilterMapper = new FilterMapper(this, _filterManager, DispatcherType.ERROR);
 
 		// _errorPageManager = new ErrorPageManager(_server, this);
 
-		
 		// Use JVM temp dir as ServletContext temp dir.
 		_tempDir = System.getProperty(TEMPDIR);
-		
-		_sessionManager = new SessionManager(this); 
+
+		_sessionManager = new SessionManager(this);
 
 	}
 
-	
-  /**
-   * Gets the webApp directory.
-   */
-  public String getRootDirectory()
-  {
-    return _rootDirectory;
-  }
-	
+	/**
+	 * Gets the webApp directory.
+	 */
+	public String getRootDirectory()
+	{
+		return _rootDirectory;
+	}
+
 	/**
 	 * Returns the webApp's canonical context path, e.g. /foo-1.0
 	 */
@@ -388,9 +378,9 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 	 */
 	public ClassLoader getClassLoader()
 	{
-		if(_classLoader == null)
+		if (_classLoader == null)
 			_classLoader = this.getClass().getClassLoader();
-		
+
 		return _classLoader;
 	}
 
@@ -464,9 +454,6 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 		return _hostName;
 	}
 
-
-	
-
 	/**
 	 * Adds a servlet configuration.
 	 */
@@ -480,68 +467,62 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 
 	/**
 	 * 检查ServletConfigImpl里的webApp,servletContext,ServletManager是否符合本WebApp里的
+	 * 
 	 * @param config
 	 */
 	private void checkServlerConfig(ServletConfigImpl config)
 	{
 		Assert.notNull(config);
-		
+
 		Assert.isTrue(config.getWebApp() == this);
 		Assert.isTrue(config.getServletContext() == this);
 		Assert.isTrue(config.getServletManager() == this._servletManager);
 		Assert.isTrue(config.getServletMapper() == this.getServletMapper());
 	}
-	
+
 	/**
 	 * 检查ServletConfigImpl里的webApp,servletContext,ServletManager是否符合本WebApp里的
+	 * 
 	 * @param config
 	 */
 	private void checkServletMapping(ServletMapping servletMapping)
 	{
 		Assert.notNull(servletMapping);
-		
+
 		checkServlerConfig(servletMapping.getServletConfig());
 	}
 
 	@Override
-	public <T extends Servlet> T createServlet(Class<T> servletClass)
-			throws ServletException
+	public <T extends Servlet> T createServlet(Class<T> servletClass) throws ServletException
 	{
 		return _beanFactory.createBean(servletClass);
 	}
 
-
-
 	@Override
-	public ServletRegistration.Dynamic addServlet(String servletName,
-			String className)
+	public ServletRegistration.Dynamic addServlet(String servletName, String className)
 	{
 		Class<? extends Servlet> servletClass;
 
 		try
 		{
-			servletClass = (Class) Class.forName(className, false,getClassLoader());
+			servletClass = (Class) Class.forName(className, false, getClassLoader());
 		}
 		catch (ClassNotFoundException e)
 		{
-			throw new IllegalArgumentException(L.l(
-					"'{0}' is an unknown class in {1}", className, this), e);
+			throw new IllegalArgumentException(L.l("'{0}' is an unknown class in {1}", className, this), e);
 		}
 
 		return addServlet(servletName, className, servletClass, null);
 	}
 
 	@Override
-	public ServletRegistration.Dynamic addServlet(String servletName,
-			Class<? extends Servlet> servletClass)
+	public ServletRegistration.Dynamic addServlet(String servletName, Class<? extends Servlet> servletClass)
 	{
-		return addServlet(servletName, servletClass.getName(), servletClass,
-				null);
+		return addServlet(servletName, servletClass.getName(), servletClass, null);
 	}
 
 	@Override
-	public ServletRegistration.Dynamic addServlet(String servletName,
-			Servlet servlet)
+	public ServletRegistration.Dynamic addServlet(String servletName, Servlet servlet)
 	{
 		Class cl = servlet.getClass();
 
@@ -553,9 +534,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 	 * 
 	 * @since 3.0
 	 */
-	private ServletRegistration.Dynamic addServlet(String servletName,
-			String servletClassName, Class<? extends Servlet> servletClass,
-			Servlet servlet)
+	private ServletRegistration.Dynamic addServlet(String servletName, String servletClassName, Class<? extends Servlet> servletClass, Servlet servlet)
 	{
 
 		try
@@ -587,9 +566,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 
 			if (log.isDebugEnabled())
 			{
-				log.debug(L
-						.l("dynamic servlet added [name: '{0}', class: '{1}'] (in {2})",
-								servletName, servletClassName, this));
+				log.debug(L.l("dynamic servlet added [name: '{0}', class: '{1}'] (in {2})", servletName, servletClassName, this));
 			}
 
 			return config;
@@ -610,29 +587,27 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 	@Override
 	public Map<String, ServletRegistration> getServletRegistrations()
 	{
-		Map<String, ServletConfigImpl> configMap = _servletManager
-				.getServlets();
+		Map<String, ServletConfigImpl> configMap = _servletManager.getServlets();
 
-		Map<String, ServletRegistration> result = new HashMap<String, ServletRegistration>(
-				configMap);
+		Map<String, ServletRegistration> result = new HashMap<String, ServletRegistration>(configMap);
 
 		return Collections.unmodifiableMap(result);
 	}
 
 	@Override
-	public <T extends Filter> T createFilter(Class<T> filterClass)throws ServletException
+	public <T extends Filter> T createFilter(Class<T> filterClass) throws ServletException
 	{
 		return _beanFactory.createBean(filterClass);
 	}
 
 	@Override
-	public FilterRegistration.Dynamic addFilter(String filterName,String className)
+	public FilterRegistration.Dynamic addFilter(String filterName, String className)
 	{
 		return addFilter(filterName, className, null, null);
 	}
 
 	@Override
-	public FilterRegistration.Dynamic addFilter(String filterName,Class<? extends Filter> filterClass)
+	public FilterRegistration.Dynamic addFilter(String filterName, Class<? extends Filter> filterClass)
 	{
 		return addFilter(filterName, filterClass.getName(), filterClass, null);
 	}
@@ -655,7 +630,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 	 * @param filter
 	 * @return
 	 */
-	private FilterRegistration.Dynamic addFilter(String filterName,String className, Class<? extends Filter> filterClass, Filter filter)
+	private FilterRegistration.Dynamic addFilter(String filterName, String className, Class<? extends Filter> filterClass, Filter filter)
 	{
 
 		try
@@ -715,27 +690,29 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 
 	/**
 	 * 创建一个新的ServletConfigImpl
+	 * 
 	 * @return
 	 */
 	@Override
 	public ServletConfigImpl createNewServletConfig()
 	{
-		ServletConfigImpl config = new ServletConfigImpl(this,this,_servletManager,_servletMapper);
-		
+		ServletConfigImpl config = new ServletConfigImpl(this, this, _servletManager, _servletMapper);
+
 		return config;
 	}
-	
+
 	/**
 	 * 创建一个新的ServletMapping
+	 * 
 	 * @return
 	 */
 	@Override
 	public ServletMapping createNewServletMapping(ServletConfigImpl config)
 	{
 		checkServlerConfig(config);
-		
+
 		ServletMapping servletMapping = new ServletMapping(config);
-		
+
 		servletMapping.setStrictMapping(getStrictMapping());
 
 		return servletMapping;
@@ -743,30 +720,32 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 
 	/**
 	 * 创建一个新的ServletConfigImpl
+	 * 
 	 * @return
 	 */
 	@Override
 	public FilterConfigImpl createNewFilterConfig()
 	{
-		FilterConfigImpl config = new FilterConfigImpl(this,this,_filterManager);
-		
+		FilterConfigImpl config = new FilterConfigImpl(this, this, _filterManager);
+
 		return config;
 	}
-	
+
 	/**
 	 * 创建一个新的ServletMapping
+	 * 
 	 * @return
 	 */
 	@Override
 	public FilterMapping createNewFilterMapping(FilterConfigImpl config)
 	{
 		checkFilterConfig(config);
-		
+
 		FilterMapping servletMapping = new FilterMapping(config);
-		
+
 		return servletMapping;
 	}
-	
+
 	/**
 	 * Adds a servlet-mapping configuration.
 	 */
@@ -780,7 +759,8 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 
 	/**
 	 * Adds a filter configuration.
-	 * @throws ServletException 
+	 * 
+	 * @throws ServletException
 	 */
 	@Override
 	public void addFilter(FilterConfigImpl config) throws ServletException
@@ -789,28 +769,30 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 
 		_filterManager.addFilter(config);
 	}
-	
+
 	/**
 	 * 检查FilterConfigImpl里的webApp,servletContext,FilterManager是否符合本WebApp里的
+	 * 
 	 * @param config
 	 */
 	private void checkFilterConfig(FilterConfigImpl config)
 	{
 		Assert.notNull(config);
-		
+
 		Assert.isTrue(config.getWebApp() == this);
 		Assert.isTrue(config.getServletContext() == this);
 		Assert.isTrue(config.getFilterManager() == this.getFilterManager());
 	}
-	
+
 	/**
 	 * 检查FilterMapping里的各属性是否符合本WebApp的属性
+	 * 
 	 * @param filterMapping
 	 */
 	private void checkFilterMapping(FilterMapping filterMapping)
 	{
 		Assert.notNull(filterMapping);
-		
+
 		checkFilterConfig(filterMapping.getFilterConfig());
 	}
 
@@ -820,14 +802,13 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 	 * 添加一个FilterMapping,相当于添加一个web.xml的<filter-mapping>标签
 	 */
 	@Override
-	public void addFilterMapping(FilterMapping filterMapping)throws ServletException
+	public void addFilterMapping(FilterMapping filterMapping) throws ServletException
 	{
 		checkFilterMapping(filterMapping);
 
 		_filterManager.addFilterMapping(filterMapping);
 
-		
-		//按DispatcherType分类存放
+		// 按DispatcherType分类存放
 		if (filterMapping.isRequest())
 			_dispatchFilterMapper.addFilterMapping(filterMapping);
 
@@ -857,13 +838,10 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 	{
 		Map<String, FilterConfigImpl> configMap = _filterManager.getFilters();
 
-		Map<String, FilterRegistration> result = new HashMap<String, FilterRegistration>(
-				configMap);
+		Map<String, FilterRegistration> result = new HashMap<String, FilterRegistration>(configMap);
 
 		return Collections.unmodifiableMap(result);
 	}
-
-
 
 	/**
 	 * Configures the session manager.
@@ -986,10 +964,9 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 	}
 
 	@Override
-	public <T extends EventListener> T createListener(Class<T> listenerClass)
-			throws ServletException
+	public <T extends EventListener> T createListener(Class<T> listenerClass) throws ServletException
 	{
-	  return _beanFactory.createBean(listenerClass);
+		return _beanFactory.createBean(listenerClass);
 
 	}
 
@@ -998,7 +975,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 	{
 		try
 		{
-			Class listenerClass = Class.forName(className, false,getClassLoader());
+			Class listenerClass = Class.forName(className, false, getClassLoader());
 
 			addListener(listenerClass);
 		}
@@ -1041,11 +1018,14 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 	 */
 	private void addListenerObject(Object listenerObj, boolean start)
 	{
+
+		// ServletContextListener
 		if (listenerObj instanceof ServletContextListener)
 		{
 			ServletContextListener scListener = (ServletContextListener) listenerObj;
 			_webAppListeners.add(scListener);
 
+			//发布 ServletContextEvent#contextInitialized 事件
 			if (start)
 			{
 				ServletContextEvent event = new ServletContextEvent(this);
@@ -1062,38 +1042,40 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 			}
 		}
 
+		// ServletContextAttributeListener
 		if (listenerObj instanceof ServletContextAttributeListener)
 			addAttributeListener((ServletContextAttributeListener) listenerObj);
 
+		// ServletRequestListener
 		if (listenerObj instanceof ServletRequestListener)
 		{
 			_requestListeners.add((ServletRequestListener) listenerObj);
 
-			_requestListenerArray = new ServletRequestListener[_requestListeners
-					.size()];
+			_requestListenerArray = new ServletRequestListener[_requestListeners.size()];
 			_requestListeners.toArray(_requestListenerArray);
 		}
 
+		
+		//ServletRequestAttributeListener
 		if (listenerObj instanceof ServletRequestAttributeListener)
 		{
-			_requestAttributeListeners
-					.add((ServletRequestAttributeListener) listenerObj);
+			_requestAttributeListeners.add((ServletRequestAttributeListener) listenerObj);
 
-			_requestAttributeListenerArray = new ServletRequestAttributeListener[_requestAttributeListeners
-					.size()];
+			_requestAttributeListenerArray = new ServletRequestAttributeListener[_requestAttributeListeners.size()];
 			_requestAttributeListeners.toArray(_requestAttributeListenerArray);
 		}
 
+		//HttpSessionListener
 		if (listenerObj instanceof HttpSessionListener)
 			getSessionManager().addListener((HttpSessionListener) listenerObj);
 
+		//HttpSessionListener
 		if (listenerObj instanceof HttpSessionAttributeListener)
-			getSessionManager().addAttributeListener(
-					(HttpSessionAttributeListener) listenerObj);
+			getSessionManager().addAttributeListener((HttpSessionAttributeListener) listenerObj);
 
+		//HttpSessionActivationListener
 		if (listenerObj instanceof HttpSessionActivationListener)
-			getSessionManager().addActivationListener(
-					(HttpSessionActivationListener) listenerObj);
+			getSessionManager().addActivationListener((HttpSessionActivationListener) listenerObj);
 	}
 
 	/**
@@ -1187,10 +1169,8 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 	public void init()
 	{
 
-		
-		//setAttribute("javax.servlet.context.tempdir", new File(_tempDir));
+		// setAttribute("javax.servlet.context.tempdir", new File(_tempDir));
 		setAttribute(InstanceManager.class.getName(), _beanFactory);
-		
 
 		_characterEncoding = CharacterEncoding.getLocalEncoding();
 
@@ -1204,38 +1184,35 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 			return false;
 	}
 
-	
 	public void parseWebXml() throws ServletException
 	{
 		WebXmlLoader loader = new WebXmlLoader(this);
-		
+
 		try
 		{
 			loader.loadInitParam();
 			loader.loadListener();
-			
+
 			LinkedHashMap<String, FilterConfigImpl> filterConfigMap = loader.praseFilter();
-			
-			for(Entry<String,FilterConfigImpl> e : filterConfigMap.entrySet())
+
+			for (Entry<String, FilterConfigImpl> e : filterConfigMap.entrySet())
 			{
 				addFilter(e.getValue());
 			}
-			
+
 			loader.parseFilterMapping(filterConfigMap);
-			
-			
-			LinkedHashMap<String, ServletConfigImpl> servletConfigMap =  loader.praseServletConfig();
-			
+
+			LinkedHashMap<String, ServletConfigImpl> servletConfigMap = loader.praseServletConfig();
+
 			loader.parseServletMapping(servletConfigMap);
 		}
 		catch (ClassNotFoundException e)
 		{
 			e.printStackTrace();
 		}
-		
+
 	}
-	
-	
+
 	/**
 	 * Start App
 	 */
@@ -1246,10 +1223,9 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 		{
 			parseWebXml();
 
-
 			ServletContextEvent event = new ServletContextEvent(this);
 
-			//初始化Listener
+			// 初始化Listener
 			for (ListenerConfig listener : _listeners)
 			{
 				try
@@ -1310,8 +1286,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 	public ServletContext getContext(String uri)
 	{
 		if (uri == null)
-			throw new IllegalArgumentException(
-					L.l("getContext URI must not be null."));
+			throw new IllegalArgumentException(L.l("getContext URI must not be null."));
 
 		else if (uri.startsWith("/"))
 		{
@@ -1319,15 +1294,10 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 		else if (uri.equals(""))
 			uri = "/";
 		else
-			throw new IllegalArgumentException(L.l(
-					"getContext URI '{0}' must be absolute.", uri));
+			throw new IllegalArgumentException(L.l("getContext URI '{0}' must be absolute.", uri));
 
 		return this;
 	}
-
-
-
-
 
 	/**
 	 * Fills the servlet instance. (Generalize?)
@@ -1342,8 +1312,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 			if (!isEnabled())
 			{
 				if (log.isDebugEnabled())
-					log.debug(this + " is disabled '" + invocation.getRawURI()
-							+ "'");
+					log.debug(this + " is disabled '" + invocation.getRawURI() + "'");
 				int code = HttpServletResponse.SC_SERVICE_UNAVAILABLE;
 				chain = new ErrorFilterChain(code);
 				invocation.setFilterChain(chain);
@@ -1409,9 +1378,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 		}
 	}
 
-
-
-	FilterChain createWebAppFilterChain(FilterChain chain,Invocation invocation, boolean isTop)
+	FilterChain createWebAppFilterChain(FilterChain chain, Invocation invocation, boolean isTop)
 	{
 		// the cache must be outside of the WebAppFilterChain because
 		// the CacheListener in ServletInvocation needs the top to
@@ -1419,7 +1386,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 
 		if (getRequestListeners() != null && getRequestListeners().length > 0)
 		{
-			chain = new WebAppListenerFilterChain(chain, this,getRequestListeners());
+			chain = new WebAppListenerFilterChain(chain, this, getRequestListeners());
 		}
 
 		// TCK: cache needs to be outside because the cache flush conflicts
@@ -1453,52 +1420,43 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 
 	}
 
-
 	/**
 	 * Fills the invocation for a rewrite-dispatch/dispatch request.
 	 */
-	public void buildDispatchInvocation(Invocation invocation)
-			throws ServletException
+	public void buildDispatchInvocation(Invocation invocation) throws ServletException
 	{
 
 		buildInvocation(invocation, _dispatchFilterMapper);
 	}
-	
+
 	/**
 	 * Fills the invocation for a forward request.
 	 */
-	public void buildForwardInvocation(Invocation invocation)
-			throws ServletException
+	public void buildForwardInvocation(Invocation invocation) throws ServletException
 	{
 		buildInvocation(invocation, _forwardFilterMapper);
 	}
-	
-	
+
 	/**
 	 * Fills the invocation for an include request.
 	 */
-	public void buildIncludeInvocation(Invocation invocation)
-			throws ServletException
+	public void buildIncludeInvocation(Invocation invocation) throws ServletException
 	{
 		buildInvocation(invocation, _includeFilterMapper);
 	}
 
-
-
 	/**
 	 * Fills the invocation for an error request.
 	 */
-	public void buildErrorInvocation(Invocation invocation)
-			throws ServletException
+	public void buildErrorInvocation(Invocation invocation) throws ServletException
 	{
 		buildInvocation(invocation, _errorFilterMapper);
 	}
 
-
 	/**
 	 * Fills the invocation for subrequests.
 	 */
-	void buildInvocation(Invocation invocation,FilterMapper filterMapper) throws ServletException
+	void buildInvocation(Invocation invocation, FilterMapper filterMapper) throws ServletException
 	{
 		invocation.setWebApp(this);
 
@@ -1513,7 +1471,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 			}
 			else
 			{
-				chain = _servletMapper.createServletChain(invocation);			//测试了Jetty和Tomcat,就是无法找到合适的Sevlet来匹配,也要调用匹配的Filter
+				chain = _servletMapper.createServletChain(invocation); // 测试了Jetty和Tomcat,就是无法找到合适的Sevlet来匹配,也要调用匹配的Filter
 				chain = filterMapper.buildDispatchChain(invocation, chain);
 
 			}
@@ -1522,14 +1480,12 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 		}
 		catch (Exception e)
 		{
-			log.debug( e.toString(), e);
+			log.debug(e.toString(), e);
 
 			FilterChain chain = new ExceptionFilterChain(e);
 			invocation.setFilterChain(chain);
 		}
 	}
-
-
 
 	/**
 	 * Returns a dispatcher for the named servlet. TODO:其实可以将具体build invocation的时刻延迟到RequestDispatcherImpl里实现?
@@ -1552,8 +1508,8 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 
 		try
 		{
-			//将Invocation的创建延迟到RequestDispatcher的具体的dispatch或forward方法调用时再进行(很情况下不需要所有DispatcherType都创建)
-			disp = new RequestDispatcherImpl(this,rawURI,null,null, null, null);
+			// 将Invocation的创建延迟到RequestDispatcher的具体的dispatch或forward方法调用时再进行(很情况下不需要所有DispatcherType都创建)
+			disp = new RequestDispatcherImpl(this, rawURI, null, null, null, null);
 
 			getDispatcherCache().put(url, disp);
 
@@ -1565,7 +1521,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 		}
 		catch (Exception e)
 		{
-			log.debug( e.toString(), e);
+			log.debug(e.toString(), e);
 
 			return null;
 		}
@@ -1596,13 +1552,13 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 		{
 			Invocation invocation = null;
 
-			FilterChain chain = _servletManager.createServletChain(servletName,invocation);
+			FilterChain chain = _servletManager.createServletChain(servletName, invocation);
 
 			FilterChain includeChain = _includeFilterMapper.buildFilterChain(chain, servletName);
-			
+
 			FilterChain forwardChain = _forwardFilterMapper.buildFilterChain(chain, servletName);
 
-			return new NamedDispatcherImpl(includeChain, forwardChain, null,this);
+			return new NamedDispatcherImpl(includeChain, forwardChain, null, this);
 
 		}
 		catch (Exception e)
@@ -1639,7 +1595,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 		}
 		catch (Exception e)
 		{
-			log.warn( e.toString(), e);
+			log.warn(e.toString(), e);
 		}
 
 		webApp = (WebApp) getContext(fullURI);
@@ -1677,7 +1633,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 		}
 		catch (Exception e)
 		{
-			log.warn( e.toString(), e);
+			log.warn(e.toString(), e);
 		}
 
 		WebApp webApp = (WebApp) getContext(fullURI);
@@ -1807,7 +1763,6 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 	public void stop()
 	{
 
-
 		long beginStop = CurrentTime.getCurrentTime();
 
 		clearCache();
@@ -1856,7 +1811,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 			}
 			catch (Exception e)
 			{
-				log.warn( e.toString(), e);
+				log.warn(e.toString(), e);
 			}
 		}
 	}
@@ -1872,7 +1827,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 		}
 		catch (Throwable e)
 		{
-			log.warn( e.toString(), e);
+			log.warn(e.toString(), e);
 		}
 
 	}
@@ -1974,11 +1929,9 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 	public void log(String message, Throwable e)
 	{
 		if (e != null)
-			log.warn( this + " " + message, e);
+			log.warn(this + " " + message, e);
 		else
 			log.info(this + " " + message);
 	}
-
-
 
 }

@@ -24,7 +24,7 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpServerCodec;
 
-public class HttpSnoopSocketChannelInitializer extends ChannelInitializer<SocketChannel> 
+public class JNettySocketChannelInitializer extends ChannelInitializer<SocketChannel> 
 {
 	private static WebApp webApp;
 	
