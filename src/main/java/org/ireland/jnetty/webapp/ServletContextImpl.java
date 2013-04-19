@@ -30,15 +30,14 @@
 package org.ireland.jnetty.webapp;
 
 import com.caucho.util.L10N;
-import com.caucho.vfs.Path;
 
 import javax.servlet.*;
 import javax.servlet.descriptor.JspConfigDescriptor;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+
 import org.ireland.jnetty.config.ListenerConfig;
-import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.core.io.FileSystemResourceLoader;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
@@ -47,10 +46,7 @@ import org.springframework.util.ObjectUtils;
 import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.net.URLConnection;
 import java.util.*;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * Bare-bones servlet context implementation.
@@ -159,9 +155,9 @@ public abstract class ServletContextImpl implements ServletContext
 	public boolean setInitParameter(String name, String value)
 	{
 
-		if (isActive())
+/*		if (isActive())
 			throw new IllegalStateException(
-					L.l("setInitParameter must be called before the web-app has been initialized, because it's required by the servlet spec."));
+					L.l("setInitParameter must be called before the web-app has been initialized, because it's required by the servlet spec."));*/
 
 		// server/1h12
 		if (_initParams.containsKey(name))
@@ -556,7 +552,7 @@ public abstract class ServletContextImpl implements ServletContext
 
 	protected boolean isActive()
 	{
-		return true;
+		return false;
 	}
 
 	/*

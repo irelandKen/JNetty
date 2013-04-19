@@ -52,7 +52,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -92,7 +91,10 @@ import javax.servlet.http.HttpSessionAttributeListener;
 import javax.servlet.http.HttpSessionEvent;
 import javax.servlet.http.HttpSessionListener;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.tomcat.InstanceManager;
+
 import org.ireland.jnetty.beans.BeanFactory;
 import org.ireland.jnetty.config.ConfigException;
 import org.ireland.jnetty.config.ListenerConfig;
@@ -117,6 +119,7 @@ import org.ireland.jnetty.server.session.SessionManager;
 import org.ireland.jnetty.util.http.Encoding;
 import org.ireland.jnetty.util.http.URIDecoder;
 import org.ireland.jnetty.util.http.UrlMap;
+
 import org.springframework.util.Assert;
 
 import com.caucho.i18n.CharacterEncoding;
@@ -136,7 +139,7 @@ import com.caucho.util.LruCache;
 public class WebApp extends ServletContextImpl implements InvocationBuilder,FilterConfigurator,ServletConfigurator
 {
 	private static final L10N L = new L10N(WebApp.class);
-	private static final Logger log = Logger.getLogger(WebApp.class.getName());
+	private static final Log log = LogFactory.getLog(WebApp.class.getName());
 
 	// The context path is the URL prefix for the web-app
 	private String _contextPath;
@@ -582,9 +585,9 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 					config.setServlet(servlet);
 			}
 
-			if (log.isLoggable(Level.FINE))
+			if (log.isDebugEnabled())
 			{
-				log.fine(L
+				log.debug(L
 						.l("dynamic servlet added [name: '{0}', class: '{1}'] (in {2})",
 								servletName, servletClassName, this));
 			}
@@ -1054,7 +1057,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 				catch (Exception e)
 				{
 					e.printStackTrace();
-					log.log(Level.FINE, e.toString(), e);
+					log.debug(e.toString(), e);
 				}
 			}
 		}
@@ -1185,7 +1188,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 	{
 
 		
-		setAttribute("javax.servlet.context.tempdir", new File(_tempDir));
+		//setAttribute("javax.servlet.context.tempdir", new File(_tempDir));
 		setAttribute(InstanceManager.class.getName(), _beanFactory);
 		
 
@@ -1208,6 +1211,9 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 		
 		try
 		{
+			loader.loadInitParam();
+			loader.loadListener();
+			
 			LinkedHashMap<String, FilterConfigImpl> filterConfigMap = loader.praseFilter();
 			
 			for(Entry<String,FilterConfigImpl> e : filterConfigMap.entrySet())
@@ -1266,7 +1272,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 				}
 				catch (Exception e)
 				{
-					log.log(Level.WARNING, e.toString(), e);
+					log.warn(e.toString(), e);
 				}
 			}
 
@@ -1335,8 +1341,8 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 
 			if (!isEnabled())
 			{
-				if (log.isLoggable(Level.FINE))
-					log.fine(this + " is disabled '" + invocation.getRawURI()
+				if (log.isDebugEnabled())
+					log.debug(this + " is disabled '" + invocation.getRawURI()
 							+ "'");
 				int code = HttpServletResponse.SC_SERVICE_UNAVAILABLE;
 				chain = new ErrorFilterChain(code);
@@ -1394,7 +1400,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 		}
 		catch (Throwable e)
 		{
-			log.log(Level.WARNING, e.toString(), e);
+			log.warn(e.toString(), e);
 
 			FilterChain chain = new ExceptionFilterChain(e);
 			invocation.setFilterChain(chain);
@@ -1516,7 +1522,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 		}
 		catch (Exception e)
 		{
-			log.log(Level.FINE, e.toString(), e);
+			log.debug( e.toString(), e);
 
 			FilterChain chain = new ExceptionFilterChain(e);
 			invocation.setFilterChain(chain);
@@ -1559,7 +1565,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 		}
 		catch (Exception e)
 		{
-			log.log(Level.FINE, e.toString(), e);
+			log.debug( e.toString(), e);
 
 			return null;
 		}
@@ -1601,7 +1607,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 		}
 		catch (Exception e)
 		{
-			log.log(Level.FINEST, e.toString(), e);
+			log.debug(e.toString(), e);
 
 			return null;
 		}
@@ -1633,7 +1639,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 		}
 		catch (Exception e)
 		{
-			log.log(Level.WARNING, e.toString(), e);
+			log.warn( e.toString(), e);
 		}
 
 		webApp = (WebApp) getContext(fullURI);
@@ -1646,8 +1652,8 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 
 		realPath = tail;
 
-		if (log.isLoggable(Level.FINEST))
-			log.finest("real-path " + uri + " -> " + realPath);
+		if (log.isDebugEnabled())
+			log.debug("real-path " + uri + " -> " + realPath);
 
 		_realPathCache.put(uri, realPath);
 
@@ -1671,7 +1677,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 		}
 		catch (Exception e)
 		{
-			log.log(Level.WARNING, e.toString(), e);
+			log.warn( e.toString(), e);
 		}
 
 		WebApp webApp = (WebApp) getContext(fullURI);
@@ -1834,7 +1840,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 				}
 				catch (Exception e)
 				{
-					log.log(Level.WARNING, e.toString(), e);
+					log.warn(e.toString(), e);
 				}
 			}
 		}
@@ -1850,7 +1856,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 			}
 			catch (Exception e)
 			{
-				log.log(Level.WARNING, e.toString(), e);
+				log.warn( e.toString(), e);
 			}
 		}
 	}
@@ -1866,7 +1872,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 		}
 		catch (Throwable e)
 		{
-			log.log(Level.WARNING, e.toString(), e);
+			log.warn( e.toString(), e);
 		}
 
 	}
@@ -1968,7 +1974,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder,Filt
 	public void log(String message, Throwable e)
 	{
 		if (e != null)
-			log.log(Level.WARNING, this + " " + message, e);
+			log.warn( this + " " + message, e);
 		else
 			log.info(this + " " + message);
 	}

@@ -24,12 +24,12 @@ import io.netty.channel.socket.aio.AioServerSocketChannel;
 /**
  * An HTTP server that sends back the content of the received HTTP request in a pretty plaintext form.
  */
-public class HttpSnoopServer
+public class JNettyServer
 {
 
 	public static final String HOST = "127.0.0.1";
 
-	private static final int PORT = 80;
+	private static final int PORT = 81;
 
 	public void run() throws Exception
 	{
@@ -57,7 +57,7 @@ public class HttpSnoopServer
 	public static void main(String[] args) throws Exception
 	{
 
-		new HttpSnoopServer().run();
+		new JNettyServer().run();
 	}
 	
 }

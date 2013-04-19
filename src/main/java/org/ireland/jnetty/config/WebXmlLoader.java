@@ -11,6 +11,8 @@ import javax.servlet.DispatcherType;
 
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.XMLConfiguration;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.ireland.jnetty.dispatch.filter.FilterConfigImpl;
 import org.ireland.jnetty.dispatch.servlet.ServletConfigImpl;
 import org.ireland.jnetty.webapp.WebApp;
@@ -26,10 +28,14 @@ import org.junit.Test;
  */
 public class WebXmlLoader
 {
+	private static final Log log = LogFactory.getLog(WebXmlLoader.class);
+	
 	private static final char SEPARATOR = File.separatorChar;
 	private static final String DATA_FILE_NAME = System.getProperty("user.dir") + SEPARATOR + "src" + SEPARATOR + "main" + SEPARATOR + "webapp" + SEPARATOR
 			+ "WEB-INF" + SEPARATOR + "web.xml";
 
+	private static final String DATA_FILE_NAME2 = System.getProperty("user.dir") + SEPARATOR+ "WEB-INF" + SEPARATOR + "web.xml";
+	
 	private WebApp webApp;
 
 	private XMLConfiguration xmlConfig = null;
@@ -44,7 +50,57 @@ public class WebXmlLoader
 		}
 		catch (ConfigurationException e)
 		{
-			e.printStackTrace();
+			//e.printStackTrace();
+			try
+			{
+				xmlConfig = new XMLConfiguration(DATA_FILE_NAME2);
+			}
+			catch (ConfigurationException e1)
+			{
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
+		}
+		
+		if(log.isDebugEnabled())
+		{
+			log.debug(xmlConfig.getFileName()+" is loaded.");
+		}
+	}
+	
+	/**
+	 * 加载 <context-param> 标签
+	 */
+	public void loadInitParam()
+	{
+		int cnt = 0;
+
+		while (getString("context-param(" + cnt + ").param-name") != null)
+		{
+			String name = getString("context-param(" + cnt + ").param-name");
+			String value = getStringPlain("context-param(" + cnt + ").param-value");
+			
+			webApp.setInitParameter(name, value);
+			
+			cnt++;
+		}
+		
+	}
+	
+	/**
+	 * 加载<listener>标签
+	 */
+	public void loadListener()
+	{
+		int cnt = 0;
+
+		while (getString("listener(" + cnt + ").listener-class") != null)
+		{
+			String name = getString("listener(" + cnt + ").listener-class");
+			
+			webApp.addListener(name);
+			
+			cnt++;
 		}
 	}
 
@@ -270,6 +326,21 @@ public class WebXmlLoader
 	{
 		return getString(node, null);
 	}
+	
+	private String getStringPlain(String node)
+	{
+		String value = null;
+
+		try
+		{
+			value = xmlConfig.getString(node);
+		}
+		catch (Exception ex)
+		{
+		}
+
+		return value;
+	}
 
 	private String getString(String node, String defaultValue)
 	{
@@ -278,6 +349,7 @@ public class WebXmlLoader
 		try
 		{
 			value = xmlConfig.getString(node);
+			value.trim();
 		}
 		catch (Exception ex)
 		{
