@@ -86,6 +86,10 @@ public class JspServletComposite extends HttpServlet implements PeriodicEventLis
 		super.init(config);
 		this.config = config;
 		this.context = config.getServletContext();
+		
+		//
+		Thread.currentThread().setContextClassLoader(context.getClassLoader());
+		
 
 		// Initialize the JSP Runtime Context
 		// Check for a custom Options implementation

@@ -1180,6 +1180,8 @@ public class HttpServletRequestImpl implements HttpServletRequest
 			}
 		}
 		
+		_queryStringExtracted = true;
+		
 		return true;
 	}
 	

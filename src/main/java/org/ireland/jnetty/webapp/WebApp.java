@@ -289,7 +289,6 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder, Fil
 		if (_host == null)
 			throw new IllegalStateException(L.l("{0} requires an active {1}", getClass().getSimpleName()));
 
-		//_classLoader = this.getClass().getClassLoader();
 		initClassLoader();
 
 		_uriDecoder = new URIDecoder();
@@ -378,7 +377,19 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder, Fil
 				
 		
 		//取得应用(系统)类加载器
-		URLClassLoader appClassLoader = (URLClassLoader) _classLoader;
+		URLClassLoader appClassLoader = (URLClassLoader) _classLoader.getParent();
+		
+		System.out.println(appClassLoader);
+		System.out.println("应用(系统)类加载器 的加载路径: ");
+		
+		urls = appClassLoader.getURLs();
+		for(URL url : urls)
+			System.out.println(url);
+				
+		System.out.println("----------------------------");
+		
+		//取得应用(系统)类加载器
+		appClassLoader = (URLClassLoader) _classLoader;
 		
 		System.out.println(appClassLoader);
 		System.out.println("应用(系统)类加载器 的加载路径: ");
