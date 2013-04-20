@@ -31,7 +31,10 @@ package org.ireland.jnetty.webapp;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.URLClassLoader;
+import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -255,6 +258,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder, Fil
 
 	// listeners-----------------------------------------------
 
+	//WebApp的根目录
 	private String _rootDirectory;
 
 	private String _tempDir;
@@ -274,9 +278,6 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder, Fil
 	 */
 	public WebApp(String rootDirectory, String host, String contextPath)
 	{
-
-		_classLoader = this.getClass().getClassLoader();
-
 		_rootDirectory = rootDirectory;
 		_host = host;
 
@@ -287,6 +288,9 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder, Fil
 
 		if (_host == null)
 			throw new IllegalStateException(L.l("{0} requires an active {1}", getClass().getSimpleName()));
+
+		//_classLoader = this.getClass().getClassLoader();
+		initClassLoader();
 
 		_uriDecoder = new URIDecoder();
 
@@ -299,13 +303,99 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder, Fil
 
 		initConstructor();
 	}
+	
+	/**
+	 * 使用自定义的类加载器,将/WEB-INF/classes和/WEB-INF/lib/*.jar加入类加载器的classPath
+	 */
+	protected void initClassLoader()
+	{
+		//"/WEB-INF/classes"
+		URL classPath = null;
+		try
+		{
+			classPath = super.getResource("/WEB-INF/classes");
+		}
+		catch (MalformedURLException e)
+		{
+			e.printStackTrace();
+		}
+		
+		List<URL> urls = new ArrayList<URL>();
+		
+		if(classPath != null)
+			urls.add(classPath);
+		
+		//"/WEB-INF/lib"
+		File libPath = new File(getRealPath("/WEB-INF/lib"));
+		
+		if(libPath.isDirectory())
+		{
+			for(File file : libPath.listFiles())
+			{
+				if(file.getPath().endsWith(".jar"))
+				{
+					try
+					{
+						URL url = file.toURI().toURL();
+						urls.add(url);
+					}
+					catch (MalformedURLException e)
+					{
+						e.printStackTrace();
+					}
+				}
+			}
+		}
+		
+
+		_classLoader = new URLClassLoader(urls.toArray(new URL[urls.size()]), this.getClassLoader());
+		
+		
+		if(log.isDebugEnabled())
+			displayClassLoader();
+	}
+	
+	void displayClassLoader()
+	{
+		System.out.println("BootstrapClassLoader 的加载路径: ");
+		
+		URL[] urls = sun.misc.Launcher.getBootstrapClassPath().getURLs();
+		for(URL url : urls)
+			System.out.println(url);
+		System.out.println("----------------------------");
+				
+		//取得扩展类加载器
+		URLClassLoader extClassLoader = (URLClassLoader)ClassLoader.getSystemClassLoader().getParent();
+
+		System.out.println(extClassLoader);
+		System.out.println("扩展类加载器 的加载路径: ");
+		
+		urls = extClassLoader.getURLs();
+		for(URL url : urls)
+			System.out.println(url);
+		
+		System.out.println("----------------------------");
+				
+		
+		//取得应用(系统)类加载器
+		URLClassLoader appClassLoader = (URLClassLoader) _classLoader;
+		
+		System.out.println(appClassLoader);
+		System.out.println("应用(系统)类加载器 的加载路径: ");
+		
+		urls = appClassLoader.getURLs();
+		for(URL url : urls)
+			System.out.println(url);
+				
+		System.out.println("----------------------------");
+	}
 
 	private void initConstructor()
 	{
 
 		// Path _rootDirectory = getRootDirectory();
 
-		_beanFactory = new BeanFactory();
+		_beanFactory = new BeanFactory(getClassLoader());
 
 		_servletManager = new ServletManager(this);
 		_servletMapper = new ServletMapper(this, this, _servletManager);
@@ -380,6 +470,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder, Fil
 	/**
 	 * Gets the environment class loader.
 	 */
+	@Override
 	public ClassLoader getClassLoader()
 	{
 		if (_classLoader == null)

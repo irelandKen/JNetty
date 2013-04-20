@@ -47,110 +47,127 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Represents the next filter in a filter chain.  The final filter will
- * be the servlet itself.
+ * Represents the next filter in a filter chain. The final filter will be the servlet itself.
  */
-public class ContextFilterChain implements FilterChain {
-  private static final Logger log
-    = Logger.getLogger(ContextFilterChain.class.getName());
-  
-  // Next filter chain
-  private FilterChain _next;
-  
-  // class loader
-  private ClassLoader _classLoader;
-  // transaction manager
-  private TransactionManagerImpl _tm;
-  // error page manager
-  private ErrorPageManager _errorPageManager;
+public class ContextFilterChain implements FilterChain
+{
+	private static final Logger log = Logger.getLogger(ContextFilterChain.class.getName());
 
-  /**
-   * Creates a new FilterChainFilter.
-   *
-   * @param next the next filterChain
-   * @param filter the user's filter
-   */
-  public ContextFilterChain(FilterChain next)
-  {
-    _next = next;
-    
-    _classLoader = Thread.currentThread().getContextClassLoader();
+	// Next filter chain
+	private FilterChain _next;
 
-    try {
-      _tm = TransactionManagerImpl.getInstance();
-    } catch (Throwable e) {
-      log.log(Level.WARNING, e.toString(), e);
-    }
-  }
+	// class loader
+	private ClassLoader _classLoader;
+	// transaction manager
+	private TransactionManagerImpl _tm;
+	// error page manager
+	private ErrorPageManager _errorPageManager;
 
-  /**
-   * Sets the error page manager.
-   */
-  public void setErrorPageManager(ErrorPageManager errorPageManager)
-  {
-    _errorPageManager = errorPageManager;
-  }
-  
-  /**
-   * Invokes the next filter in the chain or the final servlet at
-   * the end of the chain.
-   *
-   * @param request the servlet request
-   * @param response the servlet response
-   * @since Servlet 2.3
-   */
-  @Override
-  public void doFilter(ServletRequest request,
-                       ServletResponse response)
-    throws ServletException, IOException
-  {
-    Thread thread = Thread.currentThread();
-    ClassLoader oldLoader = thread.getContextClassLoader();
-    
-    try {
-      thread.setContextClassLoader(_classLoader);
-      _next.doFilter(request, response);
-    } catch (ServletException e) {
-      if (_errorPageManager != null)
-        _errorPageManager.sendServletError(e, request, response);
-      else
-        throw e;
-    } catch (IOException e) {
-      if (_errorPageManager != null)
-        _errorPageManager.sendServletError(e, request, response);
-      else
-        throw e;
-    } catch (RuntimeException e) {
-      if (_errorPageManager != null)
-        _errorPageManager.sendServletError(e, request, response);
-      else
-        throw e;
-    } finally {
-      // needed for things like closing the session
-      if (request instanceof AbstractHttpRequest)
-        ((AbstractHttpRequest) request).finishInvocation();
+	/**
+	 * Creates a new FilterChainFilter.
+	 * 
+	 * @param next
+	 *            the next filterChain
+	 * @param filter
+	 *            the user's filter
+	 */
+	public ContextFilterChain(FilterChain next)
+	{
+		_next = next;
 
-      if (_tm != null) {
-        try {
-          TransactionImpl transaction = _tm.getCurrent();
-          if (transaction.getStatus() != Status.STATUS_NO_TRANSACTION) {
-            log.warning("Transaction not properly closed for " + ((HttpServletRequest) request).getRequestURL());
-          }
-          transaction.close();
-        } catch (Throwable e) {
-          log.log(Level.WARNING, e.getMessage(), e);
-        }
-      }
-      
-      if (response instanceof AbstractHttpResponse)
-        ((AbstractHttpResponse) response).finishInvocation();
+		_classLoader = Thread.currentThread().getContextClassLoader();
 
-      thread.setContextClassLoader(oldLoader);
-    }
-  }
+		try
+		{
+			_tm = TransactionManagerImpl.getInstance();
+		}
+		catch (Throwable e)
+		{
+			log.log(Level.WARNING, e.toString(), e);
+		}
+	}
 
-  public String toString()
-  {
-    return getClass().getSimpleName() + "[" + _next + "]";
-  }    
+	/**
+	 * Sets the error page manager.
+	 */
+	public void setErrorPageManager(ErrorPageManager errorPageManager)
+	{
+		_errorPageManager = errorPageManager;
+	}
+
+	/**
+	 * Invokes the next filter in the chain or the final servlet at the end of the chain.
+	 * 
+	 * @param request
+	 *            the servlet request
+	 * @param response
+	 *            the servlet response
+	 * @since Servlet 2.3
+	 */
+	@Override
+	public void doFilter(ServletRequest request, ServletResponse response) throws ServletException, IOException
+	{
+		Thread thread = Thread.currentThread();
+		ClassLoader oldLoader = thread.getContextClassLoader();
+
+		try
+		{
+			thread.setContextClassLoader(_classLoader);
+			_next.doFilter(request, response);
+		}
+		catch (ServletException e)
+		{
+			if (_errorPageManager != null)
+				_errorPageManager.sendServletError(e, request, response);
+			else
+				throw e;
+		}
+		catch (IOException e)
+		{
+			if (_errorPageManager != null)
+				_errorPageManager.sendServletError(e, request, response);
+			else
+				throw e;
+		}
+		catch (RuntimeException e)
+		{
+			if (_errorPageManager != null)
+				_errorPageManager.sendServletError(e, request, response);
+			else
+				throw e;
+		}
+		finally
+		{
+			// needed for things like closing the session
+			if (request instanceof AbstractHttpRequest)
+				((AbstractHttpRequest) request).finishInvocation();
+
+			if (_tm != null)
+			{
+				try
+				{
+					TransactionImpl transaction = _tm.getCurrent();
+					if (transaction.getStatus() != Status.STATUS_NO_TRANSACTION)
+					{
+						log.warning("Transaction not properly closed for " + ((HttpServletRequest) request).getRequestURL());
+					}
+					transaction.close();
+				}
+				catch (Throwable e)
+				{
+					log.log(Level.WARNING, e.getMessage(), e);
+				}
+			}
+
+			if (response instanceof AbstractHttpResponse)
+				((AbstractHttpResponse) response).finishInvocation();
+
+			thread.setContextClassLoader(oldLoader);
+		}
+	}
+
+	public String toString()
+	{
+		return getClass().getSimpleName() + "[" + _next + "]";
+	}
 }

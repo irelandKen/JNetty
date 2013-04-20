@@ -400,7 +400,7 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 	{
 		_servletClassName = servletClassName;
 
-		ClassLoader loader = Thread.currentThread().getContextClassLoader();
+		ClassLoader loader = _webApp.getClassLoader();
 
 		try
 		{
@@ -437,8 +437,7 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 		{
 			try
 			{
-				Thread thread = Thread.currentThread();
-				ClassLoader loader = thread.getContextClassLoader();
+				ClassLoader loader = _webApp.getClassLoader();
 
 				_servletClass = (Class<? extends Servlet>) Class.forName(calculateServletClassName(), false, loader);
 			}

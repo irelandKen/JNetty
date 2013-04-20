@@ -17,6 +17,8 @@ package org.ireland.jnetty;
 
 
 import java.io.File;
+import java.net.URL;
+import java.net.URLClassLoader;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -37,9 +39,9 @@ public class JNettySocketChannelInitializer extends ChannelInitializer<SocketCha
 	private static WebApp webApp;
 	
 	static 
-	{
-    	
-    	String rootDirectory = log.isDebugEnabled() ? System.getProperty("user.dir") + SLASH + "src" + SLASH + "main" + SLASH + "webapp" : System.getProperty("user.dir");
+	{	
+    	//String rootDirectory = log.isDebugEnabled() ? System.getProperty("user.dir") + SLASH + "src" + SLASH + "main" + SLASH + "webapp" : System.getProperty("user.dir");
+    	String rootDirectory = System.getProperty("user.dir");
     	
     	String host = "127.0.0.1";
     	

@@ -8,6 +8,15 @@ import org.apache.tomcat.InstanceManager;
 
 public class BeanFactory implements InstanceManager
 {
+	final ClassLoader _classLoader;
+	
+	public BeanFactory(ClassLoader classLoader)
+	{
+		super();
+		this._classLoader = classLoader;
+	}
+
+
 	/**
 	 * Creates an object, but does not register the component with webbeans.
 	 */
@@ -34,7 +43,7 @@ public class BeanFactory implements InstanceManager
 	@Override
 	public Object newInstance(String className) throws IllegalAccessException, InvocationTargetException, NamingException, InstantiationException,ClassNotFoundException
 	{
-		return Class.forName(className).newInstance();
+		return newInstance(className, _classLoader);
 	}
 
 	@Override
