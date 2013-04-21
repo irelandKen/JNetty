@@ -31,6 +31,8 @@ package org.ireland.jnetty.dispatch.filterchain;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.servlet.FilterChain;
 import javax.servlet.ServletContext;
@@ -46,119 +48,132 @@ import com.caucho.server.http.AbstractCauchoRequest;
 import com.caucho.server.http.CauchoRequestWrapper;
 
 /**
- * Represents the next filter in a filter chain.  The final filter will
- * be the servlet itself.
+ * Represents the next filter in a filter chain. The final filter will be the servlet itself.
  */
-public class DispatchFilterChain implements FilterChain {
-  // Next filter chain
-  private FilterChain _next;
+public class DispatchFilterChain implements FilterChain
+{
+	// Next filter chain
+	private FilterChain _next;
 
-  // app
-  private WebApp _webApp;
-  // class loader
-  private ClassLoader _classLoader;
+	// app
+	private WebApp _webApp;
+	// class loader
+	private ClassLoader _classLoader;
 
-  private ServletRequestListener []_requestListeners;
-  
-  /**
-   * Creates a new FilterChainFilter.
-   *
-   * @param next the next filterChain
-   * @param webApp the webApp
-   */
-  public DispatchFilterChain(FilterChain next,
-                             WebApp webApp)
-  {
-    _next = next;
-    _webApp = webApp;
-    
-    if (webApp != null) {
-      _classLoader = webApp.getClassLoader();
-      _requestListeners = webApp.getRequestListeners();
-    } else {
-      // server/1d01
-      _classLoader = Thread.currentThread().getContextClassLoader();
-      _requestListeners = new ServletRequestListener[0];
-    }
-  }
-  
-  /**
-   * Invokes the next filter in the chain or the final servlet at
-   * the end of the chain.
-   *
-   * @param request the servlet request
-   * @param response the servlet response
-   * @since Servlet 2.3
-   */
-  @Override
-  public void doFilter(ServletRequest request,
-                       ServletResponse response)
-    throws ServletException, IOException
-  {
-    Thread thread = Thread.currentThread();
-    ClassLoader oldLoader = thread.getContextClassLoader();
-    
-    // server/10gf, server/10gv - listeners on web-app change
-    ServletContext webApp;
-    if (request instanceof CauchoRequestWrapper) {
-      CauchoRequestWrapper cReq = (CauchoRequestWrapper) request;
-    
-      webApp = cReq.getRequest().getServletContext();
-    }
-    else if (request instanceof AbstractCauchoRequest) {
-      // server/10gf
-      AbstractCauchoRequest cReq = (AbstractCauchoRequest) request;
-    
-      if (cReq.getRequest() != null)
-        webApp = cReq.getRequest().getServletContext();
-      else
-        webApp = cReq.getServletContext();
-    }
-    else {
-      webApp = request.getServletContext();
-    }
-    
-    try {
-      thread.setContextClassLoader(_classLoader);
+	private List<ServletRequestListener> _requestListeners;
 
-      if (webApp != _webApp) {
-        for (int i = 0; i < _requestListeners.length; i++) {
-          ServletRequestEvent event
-            = new ServletRequestEvent(_webApp, request);
-          
-          _requestListeners[i].requestInitialized(event);
-        }
-      }
-      
-      _next.doFilter(request, response);
-    } catch (FileNotFoundException e) {
-      // server/106c
-      /*
-      log.log(Level.FINER, e.toString(), e);
-      
-      HttpServletResponse res = (HttpServletResponse) response;
-      
-      res.sendError(404);
-      */
-      
-      throw e;
-    } finally {
-      if (webApp != _webApp) {
-        for (int i = _requestListeners.length - 1; i >= 0; i--) {
-          ServletRequestEvent event
-            = new ServletRequestEvent(_webApp, request);
-          
-          _requestListeners[i].requestDestroyed(event);
-        }
-      }
+	/**
+	 * Creates a new FilterChainFilter.
+	 * 
+	 * @param next
+	 *            the next filterChain
+	 * @param webApp
+	 *            the webApp
+	 */
+	public DispatchFilterChain(FilterChain next, WebApp webApp)
+	{
+		_next = next;
+		_webApp = webApp;
 
-      thread.setContextClassLoader(oldLoader);
-    }
-  }
+		if (webApp != null)
+		{
+			_classLoader = webApp.getClassLoader();
+			_requestListeners = webApp.getRequestListeners();
+		}
+		else
+		{
+			// server/1d01
+			_classLoader = Thread.currentThread().getContextClassLoader();
+			_requestListeners = new ArrayList<ServletRequestListener>();
+		}
+	}
 
-  @Override
-  public String toString()
-  {
-    return getClass().getSimpleName() + "[" + _next + "]";
-  }
+	/**
+	 * Invokes the next filter in the chain or the final servlet at the end of the chain.
+	 * 
+	 * @param request
+	 *            the servlet request
+	 * @param response
+	 *            the servlet response
+	 * @since Servlet 2.3
+	 */
+	@Override
+	public void doFilter(ServletRequest request, ServletResponse response) throws ServletException, IOException
+	{
+		Thread thread = Thread.currentThread();
+		ClassLoader oldLoader = thread.getContextClassLoader();
+
+		// server/10gf, server/10gv - listeners on web-app change
+		ServletContext webApp;
+		if (request instanceof CauchoRequestWrapper)
+		{
+			CauchoRequestWrapper cReq = (CauchoRequestWrapper) request;
+
+			webApp = cReq.getRequest().getServletContext();
+		}
+		else if (request instanceof AbstractCauchoRequest)
+		{
+			// server/10gf
+			AbstractCauchoRequest cReq = (AbstractCauchoRequest) request;
+
+			if (cReq.getRequest() != null)
+				webApp = cReq.getRequest().getServletContext();
+			else
+				webApp = cReq.getServletContext();
+		}
+		else
+		{
+			webApp = request.getServletContext();
+		}
+
+		try
+		{
+			thread.setContextClassLoader(_classLoader);
+
+			if (webApp != _webApp)
+			{
+				for (int i = 0; i < _requestListeners.size(); i++)
+				{
+					ServletRequestEvent event = new ServletRequestEvent(_webApp, request);
+
+					_requestListeners.get(i).requestInitialized(event);
+				}
+			}
+
+			_next.doFilter(request, response);
+		}
+		catch (FileNotFoundException e)
+		{
+			// server/106c
+			/*
+			 * log.log(Level.FINER, e.toString(), e);
+			 * 
+			 * HttpServletResponse res = (HttpServletResponse) response;
+			 * 
+			 * res.sendError(404);
+			 */
+
+			throw e;
+		}
+		finally
+		{
+			if (webApp != _webApp)
+			{
+				for (int i = _requestListeners.size() - 1; i >= 0; i--)
+				{
+					ServletRequestEvent event = new ServletRequestEvent(_webApp, request);
+
+					_requestListeners.get(i).requestDestroyed(event);
+				}
+			}
+
+			thread.setContextClassLoader(oldLoader);
+		}
+	}
+
+	@Override
+	public String toString()
+	{
+		return getClass().getSimpleName() + "[" + _next + "]";
+	}
 }

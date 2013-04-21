@@ -42,56 +42,59 @@ import java.io.IOException;
  * 用于返回错误结果的FilterChain
  * 
  */
-public class ErrorFilterChain implements FilterChain {
-  // servlet
-  private int _errorCode;
-  private String _message;
+public class ErrorFilterChain implements FilterChain
+{
+	// servlet
+	private int _errorCode;
+	private String _message;
 
-  /**
-   * Create the error filter chain servlet.
-   *
-   * @param errorCode the HTTP error code
-   */
-  public ErrorFilterChain(int errorCode)
-  {
-    _errorCode = errorCode;
-  }
+	/**
+	 * Create the error filter chain servlet.
+	 * 
+	 * @param errorCode
+	 *            the HTTP error code
+	 */
+	public ErrorFilterChain(int errorCode)
+	{
+		_errorCode = errorCode;
+	}
 
-  /**
-   * Create the error filter chain servlet.
-   *
-   * @param errorCode the HTTP error code
-   */
-  public ErrorFilterChain(int errorCode, String message)
-  {
-    _errorCode = errorCode;
-    _message = message;
-  }
+	/**
+	 * Create the error filter chain servlet.
+	 * 
+	 * @param errorCode
+	 *            the HTTP error code
+	 */
+	public ErrorFilterChain(int errorCode, String message)
+	{
+		_errorCode = errorCode;
+		_message = message;
+	}
 
-  /**
-   * Invokes the final servlet at the end of the chain.
-   *
-   * @param request the servlet request
-   * @param response the servlet response
-   *
-   * @since Servlet 2.3
-   */
-  @Override
-  public void doFilter(ServletRequest request,
-                       ServletResponse response)
-    throws ServletException, IOException
-  {
-    HttpServletResponse res = (HttpServletResponse) response;
+	/**
+	 * Invokes the final servlet at the end of the chain.
+	 * 
+	 * @param request
+	 *            the servlet request
+	 * @param response
+	 *            the servlet response
+	 * 
+	 * @since Servlet 2.3
+	 */
+	@Override
+	public void doFilter(ServletRequest request, ServletResponse response) throws ServletException, IOException
+	{
+		HttpServletResponse res = (HttpServletResponse) response;
 
-    if (_message != null)
-      res.sendError(_errorCode, _message);
-    else
-      res.sendError(_errorCode);
-  }
+		if (_message != null)
+			res.sendError(_errorCode, _message);
+		else
+			res.sendError(_errorCode);
+	}
 
-  @Override
-  public String toString()
-  {
-    return getClass().getSimpleName() + "[" + _errorCode + "]";
-  }
+	@Override
+	public String toString()
+	{
+		return getClass().getSimpleName() + "[" + _errorCode + "]";
+	}
 }

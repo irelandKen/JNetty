@@ -39,56 +39,60 @@ import java.io.IOException;
 
 /**
  * Represents the final servlet in a filter chain.
+ * 用于表达重定向的FilterChain
  */
-public class RedirectFilterChain implements FilterChain {
-  // servlet
-  private String _url;
-  private String _queryString;
+public class RedirectFilterChain implements FilterChain
+{
+	// servlet
+	private String _url;
+	private String _queryString;
 
-  /**
-   * Create the redirect filter chain servlet.
-   *
-   * @param url the URL to redirect to.
-   */
-  public RedirectFilterChain(String url)
-  {
-    _url = url;
-  }
+	/**
+	 * Create the redirect filter chain servlet.
+	 * 
+	 * @param url
+	 *            the URL to redirect to.
+	 */
+	public RedirectFilterChain(String url)
+	{
+		_url = url;
+	}
 
-  /**
-   * Create the redirect filter chain servlet.
-   *
-   * @param url the URL to redirect to.
-   */
-  public RedirectFilterChain(String url, String queryString)
-  {
-    _url = url;
-    _queryString = queryString;
-  }
-  
-  /**
-   * Invokes the final servlet at the end of the chain.
-   *
-   * @param request the servlet request
-   * @param response the servlet response
-   *
-   * @since Servlet 2.3
-   */
-  public void doFilter(ServletRequest request,
-                       ServletResponse response)
-    throws ServletException, IOException
-  {
-    HttpServletRequest req = (HttpServletRequest) request;
-    HttpServletResponse res = (HttpServletResponse) response;
+	/**
+	 * Create the redirect filter chain servlet.
+	 * 
+	 * @param url
+	 *            the URL to redirect to.
+	 */
+	public RedirectFilterChain(String url, String queryString)
+	{
+		_url = url;
+		_queryString = queryString;
+	}
 
-    String queryString = _queryString;
+	/**
+	 * Invokes the final servlet at the end of the chain.
+	 * 
+	 * @param request
+	 *            the servlet request
+	 * @param response
+	 *            the servlet response
+	 * 
+	 * @since Servlet 2.3
+	 */
+	public void doFilter(ServletRequest request, ServletResponse response) throws ServletException, IOException
+	{
+		HttpServletRequest req = (HttpServletRequest) request;
+		HttpServletResponse res = (HttpServletResponse) response;
 
-    if (queryString == null)
-      queryString = req.getQueryString();
+		String queryString = _queryString;
 
-    if (queryString != null && _url.indexOf('?') < 0)
-      res.sendRedirect(res.encodeURL(_url + '?' + queryString));
-    else
-      res.sendRedirect(res.encodeURL(_url));
-  }
+		if (queryString == null)
+			queryString = req.getQueryString();
+
+		if (queryString != null && _url.indexOf('?') < 0)
+			res.sendRedirect(res.encodeURL(_url + '?' + queryString));
+		else
+			res.sendRedirect(res.encodeURL(_url));
+	}
 }

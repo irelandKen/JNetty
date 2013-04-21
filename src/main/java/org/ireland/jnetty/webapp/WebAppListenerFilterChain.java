@@ -53,6 +53,7 @@ import javax.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -69,7 +70,7 @@ public class WebAppListenerFilterChain implements CauchoFilterChain {
   // app
   private WebApp _webApp;
 
-  private ServletRequestListener []_requestListeners;
+  private List<ServletRequestListener> _requestListeners;
 
   /**
    * Creates a new FilterChainFilter.
@@ -79,7 +80,7 @@ public class WebAppListenerFilterChain implements CauchoFilterChain {
    */
   public WebAppListenerFilterChain(FilterChain next, 
                                    WebApp webApp,
-                                   ServletRequestListener []requestListeners)
+                                   List<ServletRequestListener> requestListeners)
   {
     _next = next;
     _webApp = webApp;
@@ -108,19 +109,19 @@ public class WebAppListenerFilterChain implements CauchoFilterChain {
     throws ServletException, IOException
   {
     try {
-      for (int i = 0; i < _requestListeners.length; i++) {
+      for (int i = 0; i < _requestListeners.size(); i++) {
         ServletRequestEvent event = new ServletRequestEvent(_webApp, request);
 
-        _requestListeners[i].requestInitialized(event);
+        _requestListeners.get(i).requestInitialized(event);
       }
 
       _next.doFilter(request, response);
     } finally {
-      for (int i = _requestListeners.length - 1; i >= 0; i--) {
+      for (int i = _requestListeners.size() - 1; i >= 0; i--) {
         try {
           ServletRequestEvent event = new ServletRequestEvent(_webApp, request);
 
-          _requestListeners[i].requestDestroyed(event);
+          _requestListeners.get(i).requestDestroyed(event);
         } catch (Throwable e) {
           log.log(Level.WARNING, e.toString(), e);
         }

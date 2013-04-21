@@ -371,8 +371,8 @@ public class RequestDispatcherImpl implements RequestDispatcher
 
 		if (type == DispatcherType.ERROR)
 			subRequest = new ErrorRequest(parentReq, parentRes, invocation);
-		else if (type == DispatcherType.REQUEST)
-			subRequest = new DispatchRequest(parentReq, parentRes, invocation);
+/*		else if (type == DispatcherType.REQUEST)
+			subRequest = new DispatchRequest(parentReq, parentRes, invocation);*/
 		else
 			subRequest = new ForwardRequest(parentReq, parentRes, invocation);
 

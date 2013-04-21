@@ -37,49 +37,47 @@ import java.io.IOException;
 /**
  * Represents the final servlet in a filter chain.
  */
-public class ExceptionFilterChain implements FilterChain {
-  // servlet
-  private RuntimeException _runtimeException;
-  private ServletException _servletException;
+public class ExceptionFilterChain implements FilterChain
+{
+	// servlet
+	private RuntimeException _runtimeException;
+	private ServletException _servletException;
 
-  /**
-   * Create the exception filter chain.
-   *
-   * @param exception the exception to throw
-   */
-  public ExceptionFilterChain(Throwable exn)
-  {
-    if (exn instanceof RuntimeException)
-      _runtimeException = (RuntimeException) exn;
-    else if (exn instanceof ServletException)
-      _servletException = (ServletException) exn;
-    else
-      _servletException = new ServletException(exn);
-  }
-  
-  /**
-   * Invokes the final servlet at the end of the chain.
-   *
-   * @param request the servlet request
-   * @param response the servlet response
-   */
-  public void doFilter(ServletRequest request,
-                       ServletResponse response)
-    throws ServletException, IOException
-  {
-    if (_runtimeException != null)
-      throw _runtimeException;
-    else
-      throw _servletException;
-  }
+	/**
+	 * Create the exception filter chain.
+	 * 
+	 * @param exception
+	 *            the exception to throw
+	 */
+	public ExceptionFilterChain(Throwable exn)
+	{
+		if (exn instanceof RuntimeException)
+			_runtimeException = (RuntimeException) exn;
+		else if (exn instanceof ServletException)
+			_servletException = (ServletException) exn;
+		else
+			_servletException = new ServletException(exn);
+	}
 
-  @Override
-  public String toString()
-  {
-    return (getClass().getSimpleName()
-            + "[" + (_runtimeException != null
-                     ? _runtimeException
-                     : _servletException)
-            + "]");
-  }
+	/**
+	 * Invokes the final servlet at the end of the chain.
+	 * 
+	 * @param request
+	 *            the servlet request
+	 * @param response
+	 *            the servlet response
+	 */
+	public void doFilter(ServletRequest request, ServletResponse response) throws ServletException, IOException
+	{
+		if (_runtimeException != null)
+			throw _runtimeException;
+		else
+			throw _servletException;
+	}
+
+	@Override
+	public String toString()
+	{
+		return (getClass().getSimpleName() + "[" + (_runtimeException != null ? _runtimeException : _servletException) + "]");
+	}
 }

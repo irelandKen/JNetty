@@ -139,7 +139,7 @@ import com.caucho.util.LruCache;
 /**
  * Resin's webApp implementation.
  */
-public class WebApp extends ServletContextImpl implements InvocationBuilder, FilterConfigurator, ServletConfigurator
+public class WebApp extends ServletContextImpl implements FilterConfigurator, ServletConfigurator
 {
 	private static final L10N L = new L10N(WebApp.class);
 	private static final Log log = LogFactory.getLog(WebApp.class.getName());
@@ -237,22 +237,20 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder, Fil
 
 	// listeners------------
 	// List of all the listeners.
-	private ArrayList<ListenerConfig> _listeners = new ArrayList<ListenerConfig>();
+	private List<ListenerConfig> _listeners = new ArrayList<ListenerConfig>();
 
 	// List of the ServletContextListeners from the configuration file
-	private ArrayList<ServletContextListener> _contextListeners = new ArrayList<ServletContextListener>();
+	private List<ServletContextListener> _contextListeners = new ArrayList<ServletContextListener>();
 
 	// List of the ServletContextAttributeListeners from the configuration file
-	private ArrayList<ServletContextAttributeListener> _contextAttributeListeners = new ArrayList<ServletContextAttributeListener>();
+	private List<ServletContextAttributeListener> _contextAttributeListeners = new ArrayList<ServletContextAttributeListener>();
 
 	// List of the ServletRequestListeners from the configuration file
-	private ArrayList<ServletRequestListener> _requestListeners = new ArrayList<ServletRequestListener>();
+	private List<ServletRequestListener> _requestListeners = new ArrayList<ServletRequestListener>();
 
-	@Deprecated
-	private ServletRequestListener[] _requestListenerArray = new ServletRequestListener[0];
 
 	// List of the ServletRequestAttributeListeners from the configuration file
-	private ArrayList<ServletRequestAttributeListener> _requestAttributeListeners = new ArrayList<ServletRequestAttributeListener>();
+	private List<ServletRequestAttributeListener> _requestAttributeListeners = new ArrayList<ServletRequestAttributeListener>();
 
 	@Deprecated
 	private ServletRequestAttributeListener[] _requestAttributeListenerArray = new ServletRequestAttributeListener[0];
@@ -1157,9 +1155,6 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder, Fil
 		if (listenerObj instanceof ServletRequestListener)
 		{
 			_requestListeners.add((ServletRequestListener) listenerObj);
-
-			_requestListenerArray = new ServletRequestListener[_requestListeners.size()];
-			_requestListeners.toArray(_requestListenerArray);
 		}
 
 		
@@ -1188,10 +1183,9 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder, Fil
 	/**
 	 * Returns the request listeners.
 	 */
-	@Deprecated
-	public ServletRequestListener[] getRequestListeners()
+	public List<ServletRequestListener> getRequestListeners()
 	{
-		return _requestListenerArray;
+		return _requestListeners;
 	}
 
 	/**
@@ -1462,107 +1456,9 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder, Fil
 		return this;
 	}
 
-	/**
-	 * Fills the servlet instance. (Generalize?)
-	 */
-	@Override
-	public Invocation buildInvocation(Invocation invocation)
-	{
-		try
-		{
-			FilterChain chain = null;
+	
 
-			if (!isEnabled())
-			{
-				if (log.isDebugEnabled())
-					log.debug(this + " is disabled '" + invocation.getRawURI() + "'");
-				int code = HttpServletResponse.SC_SERVICE_UNAVAILABLE;
-				chain = new ErrorFilterChain(code);
-				invocation.setFilterChain(chain);
 
-				return invocation;
-			}
-			else
-			{
-				FilterChainEntry entry = null;
-
-				// jsp/1910 - can't cache jsp_precompile
-				String query = invocation.getQueryString();
-
-				boolean isCache = true;
-				if (query != null && query.indexOf("jsp_precompile") >= 0)
-					isCache = false;
-
-				if (isCache)
-					entry = _filterChainCache.get(invocation.getContextURI());
-
-				if (entry != null)
-				{
-					chain = entry.getFilterChain();
-					invocation.setServletName(entry.getServletName());
-
-					if (!entry.isAsyncSupported())
-						invocation.clearAsyncSupported();
-
-					invocation.setMultipartConfig(entry.getMultipartConfig());
-				}
-				else
-				{
-					chain = _servletMapper.createServletChain(invocation);
-
-					// server/13s[o-r]
-					_dispatchFilterMapper.buildDispatchChain(invocation, chain);
-					chain = invocation.getFilterChain();
-
-					entry = new FilterChainEntry(chain, invocation);
-					chain = entry.getFilterChain();
-
-					if (isCache)
-						_filterChainCache.put(invocation.getContextURI(), entry);
-				}
-
-				chain = createWebAppFilterChain(chain, invocation, true);
-
-				invocation.setFilterChain(chain);
-				invocation.setPathInfo(entry.getPathInfo());
-				invocation.setServletPath(entry.getServletPath());
-			}
-
-			return invocation;
-		}
-		catch (Throwable e)
-		{
-			log.warn(e.toString(), e);
-
-			FilterChain chain = new ExceptionFilterChain(e);
-			invocation.setFilterChain(chain);
-
-			return invocation;
-		}
-	}
-
-	FilterChain createWebAppFilterChain(FilterChain chain, Invocation invocation, boolean isTop)
-	{
-		// the cache must be outside of the WebAppFilterChain because
-		// the CacheListener in ServletInvocation needs the top to
-		// be a CacheListener. Otherwise, the cache won't get lru.
-
-		if (getRequestListeners() != null && getRequestListeners().length > 0)
-		{
-			chain = new WebAppListenerFilterChain(chain, this, getRequestListeners());
-		}
-
-		// TCK: cache needs to be outside because the cache flush conflicts
-		// with the request listener destroy callback
-		// top-level filter elements
-		// server/021h - cache not logging
-
-		WebAppFilterChain webAppChain = new WebAppFilterChain(chain, this);
-
-		chain = webAppChain;
-
-		return chain;
-	}
 
 	public ServletMapper getServletMapper()
 	{
@@ -1617,7 +1513,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder, Fil
 	}
 
 	/**
-	 * Fills the invocation for subrequests.
+	 * Fills FilterChain to invocation for subrequests.
 	 */
 	void buildInvocation(Invocation invocation, FilterMapper filterMapper) throws ServletException
 	{

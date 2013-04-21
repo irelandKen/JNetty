@@ -29,7 +29,6 @@
 
 package org.ireland.jnetty.dispatch.filterchain;
 
-
 import javax.servlet.FilterChain;
 import javax.servlet.Servlet;
 import javax.servlet.ServletException;
@@ -39,7 +38,6 @@ import javax.servlet.UnavailableException;
 
 import org.ireland.jnetty.dispatch.servlet.ServletConfigImpl;
 
-
 import java.io.IOException;
 
 /**
@@ -48,77 +46,85 @@ import java.io.IOException;
  * 将Servlet适配成FilterChain,用于表示FilterChain中的最后的Servlet
  * 
  */
-public class ServletFilterChain implements FilterChain {
-  public static String SERVLET_NAME = "javax.servlet.error.servlet_name";
+public class ServletFilterChain implements FilterChain
+{
+	public static String SERVLET_NAME = "javax.servlet.error.servlet_name";
 
-  // servlet config
-  private ServletConfigImpl _config;
-  // servlet
-  private Servlet _servlet;
+	// servlet config
+	private ServletConfigImpl _config;
+	// servlet
+	private Servlet _servlet;
 
-  /**
-   * Create the filter chain servlet.
-   *
-   * @param config the underlying ServletConfig
-   */
-  public ServletFilterChain(ServletConfigImpl config)
-  {
-    if (config == null)
-      throw new NullPointerException();
+	/**
+	 * Create the filter chain servlet.
+	 * 
+	 * @param config
+	 *            the underlying ServletConfig
+	 */
+	public ServletFilterChain(ServletConfigImpl config)
+	{
+		if (config == null)
+			throw new NullPointerException();
 
-    _config = config;
-  }
+		_config = config;
+	}
 
-  /**
-   * Returns the servlet name.
-   */
-  public String getServletName()
-  {
-    return _config.getServletName();
-  }
+	/**
+	 * Returns the servlet name.
+	 */
+	public String getServletName()
+	{
+		return _config.getServletName();
+	}
 
+	/**
+	 * Invokes the final servlet at the end of the chain.
+	 * 
+	 * @param request
+	 *            the servlet request
+	 * @param response
+	 *            the servlet response
+	 * 
+	 * @since Servlet 2.3
+	 */
+	public void doFilter(ServletRequest request, ServletResponse response) throws ServletException, IOException
+	{
+		if (_servlet == null)
+		{
+			_servlet = (Servlet) _config.getInstance();
+		}
 
+		try
+		{
+			_servlet.service(request, response);
+		}
+		catch (UnavailableException e)
+		{
+			_servlet = null;
+			// _config.setInitException(e);
+			_config.destroyServlet();
+			request.setAttribute(SERVLET_NAME, _config.getServletName());
+			throw e;
+		}
+		catch (ServletException e)
+		{
+			request.setAttribute(SERVLET_NAME, _config.getServletName());
+			throw e;
+		}
+		catch (IOException e)
+		{
+			request.setAttribute(SERVLET_NAME, _config.getServletName());
+			throw e;
+		}
+		catch (RuntimeException e)
+		{
+			request.setAttribute(SERVLET_NAME, _config.getServletName());
+			throw e;
+		}
+	}
 
-  /**
-   * Invokes the final servlet at the end of the chain.
-   *
-   * @param request the servlet request
-   * @param response the servlet response
-   *
-   * @since Servlet 2.3
-   */
-  public void doFilter(ServletRequest request,
-                       ServletResponse response)
-    throws ServletException, IOException
-  {
-    if (_servlet == null) 
-    {
-        _servlet = (Servlet) _config.getInstance();
-    }
-
-    try {
-      _servlet.service(request, response);
-    } catch (UnavailableException e) {
-      _servlet = null;
-      //_config.setInitException(e);
-      _config.destroyServlet();
-      request.setAttribute(SERVLET_NAME, _config.getServletName());
-      throw e;
-    } catch (ServletException e) {
-      request.setAttribute(SERVLET_NAME, _config.getServletName());
-      throw e;
-    } catch (IOException e) {
-      request.setAttribute(SERVLET_NAME, _config.getServletName());
-      throw e;
-    } catch (RuntimeException e) {
-      request.setAttribute(SERVLET_NAME, _config.getServletName());
-      throw e;
-    }
-  }
-
-  public String toString()
-  {
-    return getClass().getSimpleName() + "[" + getServletName() + "]";
-  }
+	public String toString()
+	{
+		return getClass().getSimpleName() + "[" + getServletName() + "]";
+	}
 }
-
