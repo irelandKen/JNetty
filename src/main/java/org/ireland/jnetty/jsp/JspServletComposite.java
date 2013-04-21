@@ -87,7 +87,7 @@ public class JspServletComposite extends HttpServlet implements PeriodicEventLis
 		this.config = config;
 		this.context = config.getServletContext();
 		
-		//
+		//使JSP编译器与ServletContext使用一致的类加载器
 		Thread.currentThread().setContextClassLoader(context.getClassLoader());
 		
 

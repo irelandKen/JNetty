@@ -49,6 +49,7 @@ import javax.servlet.ServletException;
 import org.ireland.jnetty.config.ConfigException;
 import org.ireland.jnetty.dispatch.ServletInvocation;
 import org.ireland.jnetty.dispatch.filterchain.ErrorFilterChain;
+import org.ireland.jnetty.jsp.JspServletComposite;
 import org.ireland.jnetty.util.http.UrlMap;
 import org.ireland.jnetty.webapp.WebApp;
 import org.springframework.util.Assert;
@@ -151,10 +152,13 @@ public class ServletMapper
 
 			String servletName = config.getServletName();
 
+			
+			//如果ServletConfigImpl不存在于ServletManager,加添加
 			if (_servletManager.getServlet(servletName) == null)
 			{
 				_servletManager.addServlet(config);
 			}
+			
 
 			if ("/".equals(urlPattern)) // Default servlet
 			{
@@ -308,7 +312,7 @@ public class ServletMapper
 	{
 		if(contextURI != null && contextURI.endsWith(".jsp"))
 		{
-			return _servletManager.getJspServletCompositeConfig();
+			return _servletManager.getServlet(JspServletComposite.class.getCanonicalName());
 		}
 		
 		return null;

@@ -119,6 +119,7 @@ import org.ireland.jnetty.dispatch.servlet.ServletConfigurator;
 import org.ireland.jnetty.dispatch.servlet.ServletManager;
 import org.ireland.jnetty.dispatch.servlet.ServletMapper;
 import org.ireland.jnetty.dispatch.servlet.ServletMapping;
+import org.ireland.jnetty.jsp.JspServletComposite;
 import org.ireland.jnetty.server.session.SessionManager;
 import org.ireland.jnetty.util.http.Encoding;
 import org.ireland.jnetty.util.http.URIDecoder;
@@ -1343,6 +1344,7 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder, Fil
 			//加载web.xml
 			parseWebXml();
 
+			configJsp();
 			
 			
 
@@ -1392,7 +1394,28 @@ public class WebApp extends ServletContextImpl implements InvocationBuilder, Fil
 		}
 	}
 
-    /* ------------------------------------------------------------ */
+	/**
+	 * 配置JSP相关的
+	 * JspServletComposite的ServletConfig配置信息
+	 * @throws ServletException 
+	 */
+    private void configJsp() throws ServletException
+	{
+    	ServletConfigImpl config = createNewServletConfig();
+		
+		config.setServletName(JspServletComposite.class.getCanonicalName());
+		config.setServletClass(JspServletComposite.class);
+		
+		//缺省情况下,关闭development模式,提高性能
+		config.setInitParameter("development", "false");
+		
+		
+		_servletManager.addServlet(config);
+	}
+
+
+
+	/* ------------------------------------------------------------ */
 	/**
 	 * 发布publish ContextInitialized Event 事件
 	 */
