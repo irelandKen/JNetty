@@ -55,6 +55,7 @@ import org.ireland.jnetty.webapp.WebApp;
 import org.springframework.util.Assert;
 
 import com.caucho.util.L10N;
+import com.caucho.util.LruCache;
 
 /**
  * Manages dispatching: servlets and filters. :TODO: rename "ServletMapper" TO "ServletMatcher"
@@ -74,6 +75,10 @@ public class ServletMapper
 
 	private final ServletManager _servletManager;
 
+	
+	// 用LRU算法Cache最近最常使用的ContextURI与ServletFilterChain之间的映射关系()
+	private LruCache<String, FilterChain> _servletChainCache = new LruCache<String, FilterChain>(256);
+	
 
 	// 记录 urlPattern 到 <servlet-mapping>的映射关系(用于URL精确匹配)
 	// 1:ServletMappings for Exact Match <urlPattern,ServletMapping>
@@ -88,10 +93,12 @@ public class ServletMapper
 	// 4:Default servlet (urlPattern为"/",当无法找到匹配的Servlet或jsp时,则默认匹配的Servlet)
 	private ServletConfigImpl _defaultServlet;
 
+	
 	// 记录 ServletName 到 urlPattern 之间的映射关系
 	// Servlet 3.0 maps serletName to urlPattern <serletName,Set<urlPattern>>
 	private Map<String, Set<String>> _urlPatterns = new HashMap<String, Set<String>>();
 
+	
 	public ServletMapper(WebApp webApp, ServletContext servletContext, ServletManager servletManager)
 	{
 		Assert.notNull(webApp);
@@ -233,6 +240,9 @@ public class ServletMapper
 	 * 
 	 * 4. 如果前三个规则都没有产生一个servlet匹配，容器将试图为请求资源提供相关的内容。如果应用中定义了一个“default”servlet，它将被使用。许多容器提供了一种隐式的default servlet用于提供内容。
 	 * 
+	 * XXX:创建ServletFilterChain时,只看请求的contextURI(不带参数),故不同的URI,只要contextURI相同,会匹配同一个Servlet
+	 * XXX:/login.do?u=jack,/login.do?u=ken 生成的ServletFilterChain是一样的
+	 * 
 	 * @param invocation
 	 * @return
 	 * @throws ServletException
@@ -241,7 +251,14 @@ public class ServletMapper
 	{
 		String contextURI = invocation.getContextURI();
 		
+		//尝试在cache中查找
+		FilterChain servletChain = _servletChainCache.get(contextURI);
+		
+		if(servletChain != null) 
+			return servletChain;
 
+		
+		//
 		ServletConfigImpl config = null;
 
 
@@ -292,6 +309,9 @@ public class ServletMapper
 		
 		if (config != null)
 			chain = _servletManager.createServletChain(config, invocation);
+		
+		//put to cache
+		_servletChainCache.put(contextURI, chain);
 
 		return chain;
 	}

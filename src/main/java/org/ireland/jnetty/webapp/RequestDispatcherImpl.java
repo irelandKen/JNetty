@@ -60,7 +60,7 @@ public class RequestDispatcherImpl implements RequestDispatcher
 	// WebApp the request dispatcher was called from
 	private final WebApp _webApp;
 
-	private final String _rawURI;
+	private final String _rawContextURI;
 
 	private Invocation _includeInvocation;
 	private Invocation _forwardInvocation;
@@ -69,16 +69,11 @@ public class RequestDispatcherImpl implements RequestDispatcher
 
 	// private Invocation _asyncInvocation;
 
-	public RequestDispatcherImpl(WebApp webApp, String rowURI, Invocation includeInvocation, Invocation forwardInvocation, Invocation errorInvocation,Invocation dispatchInvocation)
+	public RequestDispatcherImpl(WebApp webApp, String rawContextURI)
 	{
 		_webApp = webApp;
 
-		_rawURI = rowURI;
-
-		_includeInvocation = includeInvocation;
-		_forwardInvocation = forwardInvocation;
-		_errorInvocation = errorInvocation;
-		_dispatchInvocation = dispatchInvocation;
+		_rawContextURI = rawContextURI;
 	}
 
 	
@@ -103,7 +98,7 @@ public class RequestDispatcherImpl implements RequestDispatcher
 		{
 			_dispatchInvocation = new Invocation();
 
-			buildDispatchInvocation(_dispatchInvocation, _rawURI);
+			buildDispatchInvocation(_dispatchInvocation, _rawContextURI);
 		}
 		
 		doDispatch(request, response,_dispatchInvocation);
@@ -149,7 +144,7 @@ public class RequestDispatcherImpl implements RequestDispatcher
 		{
 			_forwardInvocation = new Invocation();
 
-			buildForwardInvocation(_forwardInvocation, _rawURI);
+			buildForwardInvocation(_forwardInvocation, _rawContextURI);
 		}
 
 		doForward((HttpServletRequest) request, (HttpServletResponse) response, _forwardInvocation);
@@ -227,7 +222,7 @@ public class RequestDispatcherImpl implements RequestDispatcher
 		{
 			_errorInvocation = new Invocation();
 
-			buildErrorInvocation(_errorInvocation, _rawURI);
+			buildErrorInvocation(_errorInvocation, _rawContextURI);
 		}
 
 		doError(request, response, "error", _errorInvocation, DispatcherType.ERROR);
@@ -426,7 +421,7 @@ public class RequestDispatcherImpl implements RequestDispatcher
 		{
 			_includeInvocation = new Invocation();
 
-			buildIncludeInvocation(_includeInvocation, _rawURI);
+			buildIncludeInvocation(_includeInvocation, _rawContextURI);
 		}
 
 		doInclude(request, response, _includeInvocation, null);

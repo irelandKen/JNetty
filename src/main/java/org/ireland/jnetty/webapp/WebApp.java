@@ -207,8 +207,8 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 	// 用LRU算法Cache最近最常使用的url与FilterChain之间的映射关系()
 	private LruCache<String, FilterChainEntry> _filterChainCache = new LruCache<String, FilterChainEntry>(256);
 
-
-	private LruCache<String, RequestDispatcherImpl> _dispatcherCache;
+	//<rowContextURI,_requestDispatcherCache>
+	private LruCache<String, RequestDispatcherImpl> _requestDispatcherCache;
 
 	// True for SSL secure.
 	private boolean _isSecure;
@@ -260,7 +260,6 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 
 	private boolean _isEnabled = true;
 
-	private Pattern _cookieDomainPattern = null;
 
 	/**
 	 * Creates the webApp with its environment loader.
@@ -1252,7 +1251,6 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 			}
 			catch (Exception e)
 			{
-				// XXX: CDI TCK
 				throw e;
 			}
 
@@ -1347,7 +1345,7 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 		synchronized (_filterChainCache)
 		{
 			_filterChainCache.clear();
-			_dispatcherCache = null;
+			_requestDispatcherCache = null;
 		}
 
 	}
@@ -1435,30 +1433,30 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 	}
 
 	/**
-	 * Returns a dispatcher for the named servlet. TODO:其实可以将具体build invocation的时刻延迟到RequestDispatcherImpl里实现?
-	 * 等RequestDispatcherImpl选择了forward还是什么的时候再实现
+	 * Returns a dispatcher for the named servlet. 
+	 *
 	 */
 	@Override
-	public RequestDispatcherImpl getRequestDispatcher(String url)
+	public RequestDispatcherImpl getRequestDispatcher(String rawContextURI)
 	{
-		if (url == null)
+		if (rawContextURI == null)
 			throw new IllegalArgumentException(L.l("request dispatcher url can't be null."));
-		else if (!url.startsWith("/"))
-			throw new IllegalArgumentException(L.l("request dispatcher url '{0}' must be absolute", url));
-
-		RequestDispatcherImpl disp = getDispatcherCache().get(url);
+		else if (!rawContextURI.startsWith("/"))
+			throw new IllegalArgumentException(L.l("request dispatcher url '{0}' must be absolute", rawContextURI));
+		
+		//尝试从缓存中取出RequestDispatcher
+		RequestDispatcherImpl disp = getRequestDispatcherCache().get(rawContextURI);
 
 		if (disp != null)
 			return disp;
 
-		String rawURI = escapeURL(getContextPath() + url);
-
 		try
 		{
 			// 将Invocation的创建延迟到RequestDispatcher的具体的dispatch或forward方法调用时再进行(很情况下不需要所有DispatcherType都创建)
-			disp = new RequestDispatcherImpl(this, rawURI, null, null, null, null);
+			disp = new RequestDispatcherImpl(this, rawContextURI);
 
-			getDispatcherCache().put(url, disp);
+			//缓存RequestDispatcher
+			getRequestDispatcherCache().put(rawContextURI, disp);
 
 			return disp;
 		}
@@ -1474,9 +1472,9 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 		}
 	}
 
-	private LruCache<String, RequestDispatcherImpl> getDispatcherCache()
+	private LruCache<String, RequestDispatcherImpl> getRequestDispatcherCache()
 	{
-		LruCache<String, RequestDispatcherImpl> cache = _dispatcherCache;
+		LruCache<String, RequestDispatcherImpl> cache = _requestDispatcherCache;
 
 		if (cache != null)
 			return cache;
@@ -1484,7 +1482,7 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 		synchronized (this)
 		{
 			cache = new LruCache<String, RequestDispatcherImpl>(1024);
-			_dispatcherCache = cache;
+			_requestDispatcherCache = cache;
 			return cache;
 		}
 	}
@@ -1656,28 +1654,6 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 			return 0;
 	}
 
-	public String generateCookieDomain(HttpServletRequest request)
-	{
-		String serverName = request.getServerName();
-
-		if (_cookieDomainPattern == null)
-			return _sessionManager.getCookieDomain();
-
-		String domain;
-		Matcher matcher = _cookieDomainPattern.matcher(serverName);
-
-		// XXX: performance?
-		if (matcher.find())
-		{
-			domain = matcher.group();
-		}
-		else
-		{
-			domain = null;
-		}
-
-		return domain;
-	}
 
 	/**
 	 * Stops the webApp.

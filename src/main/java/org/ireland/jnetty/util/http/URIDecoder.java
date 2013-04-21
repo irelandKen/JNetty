@@ -286,6 +286,18 @@ public class URIDecoder
 		invocation.setURI(uri);
 		invocation.setContextURI(uri);
 	}
+	
+	/**
+	 * Splits out the query string, return the URI that without Querying String
+	 */
+	public static String cutQuery(String rawURI)
+	{		
+		int p = rawURI.indexOf('?');
+		if (p > 0)
+			return rawURI.substring(0, p);
+		else
+			return rawURI;
+	}
 
 	/**
 	 * Just normalize the URI.
