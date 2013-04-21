@@ -293,13 +293,6 @@ public class ServletMapper
 		if (config != null)
 			chain = _servletManager.createServletChain(config, invocation);
 
-		// JSP
-		/*
-		 * if (chain instanceof PageFilterChain) { PageFilterChain pageChain = (PageFilterChain) chain;
-		 * 
-		 * chain = PrecompilePageFilterChain.create(invocation, pageChain); }
-		 */
-
 		return chain;
 	}
 
