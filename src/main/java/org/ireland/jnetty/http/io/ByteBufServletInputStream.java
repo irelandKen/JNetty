@@ -1,4 +1,4 @@
-package org.ireland.jnetty.http;
+package org.ireland.jnetty.http.io;
 
 import io.netty.buffer.ByteBuf;
 

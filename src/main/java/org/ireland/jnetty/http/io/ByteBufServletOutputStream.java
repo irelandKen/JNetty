@@ -1,10 +1,12 @@
-package org.ireland.jnetty.http;
+package org.ireland.jnetty.http.io;
 
 import io.netty.buffer.ByteBuf;
 
 import java.io.IOException;
 
 import javax.servlet.ServletOutputStream;
+
+import org.ireland.jnetty.http.HttpServletResponseImpl;
 
 
 public class ByteBufServletOutputStream extends ServletOutputStream

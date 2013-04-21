@@ -46,7 +46,6 @@ import javax.servlet.ServletOutputStream;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletResponse;
 
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -54,7 +53,11 @@ import org.eclipse.jetty.http.MimeTypes;
 import org.eclipse.jetty.util.ByteArrayISO8859Writer;
 import org.eclipse.jetty.util.StringUtil;
 
-
+import org.ireland.jnetty.http.io.ByteBufServletOutputStream;
+import org.ireland.jnetty.http.io.EncodingHttpWriter;
+import org.ireland.jnetty.http.io.HttpWriter;
+import org.ireland.jnetty.http.io.Iso88591HttpWriter;
+import org.ireland.jnetty.http.io.Utf8HttpWriter;
 import org.ireland.jnetty.util.http.ServletServerCookieEncoder;
 
 /**
@@ -75,9 +78,8 @@ public class HttpServletResponseImpl implements HttpServletResponse
 	 * Default locale as mandated by the spec.
 	 */
 	private static Locale DEFAULT_LOCALE = Locale.getDefault();
-	
-	public static final String DEFAULT_CHARACTER_ENCODING="ISO-8859-1";
 
+	public static final String DEFAULT_CHARACTER_ENCODING = "ISO-8859-1";
 
 	private ServletContext servletContext;
 
@@ -86,9 +88,8 @@ public class HttpServletResponseImpl implements HttpServletResponse
 
 	private final ChannelHandlerContext ctx;
 
-
 	private final FullHttpRequest request;
-	
+
 	// response
 	private final FullHttpResponse response;
 
@@ -148,21 +149,20 @@ public class HttpServletResponseImpl implements HttpServletResponse
 	private PrintWriter _writer;
 	private long _contentLength = -1;
 
-	public HttpServletResponseImpl(SocketChannel socketChannel, ChannelHandlerContext ctx,
-												FullHttpResponse response, FullHttpRequest request)
+	public HttpServletResponseImpl(SocketChannel socketChannel, ChannelHandlerContext ctx, FullHttpResponse response, FullHttpRequest request)
 	{
 		this.socketChannel = socketChannel;
 		this.ctx = ctx;
-		
+
 		this.request = request;
-		
-		//Response
+
+		// Response
 		this.response = response;
-		
-		//Response Header
+
+		// Response Header
 		this.headers = response.headers();
-		
-		//Response Body
+
+		// Response Body
 		this.body = response;
 
 	}
@@ -223,8 +223,7 @@ public class HttpServletResponseImpl implements HttpServletResponse
 		// the header name is Set-Cookie for both "old" and v.1 ( RFC2109 )
 		// RFC2965 is not supported by browsers and the Servlet spec
 		// asks for 2109.
-		headers.add("Set-Cookie",
-				ServletServerCookieEncoder.encode(_cookiesOut));
+		headers.add("Set-Cookie", ServletServerCookieEncoder.encode(_cookiesOut));
 
 	}
 
@@ -272,34 +271,27 @@ public class HttpServletResponseImpl implements HttpServletResponse
 	{
 
 		/*
-		 * SessionManager sessionManager = httpServletRequest.getSessionManager(); if
-		 * (sessionManager == null) return url;
+		 * SessionManager sessionManager = httpServletRequest.getSessionManager(); if (sessionManager == null) return
+		 * url;
 		 * 
-		 * HttpURI uri = null; if
-		 * (sessionManager.isCheckingRemoteSessionIdEncoding() &&
-		 * URIUtil.hasScheme(url)) { uri = new HttpURI(url); String path =
-		 * uri.getPath(); path = (path == null ? "" : path); int port =
-		 * uri.getPort(); if (port < 0) port =
-		 * HttpScheme.HTTPS.asString().equalsIgnoreCase(uri.getScheme()) ? 443 :
-		 * 80; if (!httpServletRequest.getServerName().equalsIgnoreCase(uri.getHost()) ||
-		 * httpServletRequest.getServerPort() != port ||
-		 * !path.startsWith(httpServletRequest.getContextPath())) //TODO the root context
-		 * path is "", with which every non null string starts return url; }
+		 * HttpURI uri = null; if (sessionManager.isCheckingRemoteSessionIdEncoding() && URIUtil.hasScheme(url)) { uri =
+		 * new HttpURI(url); String path = uri.getPath(); path = (path == null ? "" : path); int port = uri.getPort();
+		 * if (port < 0) port = HttpScheme.HTTPS.asString().equalsIgnoreCase(uri.getScheme()) ? 443 : 80; if
+		 * (!httpServletRequest.getServerName().equalsIgnoreCase(uri.getHost()) || httpServletRequest.getServerPort() !=
+		 * port || !path.startsWith(httpServletRequest.getContextPath())) //TODO the root context path is "", with which
+		 * every non null string starts return url; }
 		 * 
-		 * String sessionURLPrefix =
-		 * sessionManager.getSessionIdPathParameterNamePrefix(); if
-		 * (sessionURLPrefix == null) return url;
+		 * String sessionURLPrefix = sessionManager.getSessionIdPathParameterNamePrefix(); if (sessionURLPrefix == null)
+		 * return url;
 		 * 
 		 * if (url == null) return null;
 		 * 
-		 * // should not encode if cookies in evidence if
-		 * (httpServletRequest.isRequestedSessionIdFromCookie()) { int prefix =
-		 * url.indexOf(sessionURLPrefix); if (prefix != -1) { int suffix =
-		 * url.indexOf("?", prefix); if (suffix < 0) suffix = url.indexOf("#",
-		 * prefix);
+		 * // should not encode if cookies in evidence if (httpServletRequest.isRequestedSessionIdFromCookie()) { int
+		 * prefix = url.indexOf(sessionURLPrefix); if (prefix != -1) { int suffix = url.indexOf("?", prefix); if (suffix
+		 * < 0) suffix = url.indexOf("#", prefix);
 		 * 
-		 * if (suffix <= prefix) return url.substring(0, prefix); return
-		 * url.substring(0, prefix) + url.substring(suffix); } return url; }
+		 * if (suffix <= prefix) return url.substring(0, prefix); return url.substring(0, prefix) +
+		 * url.substring(suffix); } return url; }
 		 * 
 		 * // get session; HttpSession session = httpServletRequest.getSession(false);
 		 * 
@@ -312,26 +304,20 @@ public class HttpServletResponseImpl implements HttpServletResponse
 		 * if (uri == null) uri = new HttpURI(url);
 		 * 
 		 * 
-		 * // Already encoded int prefix = url.indexOf(sessionURLPrefix); if
-		 * (prefix != -1) { int suffix = url.indexOf("?", prefix); if (suffix <
-		 * 0) suffix = url.indexOf("#", prefix);
+		 * // Already encoded int prefix = url.indexOf(sessionURLPrefix); if (prefix != -1) { int suffix =
+		 * url.indexOf("?", prefix); if (suffix < 0) suffix = url.indexOf("#", prefix);
 		 * 
-		 * if (suffix <= prefix) return url.substring(0, prefix +
-		 * sessionURLPrefix.length()) + id; return url.substring(0, prefix +
-		 * sessionURLPrefix.length()) + id + url.substring(suffix); }
+		 * if (suffix <= prefix) return url.substring(0, prefix + sessionURLPrefix.length()) + id; return
+		 * url.substring(0, prefix + sessionURLPrefix.length()) + id + url.substring(suffix); }
 		 * 
-		 * // edit the session int suffix = url.indexOf('?'); if (suffix < 0)
-		 * suffix = url.indexOf('#'); if (suffix < 0) { return url +
-		 * ((HttpScheme.HTTPS.is(uri.getScheme()) ||
-		 * HttpScheme.HTTP.is(uri.getScheme())) && uri.getPath() == null ? "/" :
-		 * "") + //if no path, insert the root path sessionURLPrefix + id; }
+		 * // edit the session int suffix = url.indexOf('?'); if (suffix < 0) suffix = url.indexOf('#'); if (suffix < 0)
+		 * { return url + ((HttpScheme.HTTPS.is(uri.getScheme()) || HttpScheme.HTTP.is(uri.getScheme())) &&
+		 * uri.getPath() == null ? "/" : "") + //if no path, insert the root path sessionURLPrefix + id; }
 		 * 
 		 * 
-		 * return url.substring(0, suffix) +
-		 * ((HttpScheme.HTTPS.is(uri.getScheme()) ||
-		 * HttpScheme.HTTP.is(uri.getScheme())) && uri.getPath() == null ? "/" :
-		 * "") + //if no path so insert the root path sessionURLPrefix + id +
-		 * url.substring(suffix);
+		 * return url.substring(0, suffix) + ((HttpScheme.HTTPS.is(uri.getScheme()) ||
+		 * HttpScheme.HTTP.is(uri.getScheme())) && uri.getPath() == null ? "/" : "") + //if no path so insert the root
+		 * path sessionURLPrefix + id + url.substring(suffix);
 		 */
 		return url;
 	}
@@ -384,7 +370,7 @@ public class HttpServletResponseImpl implements HttpServletResponse
 
 		usingOutputStream = false;
 		usingWriter = false;
-		
+
 		setStatus(code);
 		_reason = message;
 
@@ -392,12 +378,10 @@ public class HttpServletResponseImpl implements HttpServletResponse
 			message = HttpResponseStatus.valueOf(code).reasonPhrase();
 
 		// If we are allowed to have a body
-		if (code != SC_NO_CONTENT && code != SC_NOT_MODIFIED
-				&& code != SC_PARTIAL_CONTENT && code >= SC_OK)
+		if (code != SC_NO_CONTENT && code != SC_NOT_MODIFIED && code != SC_PARTIAL_CONTENT && code >= SC_OK)
 		{
 
-			setHeader(HttpHeaders.Names.CACHE_CONTROL,
-					"must-revalidate,no-cache,no-store");
+			setHeader(HttpHeaders.Names.CACHE_CONTROL, "must-revalidate,no-cache,no-store");
 			setContentType("text/html;charset=ISO-8859-1");
 			ByteArrayISO8859Writer writer = new ByteArrayISO8859Writer(2048);
 			if (message != null)
@@ -443,11 +427,10 @@ public class HttpServletResponseImpl implements HttpServletResponse
 	}
 
 	/**
-	 * Sends a 102-Processing response. If the connection is a HTTP connection,
-	 * the version is 1.1 and the httpServletRequest has a Expect header starting with 102,
-	 * then a 102 response is sent. This indicates that the httpServletRequest still be
-	 * processed and real response can still be sent. This method is called by
-	 * sendError if it is passed 102.
+	 * Sends a 102-Processing response. If the connection is a HTTP connection, the version is 1.1 and the
+	 * httpServletRequest has a Expect header starting with 102, then a 102 response is sent. This indicates that the
+	 * httpServletRequest still be processed and real response can still be sent. This method is called by sendError if
+	 * it is passed 102.
 	 * 
 	 * @see javax.servlet.http.HttpServletResponse#sendError(int)
 	 */
@@ -455,8 +438,7 @@ public class HttpServletResponseImpl implements HttpServletResponse
 	{
 		/*
 		 * if (socketChannel.isExpecting102Processing() && !isCommitted()) {
-		 * socketChannel.commitResponse(HttpGenerator.PROGRESS_102_INFO, null,
-		 * true); }
+		 * socketChannel.commitResponse(HttpGenerator.PROGRESS_102_INFO, null, true); }
 		 */
 	}
 
@@ -469,26 +451,19 @@ public class HttpServletResponseImpl implements HttpServletResponse
 		 * 
 		 * if (location == null) throw new IllegalArgumentException();
 		 * 
-		 * if (!URIUtil.hasScheme(location)) { StringBuilder buf =
-		 * httpServletRequest.getRootURL(); if (location.startsWith("/"))
-		 * buf.append(location); else { String path = httpServletRequest.getRequestURI();
-		 * String parent = (path.endsWith("/")) ? path :
-		 * URIUtil.parentPath(path); location = URIUtil.addPaths(parent,
-		 * location); if (location == null) throw new
-		 * IllegalStateException("path cannot be above root"); if
+		 * if (!URIUtil.hasScheme(location)) { StringBuilder buf = httpServletRequest.getRootURL(); if
+		 * (location.startsWith("/")) buf.append(location); else { String path = httpServletRequest.getRequestURI();
+		 * String parent = (path.endsWith("/")) ? path : URIUtil.parentPath(path); location = URIUtil.addPaths(parent,
+		 * location); if (location == null) throw new IllegalStateException("path cannot be above root"); if
 		 * (!location.startsWith("/")) buf.append('/'); buf.append(location); }
 		 * 
-		 * location = buf.toString(); HttpURI uri = new HttpURI(location);
-		 * String path = uri.getDecodedPath(); String canonical =
-		 * URIUtil.canonicalPath(path); if (canonical == null) throw new
-		 * IllegalArgumentException(); if (!canonical.equals(path)) { buf =
-		 * socketChannel.getRequest().getRootURL();
-		 * buf.append(URIUtil.encodePath(canonical)); String
-		 * param=uri.getParam(); if (param!=null) { buf.append(';');
-		 * buf.append(param); } String query=uri.getQuery(); if (query!=null) {
-		 * buf.append('?'); buf.append(query); } String
-		 * fragment=uri.getFragment(); if (fragment!=null) { buf.append('#');
-		 * buf.append(fragment); } location = buf.toString(); } }
+		 * location = buf.toString(); HttpURI uri = new HttpURI(location); String path = uri.getDecodedPath(); String
+		 * canonical = URIUtil.canonicalPath(path); if (canonical == null) throw new IllegalArgumentException(); if
+		 * (!canonical.equals(path)) { buf = socketChannel.getRequest().getRootURL();
+		 * buf.append(URIUtil.encodePath(canonical)); String param=uri.getParam(); if (param!=null) { buf.append(';');
+		 * buf.append(param); } String query=uri.getQuery(); if (query!=null) { buf.append('?'); buf.append(query); }
+		 * String fragment=uri.getFragment(); if (fragment!=null) { buf.append('#'); buf.append(fragment); } location =
+		 * buf.toString(); } }
 		 * 
 		 * resetBuffer(); setHeader(HttpHeaders.Names.LOCATION, location);
 		 * setStatus(HttpServletResponse.SC_MOVED_TEMPORARILY); complete();
@@ -542,22 +517,20 @@ public class HttpServletResponseImpl implements HttpServletResponse
 	}
 
 	/*
-	 * public void setHeader(HttpHeader name, String value) { if (name == null
-	 * || name.length() == 0 || value == null) { return; }
+	 * public void setHeader(HttpHeader name, String value) { if (name == null || name.length() == 0 || value == null) {
+	 * return; }
 	 * 
 	 * if (isCommitted()) { return; }
 	 * 
-	 * // Ignore any call from an included servlet if (isIncluding()) { return;
-	 * }
+	 * // Ignore any call from an included servlet if (isIncluding()) { return; }
 	 * 
 	 * char cc=name.charAt(0); if (cc=='C' || cc=='c') {
 	 * 
-	 * if (HttpHeaders.Names.CONTENT_TYPE.equalsIgnoreCase(name))
-	 * setContentType(value); else { if (isIncluding()) return;
+	 * if (HttpHeaders.Names.CONTENT_TYPE.equalsIgnoreCase(name)) setContentType(value); else { if (isIncluding())
+	 * return;
 	 * 
-	 * if (HttpHeaders.Names.CONTENT_LENGTH.equalsIgnoreCase(name)) { if (value
-	 * == null) _contentLength = -1l; else _contentLength =
-	 * Long.parseLong(value); } }
+	 * if (HttpHeaders.Names.CONTENT_LENGTH.equalsIgnoreCase(name)) { if (value == null) _contentLength = -1l; else
+	 * _contentLength = Long.parseLong(value); } }
 	 * 
 	 * }
 	 * 
@@ -774,7 +747,8 @@ public class HttpServletResponseImpl implements HttpServletResponse
 		}
 	}
 
-	@Override// ok
+	@Override
+	// ok
 	public String getCharacterEncoding()
 	{
 		if (_characterEncoding == null)
@@ -787,21 +761,22 @@ public class HttpServletResponseImpl implements HttpServletResponse
 					_characterEncoding = StringUtil.__ISO_8859_1;
 			}
 		}
-			
+
 		return _characterEncoding;
 	}
 
 	/**
-	 * @see javax.servlet.ServletResponse.getContentType() for example,
-	 *      text/html; charset=UTF-8, or null
+	 * @see javax.servlet.ServletResponse.getContentType() for example, text/html; charset=UTF-8, or null
 	 */
-	@Override	//OK
+	@Override
+	// OK
 	public String getContentType()
 	{
 		return _contentType;
 	}
 
-	@Override// OK
+	@Override
+	// OK
 	public ServletOutputStream getOutputStream() throws IOException
 	{
 		if (usingWriter)
@@ -818,7 +793,7 @@ public class HttpServletResponseImpl implements HttpServletResponse
 
 		return outputStream;
 	}
-	
+
 	private ServletOutputStream getOutputStreamWithoutCheck() throws IOException
 	{
 		if (outputStream == null)
@@ -842,23 +817,20 @@ public class HttpServletResponseImpl implements HttpServletResponse
 			throw new IllegalStateException("Already using OutputStream");
 		}
 
-/*		
-		 * If the response's character encoding has not been specified as
-		 * described in <code>getCharacterEncoding</code> (i.e., the method just
-		 * returns the default value <code>ISO-8859-1</code>),
-		 * <code>getWriter</code> updates it to <code>ISO-8859-1</code> (with
-		 * the effect that a subsequent call to getContentType() will include a
-		 * charset=ISO-8859-1 component which will also be reflected in the
-		 * Content-Type response header, thereby satisfying the Servlet spec
-		 * requirement that containers must communicate the character encoding
-		 * used for the servlet response's writer to the client).
-		 
-		setCharacterEncoding(getCharacterEncoding());*/
+		/*
+		 * If the response's character encoding has not been specified as described in <code>getCharacterEncoding</code>
+		 * (i.e., the method just returns the default value <code>ISO-8859-1</code>), <code>getWriter</code> updates it
+		 * to <code>ISO-8859-1</code> (with the effect that a subsequent call to getContentType() will include a
+		 * charset=ISO-8859-1 component which will also be reflected in the Content-Type response header, thereby
+		 * satisfying the Servlet spec requirement that containers must communicate the character encoding used for the
+		 * servlet response's writer to the client).
+		 * 
+		 * setCharacterEncoding(getCharacterEncoding());
+		 */
 
-		
 		if (_writer == null)
 		{
-			
+
 			/* get encoding from Content-Type header */
 			String encoding = _characterEncoding;
 			if (encoding == null)
@@ -869,22 +841,19 @@ public class HttpServletResponseImpl implements HttpServletResponse
 				setCharacterEncoding(encoding);
 			}
 
-			
 			if (StringUtil.__ISO_8859_1.equalsIgnoreCase(encoding))
-				_writer = new ResponseWriter(new Iso88591HttpWriter(getOutputStreamWithoutCheck()),
-						encoding);
+				_writer = new ResponseWriter(new Iso88591HttpWriter(getOutputStreamWithoutCheck()), encoding);
 			else if (StringUtil.__UTF8.equalsIgnoreCase(encoding))
-				_writer = new ResponseWriter(new Utf8HttpWriter(getOutputStreamWithoutCheck()),
-						encoding);
+				_writer = new ResponseWriter(new Utf8HttpWriter(getOutputStreamWithoutCheck()), encoding);
 			else
-				_writer = new ResponseWriter(new EncodingHttpWriter(getOutputStreamWithoutCheck(), encoding),encoding);
+				_writer = new ResponseWriter(new EncodingHttpWriter(getOutputStreamWithoutCheck(), encoding), encoding);
 
 		}
-		
+
 		// Set the output type at the end, because setCharacterEncoding()
 		// checks for it
 		usingWriter = true;
-		
+
 		return _writer;
 	}
 
@@ -919,30 +888,34 @@ public class HttpServletResponseImpl implements HttpServletResponse
 		headers.set(HttpHeaders.Names.CONTENT_LENGTH.toString(), len);
 	}
 
-	@Override//OK
+	@Override
+	// OK
 	public void setCharacterEncoding(String encoding)
 	{
-        if (encoding == null)
-            return;
-        
-        if (isCommitted()) {
-            return;
-        }
+		if (encoding == null)
+			return;
 
-        // Ignore any call from an included servlet
-        if (isIncluding()) {
-            return;
-        }
+		if (isCommitted())
+		{
+			return;
+		}
 
-        // Ignore any call made after the getWriter has been invoked
-        // The default should be used
-        if (usingWriter) {
-            return;
-        }
+		// Ignore any call from an included servlet
+		if (isIncluding())
+		{
+			return;
+		}
 
-        _characterEncoding = encoding;
-        
-        isCharacterEncodingSet = true;
+		// Ignore any call made after the getWriter has been invoked
+		// The default should be used
+		if (usingWriter)
+		{
+			return;
+		}
+
+		_characterEncoding = encoding;
+
+		isCharacterEncodingSet = true;
 	}
 
 	@Override
@@ -962,7 +935,8 @@ public class HttpServletResponseImpl implements HttpServletResponse
 			_mimeType = null;
 			_contentType = null;
 			headers.remove(HttpHeaders.Names.CONTENT_TYPE);
-		} else
+		}
+		else
 		{
 			_contentType = contentType;
 			_mimeType = MimeTypes.CACHE.get(contentType);
@@ -976,20 +950,19 @@ public class HttpServletResponseImpl implements HttpServletResponse
 			{
 				if (_characterEncoding != null)
 				{
-					_contentType = contentType + ";charset="
-							+ _characterEncoding;
+					_contentType = contentType + ";charset=" + _characterEncoding;
 					_mimeType = null;
 				}
-			} else if (isWriting() && !charset.equals(_characterEncoding))
+			}
+			else if (isWriting() && !charset.equals(_characterEncoding))
 			{
 				// too late to change the character encoding;
 				_mimeType = null;
-				_contentType = MimeTypes
-						.getContentTypeWithoutCharset(_contentType);
+				_contentType = MimeTypes.getContentTypeWithoutCharset(_contentType);
 				if (_characterEncoding != null)
-					_contentType = _contentType + ";charset="
-							+ _characterEncoding;
-			} else
+					_contentType = _contentType + ";charset=" + _characterEncoding;
+			}
+			else
 			{
 				_characterEncoding = charset;
 			}
@@ -1023,43 +996,46 @@ public class HttpServletResponseImpl implements HttpServletResponse
 	 * Flush the buffer and commit this response.
 	 * 
 	 */
-	@Override//OK
+	@Override
+	// OK
 	public void flushBuffer() throws IOException
 	{
 		if (isCommitted()) // committed,need not to do again
 			return;
 
-		//we sure that getOutputStream() and getWriter() 不会缓存有数据,所有数据已经写到body里
-		
+		// we sure that getOutputStream() and getWriter() 不会缓存有数据,所有数据已经写到body里
+
 		writeResponse(ctx, request, response);
-		
+
 		commited = true;
 	}
 
 	/**
 	 * 向客户端返回响应
+	 * 
 	 * @param ctx
 	 * @param request
 	 * @param response
 	 */
-	private void writeResponse(ChannelHandlerContext ctx,FullHttpRequest request, FullHttpResponse response)
+	private void writeResponse(ChannelHandlerContext ctx, FullHttpRequest request, FullHttpResponse response)
 	{
 		boolean keepAlive = true;
-		
-		if(headers.get(HttpHeaders.Names.CONNECTION) != null)					
+
+		if (headers.get(HttpHeaders.Names.CONNECTION) != null)
 		{
-			keepAlive = HttpHeaders.isKeepAlive(response);					//用户显式设置KeepAlive
+			keepAlive = HttpHeaders.isKeepAlive(response); // 用户显式设置KeepAlive
 		}
-		else//用户未设置CONNECTION响应头
+		else
+		// 用户未设置CONNECTION响应头
 		{
 			// Decide whether to close the connection or not.
-			keepAlive = HttpHeaders.isKeepAlive(request);			//用户未设置CONNECTION,则保持未请求头的CONNECTION一致
-	
+			keepAlive = HttpHeaders.isKeepAlive(request); // 用户未设置CONNECTION,则保持未请求头的CONNECTION一致
+
 			// TODO:think about how to decide keepAlive or not
 			if (keepAlive)
 			{
-	            // Add 'Content-Length' header only for a keep-alive connection.
-	            response.headers().set(CONTENT_LENGTH, response.data().readableBytes());
+				// Add 'Content-Length' header only for a keep-alive connection.
+				response.headers().set(CONTENT_LENGTH, response.data().readableBytes());
 				// Add keep alive header as per:
 				// http://www.w3.org/Protocols/HTTP/1.1/draft-ietf-http-v11-spec-01.html#Connection
 				response.headers().set(CONNECTION, HttpHeaders.Values.KEEP_ALIVE);
@@ -1067,7 +1043,7 @@ public class HttpServletResponseImpl implements HttpServletResponse
 			else
 			{
 				response.headers().set(CONTENT_LENGTH, response.data().readableBytes());
-				 
+
 				response.headers().set(CONNECTION, HttpHeaders.Values.CLOSE);
 			}
 		}
@@ -1075,8 +1051,7 @@ public class HttpServletResponseImpl implements HttpServletResponse
 		// Write the response.
 		ctx.nextOutboundMessageBuffer().add(response);
 
-
-		//if CONNECTION == "close" Close the non-keep-alive connection after the write operation is done.
+		// if CONNECTION == "close" Close the non-keep-alive connection after the write operation is done.
 		if (keepAlive)
 		{
 			ctx.flush();
@@ -1107,17 +1082,14 @@ public class HttpServletResponseImpl implements HttpServletResponse
 	}
 
 	/*
-	 * public void reset(boolean preserveCookies) { if (!preserveCookies)
-	 * reset(); else { ArrayList<String> cookieValues = new
-	 * ArrayList<String>(5); Enumeration<String> vals =
-	 * headers.getValues(HttpHeader.SET_COOKIE.asString()); while
-	 * (vals.hasMoreElements()) cookieValues.add(vals.nextElement()); reset();
-	 * for (String v:cookieValues) headers.add(HttpHeader.SET_COOKIE, v); } }
+	 * public void reset(boolean preserveCookies) { if (!preserveCookies) reset(); else { ArrayList<String> cookieValues
+	 * = new ArrayList<String>(5); Enumeration<String> vals = headers.getValues(HttpHeader.SET_COOKIE.asString()); while
+	 * (vals.hasMoreElements()) cookieValues.add(vals.nextElement()); reset(); for (String v:cookieValues)
+	 * headers.add(HttpHeader.SET_COOKIE, v); } }
 	 */
 
 	/*
-	 * public void resetForForward() { resetBuffer(); usingOutputStream = false;
-	 * usingWriter = false; }
+	 * public void resetForForward() { resetBuffer(); usingOutputStream = false; usingWriter = false; }
 	 */
 
 	// ok
@@ -1139,7 +1111,7 @@ public class HttpServletResponseImpl implements HttpServletResponse
 		_contentType = null;
 		_locale = DEFAULT_LOCALE;
 
-		_characterEncoding = "ISO-8859-1";//Constants.DEFAULT_CHARACTER_ENCODING;
+		_characterEncoding = "ISO-8859-1";// Constants.DEFAULT_CHARACTER_ENCODING;
 
 		_contentLength = -1;
 
@@ -1160,11 +1132,9 @@ public class HttpServletResponseImpl implements HttpServletResponse
 	}
 
 	/*
-	 * protected ResponseInfo newResponseInfo() { if (_status ==
-	 * HttpStatus.NOT_SET_000) _status = HttpStatus.OK_200; return new
-	 * ResponseInfo(socketChannel.getRequest().getHttpVersion(), headers,
-	 * getLongContentLength(), getStatus(), getReason(),
-	 * socketChannel.getRequest().isHead()); }
+	 * protected ResponseInfo newResponseInfo() { if (_status == HttpStatus.NOT_SET_000) _status = HttpStatus.OK_200;
+	 * return new ResponseInfo(socketChannel.getRequest().getHttpVersion(), headers, getLongContentLength(),
+	 * getStatus(), getReason(), socketChannel.getRequest().isHead()); }
 	 */
 
 	@Override
@@ -1219,8 +1189,8 @@ public class HttpServletResponseImpl implements HttpServletResponse
 
 		// :TODO
 		/*
-		 * String charset = servletContext.getCharset(locale); if (charset !=
-		 * null) { coyoteResponse.setCharacterEncoding(charset); }
+		 * String charset = servletContext.getCharset(locale); if (charset != null) {
+		 * coyoteResponse.setCharacterEncoding(charset); }
 		 */
 	}
 
@@ -1257,11 +1227,10 @@ public class HttpServletResponseImpl implements HttpServletResponse
 	// OK
 	public String toString()
 	{
-		return String.format("%s %d %s%n%s", request.getProtocolVersion(),
-				_status, _reason == null ? "" : _reason, headers);
+		return String.format("%s %d %s%n%s", request.getProtocolVersion(), _status, _reason == null ? "" : _reason, headers);
 	}
 
-	private  class ResponseWriter extends PrintWriter
+	private class ResponseWriter extends PrintWriter
 	{
 		private final String _encoding;
 		private final HttpWriter _httpWriter;
@@ -1272,22 +1241,10 @@ public class HttpServletResponseImpl implements HttpServletResponse
 			_httpWriter = httpWriter;
 			_encoding = encoding;
 		}
-
-		public boolean isFor(String encoding)
-		{
-			return _encoding.equalsIgnoreCase(encoding);
-		}
-
-		protected void reopen()
-		{
-			super.clearError();
-			out = _httpWriter;
-		}
 	}
 
 	/**
-	 * Returns a channel where the I/O operation associated with this response
-	 * takes place.
+	 * Returns a channel where the I/O operation associated with this response takes place.
 	 */
 	public Channel channel()
 	{
@@ -1299,8 +1256,8 @@ public class HttpServletResponseImpl implements HttpServletResponse
 	 */
 	public void resetForForward()
 	{
-        resetBuffer();
-        usingOutputStream = false;
-        usingWriter = false;
+		resetBuffer();
+		usingOutputStream = false;
+		usingWriter = false;
 	}
 }

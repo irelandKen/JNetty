@@ -85,12 +85,12 @@ import org.eclipse.jetty.util.StringUtil;
 import org.eclipse.jetty.util.URIUtil;
 import org.eclipse.jetty.util.UrlEncoded;
 
+import org.ireland.jnetty.http.io.ByteBufServletInputStream;
 import org.ireland.jnetty.server.session.HttpSessionImpl;
 import org.ireland.jnetty.server.session.SessionManager;
 import org.ireland.jnetty.util.StringParser;
 import org.ireland.jnetty.util.http.ContentTypeUtil;
 import org.ireland.jnetty.webapp.WebApp;
-import org.springframework.mock.web.MockHttpSession;
 
 /* ------------------------------------------------------------ */
 /**
@@ -102,17 +102,17 @@ import org.springframework.mock.web.MockHttpSession;
  * request object to be as lightweight as possible and not actually implement any significant behavior. For example
  * <ul>
  * 
- * <li>The {@link HttpServletRequestImpl#getContextPath()} method will return null, until the request has been passed
- * to a {@link ContextHandler} which matches the {@link HttpServletRequestImpl#getPathInfo()} with a context path and
- * calls {@link HttpServletRequestImpl#setContextPath(String)} as a result.</li>
+ * <li>The {@link HttpServletRequestImpl#getContextPath()} method will return null, until the request has been passed to
+ * a {@link ContextHandler} which matches the {@link HttpServletRequestImpl#getPathInfo()} with a context path and calls
+ * {@link HttpServletRequestImpl#setContextPath(String)} as a result.</li>
  * 
  * <li>the HTTP session methods will all return null sessions until such time as a request has been passed to a
  * {@link org.eclipse.jetty.server.session.SessionHandler} which checks for session cookies and enables the ability to
  * create new sessions.</li>
  * 
- * <li>The {@link HttpServletRequestImpl#getServletPath()} method will return null until the request has been passed
- * to a <code>org.eclipse.jetty.servlet.ServletHandler</code> and the pathInfo matched against the servlet URL patterns
- * and {@link HttpServletRequestImpl#setServletPath(String)} called as a result.</li>
+ * <li>The {@link HttpServletRequestImpl#getServletPath()} method will return null until the request has been passed to
+ * a <code>org.eclipse.jetty.servlet.ServletHandler</code> and the pathInfo matched against the servlet URL patterns and
+ * {@link HttpServletRequestImpl#setServletPath(String)} called as a result.</li>
  * </ul>
  * 
  * A request instance is created for each connection accepted by the server and recycled for each HTTP request received
@@ -159,7 +159,7 @@ public class HttpServletRequestImpl implements HttpServletRequest
 	private final ChannelHandlerContext ctx;
 
 	private final FullHttpResponse response;
-	
+
 	private final HttpServletResponseImpl _httpResponse;
 
 	// request
@@ -227,16 +227,13 @@ public class HttpServletRequestImpl implements HttpServletRequest
 	// 如: /page.do 或 null
 	private String _pathInfo = null;
 
-	
-	
 	// 如: name=jack&pwd=123
 	private String _queryString;
-	
-    /**
-     * Request QueryString Extracted flag.
-     */
-    private boolean _queryStringExtracted;
-    
+
+	/**
+	 * Request QueryString Extracted flag.
+	 */
+	private boolean _queryStringExtracted;
 
 	private DispatcherType _dispatcherType;
 
@@ -286,27 +283,25 @@ public class HttpServletRequestImpl implements HttpServletRequest
 	protected boolean localesParsed = false;
 
 	/* ------------------------------------------------------------ */
-	public HttpServletRequestImpl(WebApp webApp,ServletContext servletContext, SocketChannel socketChannel, 
-											ChannelHandlerContext ctx, FullHttpResponse response,FullHttpRequest request,
-											HttpServletResponseImpl httpResponse)
-	{		
+	public HttpServletRequestImpl(WebApp webApp, ServletContext servletContext, SocketChannel socketChannel, ChannelHandlerContext ctx,
+			FullHttpResponse response, FullHttpRequest request, HttpServletResponseImpl httpResponse)
+	{
 		this.servletContext = servletContext;
-		
+
 		this._sessionManager = webApp.getSessionManager();
 
 		this.socketChannel = socketChannel;
 		this.ctx = ctx;
 		this.response = response;
 		this.request = request;
-		
+
 		_httpResponse = httpResponse;
 
 		this.headers = request.headers();
 		this.body = request;
-			
 
 	}
-	
+
 	/* ------------------------------------------------------------ */
 	public void addEventListener(final EventListener listener)
 	{
@@ -324,8 +319,8 @@ public class HttpServletRequestImpl implements HttpServletRequest
 
 	/* ------------------------------------------------------------ */
 	/**
-	 * Extract Parameters from query string and form HttpServletRequestImpl Body(application/x-www-form-urlencoded
-	 * [POST | PUT])
+	 * Extract Parameters from query string and form HttpServletRequestImpl Body(application/x-www-form-urlencoded [POST
+	 * | PUT])
 	 */
 	public void extractParameters()
 	{
@@ -939,8 +934,8 @@ public class HttpServletRequestImpl implements HttpServletRequest
 	}
 
 	/**
-	 * Add a Locale to the set of preferred Locales for this HttpServletRequestImpl. The first added Locale will be
-	 * the first one returned by getLocales().
+	 * Add a Locale to the set of preferred Locales for this HttpServletRequestImpl. The first added Locale will be the
+	 * first one returned by getLocales().
 	 * 
 	 * @param locale
 	 *            The new preferred Locale
@@ -1147,17 +1142,15 @@ public class HttpServletRequestImpl implements HttpServletRequest
 
 		return _queryString;
 	}
-	
 
-    
-	
 	/**
 	 * 从原生的uri中分离出不带参数的RequestURI和参数QueryString
+	 * 
 	 * @return
 	 */
 	boolean parseRequestURIAndQueryString()
 	{
-		if (_queryString == null  || _requestURI == null)
+		if (_queryString == null || _requestURI == null)
 		{
 			if (_queryEncoding == null)
 			{
@@ -1167,24 +1160,23 @@ public class HttpServletRequestImpl implements HttpServletRequest
 
 				if (p != -1)
 					_queryString = uri.substring(p + 1);
-				
-				//同时也设置requestURI
-				if(p == -1)
+
+				// 同时也设置requestURI
+				if (p == -1)
 					_requestURI = uri;
 				else
 					_requestURI = uri.substring(0, p);
 			}
 			else
 			{
-				//TODO: what about other queryEncoding?
+				// TODO: what about other queryEncoding?
 			}
 		}
-		
+
 		_queryStringExtracted = true;
-		
+
 		return true;
 	}
-	
 
 	/* ------------------------------------------------------------ */
 	/*
@@ -1349,7 +1341,7 @@ public class HttpServletRequestImpl implements HttpServletRequest
 		{
 			parseRequestURIAndQueryString();
 		}
-		
+
 		return _requestURI;
 	}
 
@@ -1576,27 +1568,27 @@ public class HttpServletRequestImpl implements HttpServletRequest
 	{
 		if (_session != null)
 		{
-			if( _sessionManager.isValid(_session))
+			if (_sessionManager.isValid(_session))
 				return _session;
-			else							//Session无效
+			else
+			// Session无效
 			{
 				_session.invalidate();
 				_session = null;
 			}
 		}
-		
 
 		if (!create)
 			return null;
 
-		//创建一个Session
+		// 创建一个Session
 		if (_sessionManager == null)
 			throw new IllegalStateException("No SessionManager");
 
 		_session = _sessionManager.createNewSession(this);
 
 		Cookie cookie = _sessionManager.getSessionCookie(_session, getContextPath(), isSecure());
-		
+
 		if (cookie != null)
 		{
 			_httpResponse.addCookie(cookie);

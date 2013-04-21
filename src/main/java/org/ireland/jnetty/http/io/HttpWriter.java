@@ -16,7 +16,7 @@
 //  ========================================================================
 //
 
-package org.ireland.jnetty.http;
+package org.ireland.jnetty.http.io;
 
 import java.io.IOException;
 import java.io.Writer;

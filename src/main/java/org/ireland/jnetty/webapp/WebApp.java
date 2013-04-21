@@ -167,6 +167,7 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 
 	private String _servletVersion;
 
+	
 	// -----servlet--------------------------
 
 	// The servlet manager
@@ -181,6 +182,7 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 	// The filter manager
 	private FilterManager _filterManager;
 
+	
 	// The dispatch filter mapper (DispatcherType#REQUEST)
 	private FilterMapper _dispatchFilterMapper;
 
