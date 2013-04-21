@@ -218,12 +218,12 @@ public class WebXmlLoader
 			// 查找<filter-mapping>的所有<servlet-name>标签,一个<servlet-name>可以包含多个<servlet-name>标签
 			if (urlPatterns.size() > 0)
 			{
-				config.addMappingForUrlPatterns(EnumSet.copyOf(dispatcherTypes), true, toArray(urlPatterns));
+				config.addMappingForUrlPatterns(dispatcherTypes.size()==0 ? null:EnumSet.copyOf(dispatcherTypes), true, toArray(urlPatterns));
 			}
 
 			if (servletNames.size() > 0)
 			{
-				config.addMappingForServletNames(EnumSet.copyOf(dispatcherTypes), true, toArray(servletNames));
+				config.addMappingForServletNames(dispatcherTypes.size()==0 ? null:EnumSet.copyOf(dispatcherTypes), true, toArray(servletNames));
 			}
 
 			cnt++;
