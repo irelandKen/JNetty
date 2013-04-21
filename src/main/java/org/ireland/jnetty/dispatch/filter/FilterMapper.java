@@ -266,6 +266,7 @@ public class FilterMapper
 	/**
 	 * Fills in the invocation.
 	 */
+	@Deprecated
 	public FilterChain buildFilterChain(FilterChain chain, String servletName) throws ServletException
 	{
 		//根据ServletName去查找匹配的FilterMapping,并将其Filter实例 添加到FilterChain中

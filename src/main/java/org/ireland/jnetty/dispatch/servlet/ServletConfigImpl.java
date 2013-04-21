@@ -264,7 +264,7 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 
 		try
 		{
-			Set<String> result = new HashSet<String>();
+			Set<String> conflictPattern = new HashSet<String>();
 
 			
 			// server/12t8 vs server/12uc
@@ -272,7 +272,7 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 			{
 				ServletMapping mapping = _servletMapper.getServletMapping(urlPattern);
 
-				if (mapping == null || mapping.isDefault())
+				if (mapping == null)
 				{
 					continue;
 				}
@@ -286,13 +286,13 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 						log.fine(L.l("programmatic addMapping for '{0}' ignored because of existing servlet-mapping to '{1}'", urlPattern, servletName));
 					}
 
-					result.add(urlPattern);
+					conflictPattern.add(urlPattern);
 				}
 			}
 
-			if (result.size() > 0)
+			if (conflictPattern.size() > 0)
 			{
-				return result;
+				return conflictPattern;
 			}
 			
 
@@ -306,7 +306,7 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 
 			_webApp.addServletMapping(mapping);
 
-			return Collections.unmodifiableSet(result);
+			return Collections.unmodifiableSet(conflictPattern);
 		}
 		catch (ServletException e)
 		{

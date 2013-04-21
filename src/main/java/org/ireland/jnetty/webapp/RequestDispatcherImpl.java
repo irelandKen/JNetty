@@ -33,9 +33,7 @@ import com.caucho.server.http.CauchoResponse;
 
 import javax.servlet.*;
 import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletRequestWrapper;
 import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpServletResponseWrapper;
 
 import org.ireland.jnetty.dispatch.Invocation;
 import org.ireland.jnetty.http.HttpServletResponseImpl;
@@ -47,6 +45,8 @@ import java.io.PrintWriter;
 import java.util.logging.Logger;
 
 /**
+ * 
+ * 对于每一个请求,要生成一个与之对应的RequestDispatcher
  * 
  * @author KEN
  * 
@@ -69,8 +69,7 @@ public class RequestDispatcherImpl implements RequestDispatcher
 
 	// private Invocation _asyncInvocation;
 
-	public RequestDispatcherImpl(WebApp webApp, String rowURI, Invocation includeInvocation, Invocation forwardInvocation, Invocation errorInvocation,
-			Invocation dispatchInvocation)
+	public RequestDispatcherImpl(WebApp webApp, String rowURI, Invocation includeInvocation, Invocation forwardInvocation, Invocation errorInvocation,Invocation dispatchInvocation)
 	{
 		_webApp = webApp;
 
@@ -82,6 +81,66 @@ public class RequestDispatcherImpl implements RequestDispatcher
 		_dispatchInvocation = dispatchInvocation;
 	}
 
+	
+	/**
+	 * This method sets the dispatcher type of the given request to DispatcherType.REQUEST.
+	 * 
+	 * 通常,DispatcherType.REQUEST是第一次被处理的类型.
+	 * 
+	 * @param request
+	 * @param response
+	 * @throws ServletException
+	 * @throws IOException
+	 */
+	public void dispatch(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException
+	{
+		// jsp/15m8
+		if (response.isCommitted())
+			throw new IllegalStateException("dispatch() not allowed after buffer has committed.");
+
+		// build invocation,if not exist
+		if (_dispatchInvocation == null)
+		{
+			_dispatchInvocation = new Invocation();
+
+			buildDispatchInvocation(_dispatchInvocation, _rawURI);
+		}
+		
+		doDispatch(request, response,_dispatchInvocation);
+	}
+	
+	private void doDispatch(HttpServletRequest request, HttpServletResponse response, Invocation invocation) throws ServletException, IOException
+	{
+
+		// 到这里,response的buffer一定为空的,TODO: need resetBuffer()?
+		response.resetBuffer();
+
+		boolean isValid = false;
+
+		try
+		{
+
+			invocation.service(request, response);
+			isValid = true;
+		}
+		finally
+		{
+			if (request.getAsyncContext() != null)
+			{
+				// An async request was started during the forward, don't close the
+				// response as it may be written to during the async handling
+				return;
+			}
+
+			// server/106r, ioc/0310
+			if (isValid)
+			{
+				finishResponse(response);
+			}
+		}
+	}
+	
+	
 	@Override
 	public void forward(ServletRequest request, ServletResponse response) throws ServletException, IOException
 	{
@@ -96,16 +155,6 @@ public class RequestDispatcherImpl implements RequestDispatcher
 		doForward((HttpServletRequest) request, (HttpServletResponse) response, _forwardInvocation);
 	}
 
-	/**
-	 * Forwards the request to the servlet named by the request dispatcher.
-	 * 
-	 * @param topRequest
-	 *            the servlet request.
-	 * @param response
-	 *            the servlet response.
-	 * @param method
-	 *            special to tell if from error.
-	 */
 	private void doForward(HttpServletRequest request, HttpServletResponse response, Invocation invocation) throws ServletException, IOException
 	{
 		// jsp/15m8
@@ -144,62 +193,6 @@ public class RequestDispatcherImpl implements RequestDispatcher
 
 			invocation.service(wrequest, response);
 
-			isValid = true;
-		}
-		finally
-		{
-			if (request.getAsyncContext() != null)
-			{
-				// An async request was started during the forward, don't close the
-				// response as it may be written to during the async handling
-				return;
-			}
-
-			// server/106r, ioc/0310
-			if (isValid)
-			{
-				finishResponse(response);
-			}
-		}
-	}
-
-	/**
-	 * This method sets the dispatcher type of the given request to DispatcherType.REQUEST.
-	 * 
-	 * 通常,DispatcherType.REQUEST是第一次被处理的类型.
-	 * 
-	 * 
-	 * 
-	 * 
-	 * @param request
-	 * @param response
-	 * @throws ServletException
-	 * @throws IOException
-	 */
-	public void dispatch(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException
-	{
-		// jsp/15m8
-		if (response.isCommitted())
-			throw new IllegalStateException("dispatch() not allowed after buffer has committed.");
-
-		// build invocation,if not exist
-		if (_dispatchInvocation == null)
-		{
-			_dispatchInvocation = new Invocation();
-
-			buildDispatchInvocation(_dispatchInvocation, _rawURI);
-		}
-
-		// 到这里,response的buffer一定为空的,TODO: need resetBuffer()?
-		response.resetBuffer();
-
-
-		boolean isValid = false;
-
-		try
-		{
-
-			_dispatchInvocation.service(request, response);
 			isValid = true;
 		}
 		finally

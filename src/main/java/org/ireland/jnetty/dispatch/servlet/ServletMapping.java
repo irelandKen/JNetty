@@ -31,15 +31,12 @@ package org.ireland.jnetty.dispatch.servlet;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
 
-import javax.servlet.ServletException;
 
+import org.ireland.jnetty.config.ConfigException;
 import org.ireland.jnetty.dispatch.ServletInvocation;
 import org.springframework.util.Assert;
 
-import com.caucho.config.ConfigException;
 import com.caucho.util.L10N;
 
 /**
@@ -65,10 +62,6 @@ public class ServletMapping
 	// <url-pattern> 列表
 	private ArrayList<String> _urlPatterns = new ArrayList<String>();
 
-	// 是否严格匹配
-	private boolean _isStrictMapping;
-
-	private boolean _isDefault;
 
 	/**
 	 * Creates a new servlet mapping object.
@@ -112,38 +105,6 @@ public class ServletMapping
 		// server/13f4
 		if (servletConfig.getServletNameDefault() == null)
 			servletConfig.setServletNameDefault(pattern);
-	}
-
-	/**
-	 * True if strict mapping should be enabled.
-	 */
-	public boolean isStrictMapping()
-	{
-		return _isStrictMapping;
-	}
-
-	/**
-	 * Set if strict mapping should be enabled.
-	 */
-	public void setStrictMapping(boolean isStrictMapping)
-	{
-		_isStrictMapping = isStrictMapping;
-	}
-
-	/**
-	 * Set for default mapping that can be overridden by programmatic mapping.
-	 */
-	public void setDefault(boolean isDefault)
-	{
-		_isDefault = isDefault;
-	}
-
-	/**
-	 * True for default mapping that can be overridden by programmatic mapping.
-	 */
-	public boolean isDefault()
-	{
-		return _isDefault;
 	}
 
 

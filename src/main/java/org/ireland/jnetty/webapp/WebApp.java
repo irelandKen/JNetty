@@ -114,6 +114,7 @@ import org.ireland.jnetty.dispatch.filterchain.ErrorFilterChain;
 import org.ireland.jnetty.dispatch.filterchain.ExceptionFilterChain;
 import org.ireland.jnetty.dispatch.filterchain.FilterChainBuilder;
 import org.ireland.jnetty.dispatch.filterchain.RedirectFilterChain;
+import org.ireland.jnetty.dispatch.filterchain.ServletRequestListenerFilterChain;
 import org.ireland.jnetty.dispatch.servlet.ServletConfigImpl;
 import org.ireland.jnetty.dispatch.servlet.ServletConfigurator;
 import org.ireland.jnetty.dispatch.servlet.ServletManager;
@@ -129,8 +130,6 @@ import org.springframework.util.Assert;
 
 import com.caucho.i18n.CharacterEncoding;
 
-import com.caucho.server.webapp.CacheMapping;
-import com.caucho.server.webapp.MultipartForm;
 
 import com.caucho.util.CurrentTime;
 import com.caucho.util.L10N;
@@ -165,7 +164,6 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 
 	private URIDecoder _uriDecoder;
 
-	private String _moduleName = "default";
 
 	private String _servletVersion;
 
@@ -178,8 +176,6 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 	private ServletMapper _servletMapper;
 	// -----servlet--------------------------
 
-	// True the mapper should be strict
-	private boolean _isStrictMapping;
 
 	// -----filter--------------------------
 	// The filter manager
@@ -198,7 +194,6 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 	private FilterMapper _errorFilterMapper;
 	// -----filter--------------------------
 
-	private FilterChainBuilder _securityBuilder;
 
 	// The session manager
 	private SessionManager _sessionManager;
@@ -212,7 +207,6 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 	// 用LRU算法Cache最近最常使用的url与FilterChain之间的映射关系()
 	private LruCache<String, FilterChainEntry> _filterChainCache = new LruCache<String, FilterChainEntry>(256);
 
-	private UrlMap<CacheMapping> _cacheMappingMap = new UrlMap<CacheMapping>();
 
 	private LruCache<String, RequestDispatcherImpl> _dispatcherCache;
 
@@ -240,25 +234,22 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 	private List<ListenerConfig> _listeners = new ArrayList<ListenerConfig>();
 
 	// List of the ServletContextListeners from the configuration file
-	private List<ServletContextListener> _contextListeners = new ArrayList<ServletContextListener>();
+	private ArrayList<ServletContextListener> _contextListeners = new ArrayList<ServletContextListener>();
 
 	// List of the ServletContextAttributeListeners from the configuration file
-	private List<ServletContextAttributeListener> _contextAttributeListeners = new ArrayList<ServletContextAttributeListener>();
+	private ArrayList<ServletContextAttributeListener> _contextAttributeListeners = new ArrayList<ServletContextAttributeListener>();
 
+	
 	// List of the ServletRequestListeners from the configuration file
-	private List<ServletRequestListener> _requestListeners = new ArrayList<ServletRequestListener>();
-
+	private ArrayList<ServletRequestListener> _requestListeners = new ArrayList<ServletRequestListener>();
 
 	// List of the ServletRequestAttributeListeners from the configuration file
-	private List<ServletRequestAttributeListener> _requestAttributeListeners = new ArrayList<ServletRequestAttributeListener>();
-
-	@Deprecated
-	private ServletRequestAttributeListener[] _requestAttributeListenerArray = new ServletRequestAttributeListener[0];
+	private ArrayList<ServletRequestAttributeListener> _requestAttributeListeners = new ArrayList<ServletRequestAttributeListener>();
 
 	// listeners-----------------------------------------------
 
-	//WebApp的根目录
-	private String _rootDirectory;
+	// WebApp的根目录
+	private final String _rootDirectory;
 
 	private String _tempDir;
 
@@ -266,7 +257,6 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 
 	private HashMap<String, Object> _extensions = new HashMap<String, Object>();
 
-	private MultipartForm _multipartForm;
 
 	private boolean _isEnabled = true;
 
@@ -292,22 +282,15 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 
 		_uriDecoder = new URIDecoder();
 
-		_moduleName = _contextPath;
-
-		if ("".equals(_moduleName))
-			_moduleName = "ROOT";
-		else if (_moduleName.startsWith("/"))
-			_moduleName = _moduleName.substring(1);
-
 		initConstructor();
 	}
-	
+
 	/**
 	 * 使用自定义的类加载器,将/WEB-INF/classes和/WEB-INF/lib/*.jar加入类加载器的classPath
 	 */
 	protected void initClassLoader()
 	{
-		//"/WEB-INF/classes"
+		// "/WEB-INF/classes"
 		URL classPath = null;
 		try
 		{
@@ -317,20 +300,20 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 		{
 			e.printStackTrace();
 		}
-		
+
 		List<URL> urls = new ArrayList<URL>();
-		
-		if(classPath != null)
+
+		if (classPath != null)
 			urls.add(classPath);
-		
-		//"/WEB-INF/lib"
+
+		// "/WEB-INF/lib"
 		File libPath = new File(getRealPath("/WEB-INF/lib"));
-		
-		if(libPath.isDirectory())
+
+		if (libPath.isDirectory())
 		{
-			for(File file : libPath.listFiles())
+			for (File file : libPath.listFiles())
 			{
-				if(file.getPath().endsWith(".jar"))
+				if (file.getPath().endsWith(".jar"))
 				{
 					try
 					{
@@ -344,66 +327,61 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 				}
 			}
 		}
-		
 
 		_classLoader = new URLClassLoader(urls.toArray(new URL[urls.size()]), this.getClassLoader());
-		
-		
-		if(log.isDebugEnabled())
+
+		if (log.isDebugEnabled())
 			displayClassLoader();
 	}
-	
+
 	void displayClassLoader()
 	{
 		System.out.println("BootstrapClassLoader 的加载路径: ");
-		
+
 		URL[] urls = sun.misc.Launcher.getBootstrapClassPath().getURLs();
-		for(URL url : urls)
+		for (URL url : urls)
 			System.out.println(url);
 		System.out.println("----------------------------");
-				
-		//取得扩展类加载器
-		URLClassLoader extClassLoader = (URLClassLoader)ClassLoader.getSystemClassLoader().getParent();
+
+		// 取得扩展类加载器
+		URLClassLoader extClassLoader = (URLClassLoader) ClassLoader.getSystemClassLoader().getParent();
 
 		System.out.println(extClassLoader);
 		System.out.println("扩展类加载器 的加载路径: ");
-		
+
 		urls = extClassLoader.getURLs();
-		for(URL url : urls)
+		for (URL url : urls)
 			System.out.println(url);
-		
+
 		System.out.println("----------------------------");
-				
-		
-		//取得应用(系统)类加载器
+
+		// 取得应用(系统)类加载器
 		URLClassLoader appClassLoader = (URLClassLoader) _classLoader.getParent();
-		
+
 		System.out.println(appClassLoader);
 		System.out.println("应用(系统)类加载器 的加载路径: ");
-		
+
 		urls = appClassLoader.getURLs();
-		for(URL url : urls)
+		for (URL url : urls)
 			System.out.println(url);
-				
+
 		System.out.println("----------------------------");
-		
-		//取得应用(系统)类加载器
+
+		// 取得应用(系统)类加载器
 		appClassLoader = (URLClassLoader) _classLoader;
-		
+
 		System.out.println(appClassLoader);
 		System.out.println("应用(系统)类加载器 的加载路径: ");
-		
+
 		urls = appClassLoader.getURLs();
-		for(URL url : urls)
+		for (URL url : urls)
 			System.out.println(url);
-				
+
 		System.out.println("----------------------------");
 	}
 
 	private void initConstructor()
 	{
-
-		// Path _rootDirectory = getRootDirectory();
 
 		_beanFactory = new BeanFactory(getClassLoader());
 
@@ -441,6 +419,7 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 	/**
 	 * Returns the webApp's canonical context path, e.g. /foo-1.0
 	 */
+	@Override
 	public String getContextPath()
 	{
 		return _contextPath;
@@ -461,15 +440,6 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 		return _host;
 	}
 
-	public String getModuleName()
-	{
-		return _moduleName;
-	}
-
-	public void setModuleName(String moduleName)
-	{
-		_moduleName = moduleName;
-	}
 
 	public URIDecoder getURIDecoder()
 	{
@@ -489,21 +459,7 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 		return _classLoader;
 	}
 
-	/**
-	 * Sets the root directory (app-dir).
-	 */
 
-	public void setRootDirectory(Path appDir)
-	{
-	}
-
-	/**
-	 * Sets the webApp directory.
-	 */
-	public void setAppDir(Path appDir)
-	{
-		setRootDirectory(appDir);
-	}
 
 	/**
 	 * Sets the servlet version.
@@ -522,12 +478,6 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 		return _servletVersion;
 	}
 
-	/**
-	 * Sets the schema location.
-	 */
-	public void setSchemaLocation(String location)
-	{
-	}
 
 	public void setEnabled(boolean isEnabled)
 	{
@@ -539,9 +489,7 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 		return _isEnabled;
 	}
 
-	public void setDistributable(boolean isDistributable)
-	{
-	}
+
 
 	/**
 	 * Gets the URL
@@ -776,22 +724,7 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 		return _characterEncoding;
 	}
 
-	/**
-	 * Set true if strict mapping.
-	 */
 
-	public void setStrictMapping(boolean isStrict) throws ServletException
-	{
-		_isStrictMapping = isStrict;
-	}
-
-	/**
-	 * Get the strict mapping setting.
-	 */
-	public boolean getStrictMapping()
-	{
-		return _isStrictMapping;
-	}
 
 	/**
 	 * 创建一个新的ServletConfigImpl
@@ -817,8 +750,6 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 		checkServlerConfig(config);
 
 		ServletMapping servletMapping = new ServletMapping(config);
-
-		servletMapping.setStrictMapping(getStrictMapping());
 
 		return servletMapping;
 	}
@@ -1130,7 +1061,7 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 			ServletContextListener scListener = (ServletContextListener) listenerObj;
 			_contextListeners.add(scListener);
 
-			//发布 ServletContextEvent#contextInitialized 事件
+			// 发布 ServletContextEvent#contextInitialized 事件
 			if (start)
 			{
 				ServletContextEvent event = new ServletContextEvent(this);
@@ -1157,25 +1088,21 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 			_requestListeners.add((ServletRequestListener) listenerObj);
 		}
 
-		
-		//ServletRequestAttributeListener
+		// ServletRequestAttributeListener
 		if (listenerObj instanceof ServletRequestAttributeListener)
 		{
 			_requestAttributeListeners.add((ServletRequestAttributeListener) listenerObj);
-
-			_requestAttributeListenerArray = new ServletRequestAttributeListener[_requestAttributeListeners.size()];
-			_requestAttributeListeners.toArray(_requestAttributeListenerArray);
 		}
 
-		//HttpSessionListener
+		// HttpSessionListener
 		if (listenerObj instanceof HttpSessionListener)
 			getSessionManager().addListener((HttpSessionListener) listenerObj);
 
-		//HttpSessionListener
+		// HttpSessionListener
 		if (listenerObj instanceof HttpSessionAttributeListener)
 			getSessionManager().addAttributeListener((HttpSessionAttributeListener) listenerObj);
 
-		//HttpSessionActivationListener
+		// HttpSessionActivationListener
 		if (listenerObj instanceof HttpSessionActivationListener)
 			getSessionManager().addActivationListener((HttpSessionActivationListener) listenerObj);
 	}
@@ -1191,55 +1118,18 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 	/**
 	 * Returns the request attribute listeners.
 	 */
-	@Deprecated
-	public ServletRequestAttributeListener[] getRequestAttributeListeners()
+	public List<ServletRequestAttributeListener> getRequestAttributeListeners()
 	{
-		return _requestAttributeListenerArray;
+		return _requestAttributeListeners;
 	}
 
 	// special config
 
-	/**
-	 * Multipart form config.
-	 */
 
-	public MultipartForm createMultipartForm()
-	{
-		if (_multipartForm == null)
-			_multipartForm = new MultipartForm();
 
-		return _multipartForm;
-	}
 
-	/**
-	 * Returns true if multipart forms are enabled.
-	 */
-	public boolean isMultipartFormEnabled()
-	{
-		return _multipartForm != null && _multipartForm.isEnable();
-	}
 
-	/**
-	 * Returns the form upload max.
-	 */
-	public long getFormUploadMax()
-	{
-		if (_multipartForm != null)
-			return _multipartForm.getUploadMax();
-		else
-			return -1;
-	}
 
-	/**
-	 * Returns the form upload max.
-	 */
-	public long getFormParameterLengthMax()
-	{
-		if (_multipartForm != null)
-			return _multipartForm.getParameterLengthMax();
-		else
-			return -1;
-	}
 
 	/**
 	 * Sets the temporary directory
@@ -1293,15 +1183,13 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 
 		try
 		{
-			//加载 <context-param>参数
+			// 加载 <context-param>参数
 			loader.loadInitParam();
-			
-			
-			//加载<listener>标签
+
+			// 加载<listener>标签
 			loader.loadListener();
 
-			
-			//解释web.xml所有的<filter>元素
+			// 解释web.xml所有的<filter>元素
 			LinkedHashMap<String, FilterConfigImpl> filterConfigMap = loader.praseFilter();
 
 			for (Entry<String, FilterConfigImpl> e : filterConfigMap.entrySet())
@@ -1309,15 +1197,13 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 				addFilter(e.getValue());
 			}
 
-			//解释web.xml所有的<filter-mapping>元素
+			// 解释web.xml所有的<filter-mapping>元素
 			loader.parseFilterMapping(filterConfigMap);
 
-			
-			//解释web.xml中的<servlet>标签
+			// 解释web.xml中的<servlet>标签
 			LinkedHashMap<String, ServletConfigImpl> servletConfigMap = loader.praseServletConfig();
 
-			
-			//解释web.xml中的<servlet-mapping>标签
+			// 解释web.xml中的<servlet-mapping>标签
 			loader.parseServletMapping(servletConfigMap);
 		}
 		catch (ClassNotFoundException e)
@@ -1335,12 +1221,10 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 
 		try
 		{
-			//加载web.xml
+			// 加载web.xml
 			parseWebXml();
 
 			configJsp();
-			
-			
 
 			// 初始化Listener
 			for (ListenerConfig listener : _listeners)
@@ -1357,10 +1241,7 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 
 			//
 			publishContextInitializedEvent();
-			
 
-
-			
 			// Servlet 3.0
 
 			try
@@ -1389,37 +1270,34 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 	}
 
 	/**
-	 * 配置JSP相关的
-	 * JspServletComposite的ServletConfig配置信息
-	 * @throws ServletException 
+	 * 配置JSP相关的 JspServletComposite的ServletConfig配置信息
+	 * 
+	 * @throws ServletException
 	 */
-    private void configJsp() throws ServletException
+	private void configJsp() throws ServletException
 	{
-    	ServletConfigImpl config = createNewServletConfig();
-		
+		ServletConfigImpl config = createNewServletConfig();
+
 		config.setServletName(JspServletComposite.class.getCanonicalName());
 		config.setServletClass(JspServletComposite.class);
-		
-		//缺省情况下,关闭development模式,提高性能
+
+		// 缺省情况下,关闭development模式,提高性能
 		config.setInitParameter("development", "false");
-		
-		
+
 		_servletManager.addServlet(config);
 	}
-
-
 
 	/* ------------------------------------------------------------ */
 	/**
 	 * 发布publish ContextInitialized Event 事件
 	 */
-    protected void publishContextInitializedEvent()
-    {
-    	log.debug("publish ContextInitialized Event");
-    	
-		//发布ServletContextListener#contextInitialized事件
+	protected void publishContextInitializedEvent()
+	{
+		log.debug("publish ContextInitialized Event");
+
+		// 发布ServletContextListener#contextInitialized事件
 		ServletContextEvent event = new ServletContextEvent(this);
-		
+
 		for (int i = 0; i < _contextListeners.size(); i++)
 		{
 			ServletContextListener listener = _contextListeners.get(i);
@@ -1433,8 +1311,7 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 				log.warn(e.toString(), e);
 			}
 		}
-    }
-
+	}
 
 	/**
 	 * Returns the servlet context for the URI.
@@ -1455,10 +1332,6 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 
 		return this;
 	}
-
-	
-
-
 
 	public ServletMapper getServletMapper()
 	{
@@ -1547,6 +1420,21 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 	}
 
 	/**
+	 * 创建用于触发ServletRequestListener相关事件的FilterChain
+	 * @param chain
+	 * @return
+	 */
+	FilterChain createServletRequestListenerFilterChain(FilterChain chain)
+	{
+		if (getRequestListeners() != null && getRequestListeners().size() > 0)
+		{
+			chain = new ServletRequestListenerFilterChain(chain, this, getRequestListeners());
+		}
+
+		return chain;
+	}
+
+	/**
 	 * Returns a dispatcher for the named servlet. TODO:其实可以将具体build invocation的时刻延迟到RequestDispatcherImpl里实现?
 	 * 等RequestDispatcherImpl选择了forward还是什么的时候再实现
 	 */
@@ -1631,50 +1519,34 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 	/**
 	 * Maps from a URI to a real path.
 	 */
-/*	@Override
-	public String getRealPath(String uri)
-	{
-		// server/10m7
-		if (uri == null)
-			return null;
+	/*
+	 * @Override public String getRealPath(String uri) { // server/10m7 if (uri == null) return null;
+	 * 
+	 * String realPath = _realPathCache.get(uri);
+	 * 
+	 * if (realPath != null) return realPath;
+	 * 
+	 * WebApp webApp = this; String tail = uri;
+	 * 
+	 * String fullURI = getContextPath() + "/" + uri;
+	 * 
+	 * try { fullURI = getURIDecoder().normalizeUri(fullURI); } catch (Exception e) { log.warn(e.toString(), e); }
+	 * 
+	 * webApp = (WebApp) getContext(fullURI);
+	 * 
+	 * if (webApp == null) webApp = this;
+	 * 
+	 * String cp = webApp.getContextPath(); tail = fullURI.substring(cp.length());
+	 * 
+	 * realPath = tail;
+	 * 
+	 * if (log.isDebugEnabled()) log.debug("real-path " + uri + " -> " + realPath);
+	 * 
+	 * _realPathCache.put(uri, realPath);
+	 * 
+	 * return realPath; }
+	 */
 
-		String realPath = _realPathCache.get(uri);
-
-		if (realPath != null)
-			return realPath;
-
-		WebApp webApp = this;
-		String tail = uri;
-
-		String fullURI = getContextPath() + "/" + uri;
-
-		try
-		{
-			fullURI = getURIDecoder().normalizeUri(fullURI);
-		}
-		catch (Exception e)
-		{
-			log.warn(e.toString(), e);
-		}
-
-		webApp = (WebApp) getContext(fullURI);
-
-		if (webApp == null)
-			webApp = this;
-
-		String cp = webApp.getContextPath();
-		tail = fullURI.substring(cp.length());
-
-		realPath = tail;
-
-		if (log.isDebugEnabled())
-			log.debug("real-path " + uri + " -> " + realPath);
-
-		_realPathCache.put(uri, realPath);
-
-		return realPath;
-	}*/
-	
 	@Override
 	public String getRealPath(String uri)
 	{
@@ -1692,7 +1564,7 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 		if (log.isDebugEnabled())
 			log.debug("real-path " + uri + " -> " + realPath);
 
-		if(realPath != null)
+		if (realPath != null)
 			_realPathCache.put(uri, realPath);
 
 		return realPath;
@@ -1766,42 +1638,10 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 		return _errorPageManager;
 	}
 
-	/**
-	 * Returns the maximum length for a cache.
-	 */
-	public void addCacheMapping(CacheMapping mapping) throws Exception
-	{
-		if (mapping.getUrlRegexp() != null)
-			_cacheMappingMap.addRegexp(mapping.getUrlRegexp(), mapping);
-		else
-			_cacheMappingMap.addMap(mapping.getUrlPattern(), mapping);
-	}
 
-	/**
-	 * Returns the time for a cache mapping.
-	 */
-	public long getMaxAge(String uri)
-	{
-		CacheMapping map = _cacheMappingMap.map(uri);
 
-		if (map != null)
-			return map.getMaxAge();
-		else
-			return Long.MIN_VALUE;
-	}
 
-	/**
-	 * Returns the time for a cache mapping.
-	 */
-	public long getSMaxAge(String uri)
-	{
-		CacheMapping map = _cacheMappingMap.map(uri);
 
-		if (map != null)
-			return map.getSMaxAge();
-		else
-			return Long.MIN_VALUE;
-	}
 
 	/**
 	 * Returns the active session count.
@@ -1864,12 +1704,10 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 		if (_filterManager != null)
 			_filterManager.destroy();
 
-		
 		// server/10g8 -- webApp listeners after session
-		
-		//发布 ServletContextListener#contextDestroyed事件 
-		publishContextDestroyedEvent(event);
 
+		// 发布 ServletContextListener#contextDestroyed事件
+		publishContextDestroyedEvent(event);
 
 		// server/10g8 -- webApp listeners after session
 		for (int i = _listeners.size() - 1; i >= 0; i--)
@@ -1902,12 +1740,12 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 		}
 
 	}
-	
-    /**
-     * 发布publish ContextDestroyed Event 事件
-     */
-    protected void publishContextDestroyedEvent(ServletContextEvent event)
-    {
+
+	/**
+	 * 发布publish ContextDestroyed Event 事件
+	 */
+	protected void publishContextDestroyedEvent(ServletContextEvent event)
+	{
 		if (_contextListeners != null)
 		{
 			for (int i = _contextListeners.size() - 1; i >= 0; i--)
@@ -1924,7 +1762,7 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 				}
 			}
 		}
-    }
+	}
 
 	// /static-----------------------------------------------------------------------------
 
