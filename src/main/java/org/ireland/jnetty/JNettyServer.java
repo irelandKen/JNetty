@@ -29,7 +29,7 @@ public class JNettyServer
 
 	public static final String HOST = "127.0.0.1";
 
-	private static final int PORT = 80;
+	private static int PORT = 80;
 
 	public void run() throws Exception
 	{
@@ -56,6 +56,9 @@ public class JNettyServer
 
 	public static void main(String[] args) throws Exception
 	{
+        if (args.length > 0) {
+        	PORT = Integer.parseInt(args[0]);
+        } 
 
 		new JNettyServer().run();
 	}

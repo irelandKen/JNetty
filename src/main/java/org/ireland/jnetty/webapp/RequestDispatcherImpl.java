@@ -96,7 +96,7 @@ public class RequestDispatcherImpl implements RequestDispatcher
 		// build invocation,if not exist
 		if (_dispatchInvocation == null)
 		{
-			_dispatchInvocation = new Invocation();
+			_dispatchInvocation = new Invocation(_webApp);
 
 			buildDispatchInvocation(_dispatchInvocation, _rawContextURI);
 		}
@@ -142,7 +142,7 @@ public class RequestDispatcherImpl implements RequestDispatcher
 		// build invocation,if not exist
 		if (_forwardInvocation == null)
 		{
-			_forwardInvocation = new Invocation();
+			_forwardInvocation = new Invocation(_webApp);
 
 			buildForwardInvocation(_forwardInvocation, _rawContextURI);
 		}
@@ -220,7 +220,7 @@ public class RequestDispatcherImpl implements RequestDispatcher
 		// build invocation,if not exist
 		if (_errorInvocation == null)
 		{
-			_errorInvocation = new Invocation();
+			_errorInvocation = new Invocation(_webApp);
 
 			buildErrorInvocation(_errorInvocation, _rawContextURI);
 		}
@@ -419,7 +419,7 @@ public class RequestDispatcherImpl implements RequestDispatcher
 		// build invocation,if not exist
 		if (_includeInvocation == null)
 		{
-			_includeInvocation = new Invocation();
+			_includeInvocation = new Invocation(_webApp);
 
 			buildIncludeInvocation(_includeInvocation, _rawContextURI);
 		}

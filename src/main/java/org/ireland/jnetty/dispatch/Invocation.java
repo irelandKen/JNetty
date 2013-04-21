@@ -52,9 +52,10 @@ public class Invocation extends ServletInvocation
 	private String _sessionId;
 
 	private WebApp _webApp;
-
-	public Invocation()
+	
+	public Invocation(WebApp webApp)
 	{
+		_webApp = webApp;
 	}
 
 	/**

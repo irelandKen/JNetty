@@ -100,11 +100,11 @@ public class ServletRequestListenerFilterChain implements FilterChain
 		try
 		{
 			//触发ServletRequestListener#requestInitialized事件
-			for (int i = 0; i < _requestListeners.size(); i++)
+			for (ServletRequestListener listener : _requestListeners)
 			{
 				ServletRequestEvent event = new ServletRequestEvent(_webApp, request);
 
-				_requestListeners.get(i).requestInitialized(event);
+				listener.requestInitialized(event);
 			}
 
 			_next.doFilter(request, response);

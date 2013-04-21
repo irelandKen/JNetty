@@ -34,8 +34,6 @@ import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.nio.file.FileSystems;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -50,13 +48,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+
 
 import javax.annotation.PostConstruct;
 import javax.servlet.DispatcherType;
@@ -104,16 +97,12 @@ import org.ireland.jnetty.config.ConfigException;
 import org.ireland.jnetty.config.ListenerConfig;
 import org.ireland.jnetty.config.WebXmlLoader;
 import org.ireland.jnetty.dispatch.Invocation;
-import org.ireland.jnetty.dispatch.InvocationBuilder;
 import org.ireland.jnetty.dispatch.filter.FilterConfigImpl;
 import org.ireland.jnetty.dispatch.filter.FilterConfigurator;
 import org.ireland.jnetty.dispatch.filter.FilterManager;
 import org.ireland.jnetty.dispatch.filter.FilterMapper;
 import org.ireland.jnetty.dispatch.filter.FilterMapping;
-import org.ireland.jnetty.dispatch.filterchain.ErrorFilterChain;
 import org.ireland.jnetty.dispatch.filterchain.ExceptionFilterChain;
-import org.ireland.jnetty.dispatch.filterchain.FilterChainBuilder;
-import org.ireland.jnetty.dispatch.filterchain.RedirectFilterChain;
 import org.ireland.jnetty.dispatch.filterchain.ServletRequestListenerFilterChain;
 import org.ireland.jnetty.dispatch.servlet.ServletConfigImpl;
 import org.ireland.jnetty.dispatch.servlet.ServletConfigurator;
@@ -124,13 +113,16 @@ import org.ireland.jnetty.jsp.JspServletComposite;
 import org.ireland.jnetty.server.session.SessionManager;
 import org.ireland.jnetty.util.http.Encoding;
 import org.ireland.jnetty.util.http.URIDecoder;
-import org.ireland.jnetty.util.http.UrlMap;
 
 import org.springframework.util.Assert;
 
 import com.caucho.i18n.CharacterEncoding;
+import com.caucho.make.AlwaysModified;
 
 
+import com.caucho.server.dispatch.ErrorFilterChain;
+import com.caucho.server.dispatch.VersionInvocation;
+import com.caucho.server.webapp.WebAppFilterChain;
 import com.caucho.util.CurrentTime;
 import com.caucho.util.L10N;
 import com.caucho.util.LruCache;
@@ -186,29 +178,26 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 	// The dispatch filter mapper (DispatcherType#REQUEST)
 	private FilterMapper _dispatchFilterMapper;
 
-	// The include filter mapper (DispatcherType#INCLUDE)
-	private FilterMapper _includeFilterMapper;
-
 	// The forward filter mapper (DispatcherType#FORWARD)
 	private FilterMapper _forwardFilterMapper;
+	
+	// The include filter mapper (DispatcherType#INCLUDE)
+	private FilterMapper _includeFilterMapper;
 
 	// The error filter mapper (DispatcherType#ERROR)
 	private FilterMapper _errorFilterMapper;
 	// -----filter--------------------------
 
 
-	// The session manager
-	private SessionManager _sessionManager;
-
-	private String _characterEncoding;
-
-	private int _formParameterMax = 10000;
-
-	// The cache
+	// The FilterChain Cache
 
 	// 用LRU算法Cache最近最常使用的url与FilterChain之间的映射关系()
-	private LruCache<String, FilterChainEntry> _filterChainCache = new LruCache<String, FilterChainEntry>(256);
+	private LruCache<String, FilterChainEntry> _dispatchFilterChainCache = new LruCache<String, FilterChainEntry>(128);
+	private LruCache<String, FilterChainEntry> _forwardFilterChainCache = new LruCache<String, FilterChainEntry>(128);
+	private LruCache<String, FilterChainEntry> _includeFilterChainCache = new LruCache<String, FilterChainEntry>(32);
+	private LruCache<String, FilterChainEntry> _errorFilterChainCache = new LruCache<String, FilterChainEntry>(32);
 
+	
 	//<rowContextURI,_requestDispatcherCache>
 	private LruCache<String, RequestDispatcherImpl> _requestDispatcherCache;
 
@@ -250,6 +239,7 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 
 	// listeners-----------------------------------------------
 
+	
 	// WebApp的根目录
 	private final String _rootDirectory;
 
@@ -261,6 +251,12 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 
 
 	private boolean _isEnabled = true;
+
+	
+	// The session manager
+	private SessionManager _sessionManager;
+
+	private String _characterEncoding;
 
 
 	/**
@@ -917,19 +913,7 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 		return _cookieHttpOnly;
 	}
 
-	/**
-	 * Sets the maximum number of form parameters
-	 */
 
-	public void setFormParameterMax(int max)
-	{
-		_formParameterMax = max;
-	}
-
-	public int getFormParameterMax()
-	{
-		return _formParameterMax;
-	}
 
 	/**
 	 * Adds a mime-mapping
@@ -1344,9 +1328,9 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 	public void clearCache()
 	{
 		// server/1kg1
-		synchronized (_filterChainCache)
+		synchronized (_dispatchFilterChainCache)
 		{
-			_filterChainCache.clear();
+			_dispatchFilterChainCache.clear();
 			_requestDispatcherCache = null;
 		}
 
@@ -1357,8 +1341,32 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 	 */
 	public void buildDispatchInvocation(Invocation invocation) throws ServletException
 	{
+		//try to get from Cache
+        FilterChainEntry entry = _dispatchFilterChainCache.get(invocation.getContextURI());
 
+        if (entry != null) {
+          
+          invocation.setFilterChain(entry.getFilterChain());
+          
+          invocation.setServletName(entry.getServletName());
+          invocation.setServletPath(entry.getServletPath());
+          invocation.setPathInfo(entry.getPathInfo());
+          
+          if (! entry.isAsyncSupported())
+            invocation.clearAsyncSupported();
+          
+          return;
+        } 
+        
+        //build it
 		buildInvocation(invocation, _dispatchFilterMapper);
+		
+		//put to cache
+		if(invocation.getFilterChain()!= null)
+		{
+			FilterChainEntry filterChainEntry = new FilterChainEntry(invocation.getFilterChain(), invocation);
+			_dispatchFilterChainCache.put(invocation.getContextURI(), filterChainEntry);
+		}
 	}
 
 	/**
@@ -1366,7 +1374,32 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 	 */
 	public void buildForwardInvocation(Invocation invocation) throws ServletException
 	{
+		//try to get from Cache
+        FilterChainEntry entry = _forwardFilterChainCache.get(invocation.getContextURI());
+
+        if (entry != null) {
+          
+          invocation.setFilterChain(entry.getFilterChain());
+          
+          invocation.setServletName(entry.getServletName());
+          invocation.setServletPath(entry.getServletPath());
+          invocation.setPathInfo(entry.getPathInfo());
+          
+          if (! entry.isAsyncSupported())
+            invocation.clearAsyncSupported();
+          
+          return;
+        } 
+        
+        //build it
 		buildInvocation(invocation, _forwardFilterMapper);
+		
+		//put to cache
+		if(invocation.getFilterChain()!= null)
+		{
+			FilterChainEntry filterChainEntry = new FilterChainEntry(invocation.getFilterChain(), invocation);
+			_forwardFilterChainCache.put(invocation.getContextURI(), filterChainEntry);
+		}
 	}
 
 	/**
@@ -1374,7 +1407,32 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 	 */
 	public void buildIncludeInvocation(Invocation invocation) throws ServletException
 	{
+		//try to get from Cache
+        FilterChainEntry entry = _includeFilterChainCache.get(invocation.getContextURI());
+
+        if (entry != null) {
+          
+          invocation.setFilterChain(entry.getFilterChain());
+          
+          invocation.setServletName(entry.getServletName());
+          invocation.setServletPath(entry.getServletPath());
+          invocation.setPathInfo(entry.getPathInfo());
+          
+          if (! entry.isAsyncSupported())
+            invocation.clearAsyncSupported();
+          
+          return;
+        } 
+        
+        //build it
 		buildInvocation(invocation, _includeFilterMapper);
+		
+		//put to cache
+		if(invocation.getFilterChain()!= null)
+		{
+			FilterChainEntry filterChainEntry = new FilterChainEntry(invocation.getFilterChain(), invocation);
+			_includeFilterChainCache.put(invocation.getContextURI(), filterChainEntry);
+		}
 	}
 
 	/**
@@ -1382,7 +1440,32 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 	 */
 	public void buildErrorInvocation(Invocation invocation) throws ServletException
 	{
+		//try to get from Cache
+        FilterChainEntry entry = _errorFilterChainCache.get(invocation.getContextURI());
+
+        if (entry != null) {
+          
+          invocation.setFilterChain(entry.getFilterChain());
+          
+          invocation.setServletName(entry.getServletName());
+          invocation.setServletPath(entry.getServletPath());
+          invocation.setPathInfo(entry.getPathInfo());
+          
+          if (! entry.isAsyncSupported())
+            invocation.clearAsyncSupported();
+          
+          return;
+        } 
+        
+        //build it
 		buildInvocation(invocation, _errorFilterMapper);
+		
+		//put to cache
+		if(invocation.getFilterChain()!= null)
+		{
+			FilterChainEntry filterChainEntry = new FilterChainEntry(invocation.getFilterChain(), invocation);
+			_errorFilterChainCache.put(invocation.getContextURI(), filterChainEntry);
+		}
 	}
 
 	/**
@@ -1390,8 +1473,9 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 	 */
 	void buildInvocation(Invocation invocation, FilterMapper filterMapper) throws ServletException
 	{
-		invocation.setWebApp(this);
-
+		if(log.isDebugEnabled())
+			log.debug("buildInvocation:"+invocation.getRawURI());
+		
 		try
 		{
 			FilterChain chain;
@@ -1418,6 +1502,8 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 			invocation.setFilterChain(chain);
 		}
 	}
+	
+
 
 	/**
 	 * 创建用于触发ServletRequestListener相关事件的FilterChain
@@ -1756,7 +1842,6 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 		String _servletPath;
 		String _servletName;
 		boolean _isAsyncSupported;
-		MultipartConfigElement _multipartConfig;
 
 		FilterChainEntry(FilterChain filterChain, Invocation invocation)
 		{
@@ -1765,7 +1850,6 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 			_servletPath = invocation.getServletPath();
 			_servletName = invocation.getServletName();
 			_isAsyncSupported = invocation.isAsyncSupported();
-			_multipartConfig = invocation.getMultipartConfig();
 		}
 
 		FilterChain getFilterChain()
@@ -1792,41 +1876,11 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 		{
 			return _isAsyncSupported;
 		}
-
-		public MultipartConfigElement getMultipartConfig()
-		{
-			return _multipartConfig;
-		}
 	}
 
-	static class ClassComparator implements Comparator<Class<?>>
-	{
-		@Override
-		public int compare(Class<?> a, Class<?> b)
-		{
-			return a.getName().compareTo(b.getName());
-		}
-
-	}
 
 	// --util-----------------------------------------------------------------
 
-	private static String escapeURL(String url)
-	{
-		return url;
-
-		/*
-		 * jsp/15dx CharBuffer cb = CharBuffer.allocate();
-		 * 
-		 * int length = url.length(); for (int i = 0; i < length; i++) { char ch = url.charAt(i);
-		 * 
-		 * if (ch < 0x80) cb.append(ch); else if (ch < 0x800) { cb.append((char) (0xc0 | (ch >> 6))); cb.append((char)
-		 * (0x80 | (ch & 0x3f))); } else { cb.append((char) (0xe0 | (ch >> 12))); cb.append((char) (0x80 | ((ch >> 6) &
-		 * 0x3f))); cb.append((char) (0x80 | (ch & 0x3f))); } }
-		 * 
-		 * return cb.close();
-		 */
-	}
 
 	/**
 	 * Error logging
