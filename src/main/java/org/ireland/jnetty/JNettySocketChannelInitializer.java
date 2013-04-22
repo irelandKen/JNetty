@@ -17,8 +17,6 @@ package org.ireland.jnetty;
 
 
 import java.io.File;
-import java.net.URL;
-import java.net.URLClassLoader;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -46,7 +44,7 @@ public class JNettySocketChannelInitializer extends ChannelInitializer<SocketCha
     	
     	String host = "127.0.0.1";
     	
-    	String contextPath = "ROOT";
+    	String contextPath = "";
     	
     	webApp = new WebApp(rootDirectory, host, contextPath);
     	
