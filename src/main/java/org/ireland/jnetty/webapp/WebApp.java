@@ -1361,6 +1361,14 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
         //build it
 		buildInvocation(invocation, _dispatchFilterMapper);
 		
+		
+		//Build FilterChain for the notification of ServletRequestListener(s)
+		if(_requestListeners != null && _requestListeners.size() > 0)
+		{
+			FilterChain filterChain = new ServletRequestListenerFilterChain(invocation.getFilterChain(), this, _requestListeners);
+			invocation.setFilterChain(filterChain);
+		}
+		
 		//put to cache
 		if(invocation.getFilterChain()!= null)
 		{
