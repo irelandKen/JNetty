@@ -36,8 +36,9 @@ public class JNettySocketChannelInitializer extends ChannelInitializer<SocketCha
 	
 	private static final char SLASH = File.separatorChar;
 	
-	private static WebApp webApp;
+	private static final WebApp webApp;
 	
+	private static final HttpHandler httpHandler;
 	static 
 	{	
     	//String rootDirectory = log.isDebugEnabled() ? System.getProperty("user.dir") + SLASH + "src" + SLASH + "main" + SLASH + "webapp" : System.getProperty("user.dir");
@@ -52,6 +53,8 @@ public class JNettySocketChannelInitializer extends ChannelInitializer<SocketCha
 		webApp.init();
     	
     	webApp.start();
+    	
+    	httpHandler = new HttpHandler(webApp);
 	}
 	
     @Override
@@ -64,6 +67,7 @@ public class JNettySocketChannelInitializer extends ChannelInitializer<SocketCha
         //HttpChunks  Aggregator
         p.addLast("aggregator", new HttpObjectAggregator(1048576));
         
-        p.addLast("handler", new HttpHandler(webApp));
+        //Share The HttpHandler
+        p.addLast("handler", httpHandler);
     }
 }

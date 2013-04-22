@@ -20,6 +20,7 @@ import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundMessageHandlerAdapter;
+import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.DecoderResult;
 import io.netty.handler.codec.http.Cookie;
@@ -57,100 +58,104 @@ import static io.netty.handler.codec.http.HttpHeaders.*;
 import static io.netty.handler.codec.http.HttpResponseStatus.*;
 import static io.netty.handler.codec.http.HttpVersion.*;
 
-public class HttpHandler extends ChannelInboundMessageHandlerAdapter<FullHttpMessage> 
+/**
+ * HttpHandler是无状态的,故标记为@Sharable,可让所有ChannelPipeline共享
+ * 
+ * @author KEN
+ * 
+ */
+@Sharable
+public class HttpHandler extends ChannelInboundMessageHandlerAdapter<FullHttpMessage>
 {
-	private WebApp webApp;
+	private final WebApp webApp;
 
-    public HttpHandler(WebApp webApp) 
+	public HttpHandler(WebApp webApp)
 	{
-    	this.webApp = webApp;
+		this.webApp = webApp;
 	}
-
 
 	@Override
-    public void messageReceived(ChannelHandlerContext ctx, FullHttpMessage message) throws Exception 
-    {
-    	if (message instanceof FullHttpRequest) 
-        {
-    		FullHttpRequest request = (FullHttpRequest) message;
-
-            if (is100ContinueExpected(request)) {
-                send100Continue(ctx);
-            }
-
-            FullHttpResponse response = new DefaultFullHttpResponse(request.getProtocolVersion(), OK, Unpooled.buffer(0));
-
-            
-            handle(ctx,request,response);
-
-            
-           // writeResponse(ctx, request,response);
-        }
-    }
-
-
-    private void handle(ChannelHandlerContext ctx,FullHttpRequest fullHttpRequest, FullHttpResponse fullHttpResponse) throws ServletException, IOException
+	public void messageReceived(ChannelHandlerContext ctx, FullHttpMessage message) throws Exception
 	{
-    	HttpServletResponseImpl response = new HttpServletResponseImpl((SocketChannel)ctx.channel(), ctx, fullHttpResponse, fullHttpRequest);
-    	
-    	HttpServletRequestImpl request =   new HttpServletRequestImpl(webApp,webApp,(SocketChannel)ctx.channel(), ctx, fullHttpResponse, fullHttpRequest,response);
-    	
-    	
-    	//
-    	String rawUri = fullHttpRequest.getUri();
-    	
-    	dispatch(rawUri,request, response);
+		if (message instanceof FullHttpRequest)
+		{
+			FullHttpRequest request = (FullHttpRequest) message;
+
+			if (is100ContinueExpected(request))
+			{
+				send100Continue(ctx);
+			}
+
+			FullHttpResponse response = new DefaultFullHttpResponse(request.getProtocolVersion(), OK, Unpooled.buffer(0));
+
+			handle(ctx, request, response);
+
+			// writeResponse(ctx, request,response);
+		}
 	}
 
-
-    /**
-     * 
-     * @param rawUri 带参数的uri(带参数(?))
-     * @param request
-     * @param response
-     * @throws IOException 
-     * @throws ServletException 
-     */
-	private void dispatch(String rawUri, HttpServletRequestImpl request, HttpServletResponseImpl response) throws ServletException, IOException
+	private void handle(ChannelHandlerContext ctx, FullHttpRequest fullHttpRequest, FullHttpResponse fullHttpResponse) throws ServletException, IOException
 	{
-		
-    	RequestDispatcherImpl dispatcher = webApp.getRequestDispatcher(rawUri);
-    	
-    	dispatcher.dispatch(request, response);
+		HttpServletResponseImpl response = new HttpServletResponseImpl((SocketChannel) ctx.channel(), ctx, fullHttpResponse, fullHttpRequest);
+
+		HttpServletRequestImpl request = new HttpServletRequestImpl(webApp, webApp, (SocketChannel) ctx.channel(), ctx, fullHttpResponse, fullHttpRequest,response);
+
+		//
+		String rawUri = fullHttpRequest.getUri();
+
+		dispatch(rawUri, request, response);
 	}
 
+	/**
+	 * 
+	 * @param rawContextUri
+	 *            带参数的uri(带参数(?))
+	 * @param request
+	 * @param response
+	 * @throws IOException
+	 * @throws ServletException
+	 */
+	private void dispatch(String rawContextUri, HttpServletRequestImpl request, HttpServletResponseImpl response) throws ServletException, IOException
+	{
 
-	private void writeResponse(ChannelHandlerContext ctx,FullHttpRequest request, FullHttpResponse response) {
-        // Decide whether to close the connection or not.
-        boolean keepAlive = HttpHeaders.isKeepAlive(request);
+		RequestDispatcherImpl dispatcher = webApp.getRequestDispatcher(rawContextUri);
 
+		dispatcher.dispatch(request, response);
+	}
 
-        if (keepAlive) {
-           
-            // Add keep alive header as per:
-            // - http://www.w3.org/Protocols/HTTP/1.1/draft-ietf-http-v11-spec-01.html#Connection
-            response.headers().set(CONNECTION, HttpHeaders.Values.KEEP_ALIVE);
-        }
+	private void writeResponse(ChannelHandlerContext ctx, FullHttpRequest request, FullHttpResponse response)
+	{
+		// Decide whether to close the connection or not.
+		boolean keepAlive = HttpHeaders.isKeepAlive(request);
 
+		if (keepAlive)
+		{
 
-        // Write the response.
-        ctx.nextOutboundMessageBuffer().add(response);
+			// Add keep alive header as per:
+			// - http://www.w3.org/Protocols/HTTP/1.1/draft-ietf-http-v11-spec-01.html#Connection
+			response.headers().set(CONNECTION, HttpHeaders.Values.KEEP_ALIVE);
+		}
 
-        // Close the non-keep-alive connection after the write operation is done.
-        if (!keepAlive) {
-            ctx.flush().addListener(ChannelFutureListener.CLOSE);
-        }
-    }
+		// Write the response.
+		ctx.nextOutboundMessageBuffer().add(response);
 
-    private static void send100Continue(ChannelHandlerContext ctx) {
-        HttpResponse response = new DefaultHttpResponse(HTTP_1_1, CONTINUE);
-        ctx.nextOutboundMessageBuffer().add(response);
-    }
+		// Close the non-keep-alive connection after the write operation is done.
+		if (!keepAlive)
+		{
+			ctx.flush().addListener(ChannelFutureListener.CLOSE);
+		}
+	}
 
+	private static void send100Continue(ChannelHandlerContext ctx)
+	{
+		HttpResponse response = new DefaultHttpResponse(HTTP_1_1, CONTINUE);
+		ctx.nextOutboundMessageBuffer().add(response);
+	}
 
-    @Override
-    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-        cause.printStackTrace();
-        ctx.close();
-    }
+	@Override
+	public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception
+	{
+		cause.printStackTrace();
+		ctx.close();
+	}
 }
