@@ -626,10 +626,7 @@ public final class SessionManager implements SessionCookieConfig
 
 	public String createSessionIdImpl(HttpServletRequest request)
 	{
-		// look at caucho.session-server-id for a hint of the owner
-		Object owner = request.getAttribute("caucho.session-server-id");
-
-		return createCookieValue(owner);
+		return createCookieValue();
 	}
 
 	/**
@@ -638,7 +635,7 @@ public final class SessionManager implements SessionCookieConfig
 	 * @param owner
 	 * @return
 	 */
-	protected String createCookieValue(Object owner)
+	protected String createCookieValue()
 	{
 		StringBuilder sb = new StringBuilder();
 		// this section is the host specific session index
