@@ -597,7 +597,8 @@ public class RequestDispatcherImpl implements RequestDispatcher
 			try
 			{
 				OutputStream os = res.getOutputStream();
-				os.close();
+				os.flush();
+				//os.close();
 			}
 			catch (Exception e)
 			{
@@ -606,7 +607,8 @@ public class RequestDispatcherImpl implements RequestDispatcher
 			try
 			{
 				PrintWriter out = res.getWriter();
-				out.close();
+				out.flush();
+				//out.close();
 			}
 			catch (Exception e)
 			{
