@@ -1099,7 +1099,7 @@ public final class SessionManager implements SessionCookieConfig
 		if (session == _session && !session.isTimeout())
 			return true;
 
-		return false;
+		return true;
 	}
 
 	/**

@@ -105,6 +105,8 @@ public class HttpSessionImpl implements HttpSession
 
 
 		_creationTime = creationTime;
+		
+		_accessTime = _creationTime;
 
 		_lastUseTime = _accessTime;
 		_idleTimeout = manager.getSessionTimeout();
