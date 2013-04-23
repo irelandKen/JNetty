@@ -77,8 +77,7 @@ public final class SessionManager implements SessionCookieConfig
 	// array list for session timeout
 	private ArrayList<HttpSessionImpl> _sessionList = new ArrayList<HttpSessionImpl>();
 
-	// generate cookies
-	private boolean _enableSessionCookies = true;
+
 	// allow session rewriting
 	private boolean _enableSessionUrls = true;
 
@@ -104,7 +103,7 @@ public final class SessionManager implements SessionCookieConfig
 
 	private String _cookiePath;
 
-	private long _cookieMaxAge;
+	private long _cookieMaxAge = 24 * 60 * 60; //1 day
 
 	private int _isCookieHttpOnly;
 
@@ -332,21 +331,6 @@ public final class SessionManager implements SessionCookieConfig
 		_sessionMax = max;
 	}
 
-	/**
-	 * Returns true if sessions use the cookie header.
-	 */
-	public boolean enableSessionCookies()
-	{
-		return _enableSessionCookies;
-	}
-
-	/**
-	 * Returns true if sessions use the cookie header.
-	 */
-	public void setEnableCookies(boolean enableCookies)
-	{
-		_enableSessionCookies = enableCookies;
-	}
 
 	/**
 	 * Returns true if sessions can use the session rewriting.
@@ -1091,6 +1075,9 @@ public final class SessionManager implements SessionCookieConfig
 	 */
 	public boolean isValid(HttpSessionImpl _session)
 	{
+		if(_sessions == null)
+			return false;
+		
 		HttpSessionImpl session = _sessions.get(_session.getId());
 
 		if (session == null)
@@ -1112,6 +1099,7 @@ public final class SessionManager implements SessionCookieConfig
 	public Cookie getSessionCookie(HttpSessionImpl session, String contextPath, boolean secure)
 	{
 
+		//TODO: 修正Cookie失效时间
 		String sessionPath = contextPath;
 
 		sessionPath = (sessionPath == null || sessionPath.length() == 0) ? "/" : sessionPath;
