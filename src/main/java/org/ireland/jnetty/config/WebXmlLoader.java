@@ -298,9 +298,12 @@ public class WebXmlLoader
 			config.setDescription(recordEle.elementTextTrim("description"));
 			config.setDisplayName(recordEle.elementTextTrim("display-name"));
 			
-			config.setLoadOnStartup(Integer.parseInt(recordEle.elementTextTrim("load-on-startup")));
-
 			
+			String loadOnStartup = recordEle.elementTextTrim("load-on-startup");
+			
+			if(loadOnStartup != null)
+				config.setLoadOnStartup(Integer.parseInt(loadOnStartup));
+
 			Iterator innerIter = recordEle.elementIterator("init-param");
 			
 			
