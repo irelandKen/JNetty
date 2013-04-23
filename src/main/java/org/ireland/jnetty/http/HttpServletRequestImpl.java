@@ -202,7 +202,6 @@ public class HttpServletRequestImpl implements HttpServletRequest
 	private boolean _cookiesExtracted = false;
 	private boolean _handled = false;
 	private boolean _paramsExtracted;
-	private boolean _requestedSessionIdFromCookie = false;
 
 	/**
 	 * The attributes associated with this HttpServletRequestImpl, keyed by attribute name.
@@ -256,7 +255,6 @@ public class HttpServletRequestImpl implements HttpServletRequest
 	private String _requestedSessionId;
 
 	private String _requestURI;
-	private Map<Object, HttpSession> _savedNewSessions;
 
 	private String _scheme = "http";
 
@@ -336,13 +334,16 @@ public class HttpServletRequestImpl implements HttpServletRequest
 
 		_paramsExtracted = true;
 
+		if(_parameters == null)
+			_parameters = new HashMap<String, List<String>>();
+		
 		// Handle query string
 
 		if (_queryEncoding == null)
 		{
 			QueryStringDecoder queryStringDecoder = new QueryStringDecoder(request.getUri());
-
-			_parameters = queryStringDecoder.parameters();
+			
+			_parameters.putAll(queryStringDecoder.parameters());
 
 		}
 		else
@@ -351,7 +352,7 @@ public class HttpServletRequestImpl implements HttpServletRequest
 			{
 				QueryStringDecoder queryStringDecoder = new QueryStringDecoder(request.getUri(), Charset.forName(_queryEncoding));
 
-				_parameters = queryStringDecoder.parameters();
+				_parameters.putAll(queryStringDecoder.parameters());
 
 			}
 			catch (UnsupportedCharsetException e)
@@ -384,11 +385,11 @@ public class HttpServletRequestImpl implements HttpServletRequest
 						String bodyContent = new String(getRowBodyContent(), bodyCharset);
 
 						// Add form params to query params
-						QueryStringDecoder queryStringDecoder = new QueryStringDecoder(bodyContent, bodyCharset);
+						QueryStringDecoder queryStringDecoder = new QueryStringDecoder(bodyContent, bodyCharset,false);
 
 						if (_parameters == null)
 							_parameters = queryStringDecoder.parameters();
-						else
+						else//merge
 						{
 							Map<String, List<String>> map = queryStringDecoder.parameters();
 
@@ -398,8 +399,7 @@ public class HttpServletRequestImpl implements HttpServletRequest
 								{
 									_parameters.put(e.getKey(), e.getValue());
 								}
-								else
-								// parameter with the same name exist,merge
+								else// parameter with the same name exist,merge
 								{
 									List<String> value = _parameters.get(e.getKey());
 
@@ -417,7 +417,7 @@ public class HttpServletRequestImpl implements HttpServletRequest
 					catch (Exception e)
 					{
 						if (LOG.isDebugEnabled())
-							LOG.warn(e);
+							e.printStackTrace();
 						else
 							LOG.warn(e.toString());
 					}
@@ -447,6 +447,8 @@ public class HttpServletRequestImpl implements HttpServletRequest
 			body.data().readBytes(data, 0, content_length);
 
 			body.data().readerIndex(old_readerIndex); // recover the readerIndex
+			
+			bodyContent = data;
 		}
 
 		return bodyContent;
@@ -1143,7 +1145,6 @@ public class HttpServletRequestImpl implements HttpServletRequest
 	 * @see javax.servlet.http.HttpServletRequest#getQueryString()
 	 */
 	@Override
-	// OK
 	public String getQueryString()
 	{
 		if (!_queryStringExtracted)
@@ -1753,7 +1754,7 @@ public class HttpServletRequestImpl implements HttpServletRequest
 	@Override
 	public boolean isRequestedSessionIdFromCookie()
 	{
-		return _requestedSessionId != null && _requestedSessionIdFromCookie;
+		return _requestedSessionId != null && _isSessionIdFromCookie;
 	}
 
 	/* ------------------------------------------------------------ */
@@ -1763,7 +1764,7 @@ public class HttpServletRequestImpl implements HttpServletRequest
 	@Override
 	public boolean isRequestedSessionIdFromUrl()
 	{
-		return _requestedSessionId != null && !_requestedSessionIdFromCookie;
+		return _requestedSessionId != null && !_isSessionIdFromCookie;
 	}
 
 	/* ------------------------------------------------------------ */
@@ -1773,7 +1774,7 @@ public class HttpServletRequestImpl implements HttpServletRequest
 	@Override
 	public boolean isRequestedSessionIdFromURL()
 	{
-		return _requestedSessionId != null && !_requestedSessionIdFromCookie;
+		return _requestedSessionId != null && !_isSessionIdFromCookie;
 	}
 
 	/* ------------------------------------------------------------ */
@@ -1823,13 +1824,7 @@ public class HttpServletRequestImpl implements HttpServletRequest
 		throw new UnsupportedOperationException();
 	}
 
-	/* ------------------------------------------------------------ */
-	public HttpSession recoverNewSession(Object key)
-	{
-		if (_savedNewSessions == null)
-			return null;
-		return _savedNewSessions.get(key);
-	}
+
 
 	/* ------------------------------------------------------------ */
 	protected void recycle()
@@ -1851,7 +1846,7 @@ public class HttpServletRequestImpl implements HttpServletRequest
 		_queryEncoding = null;
 		_queryString = null;
 		_requestedSessionId = null;
-		_requestedSessionIdFromCookie = false;
+		_isSessionIdFromCookie = false;
 		_session = null;
 		_sessionManager = null;
 		_requestURI = null;
@@ -1865,9 +1860,7 @@ public class HttpServletRequestImpl implements HttpServletRequest
 		_parameters = null;
 		_paramsExtracted = false;
 
-		if (_savedNewSessions != null)
-			_savedNewSessions.clear();
-		_savedNewSessions = null;
+
 		_remote = null;
 		headers.clear();
 	}
@@ -1902,11 +1895,7 @@ public class HttpServletRequestImpl implements HttpServletRequest
 			_requestAttributeListeners.remove(listener);
 	}
 
-	/* ------------------------------------------------------------ */
-	/*
-	 * public void saveNewSession(Object key, HttpSession session) { if (_savedNewSessions == null) _savedNewSessions =
-	 * new HashMap<>(); _savedNewSessions.put(key,session); }
-	 */
+
 
 	/* ------------------------------------------------------------ */
 	public void setAsyncSupported(boolean supported)
@@ -2217,7 +2206,7 @@ public class HttpServletRequestImpl implements HttpServletRequest
 	 */
 	public void setRequestedSessionIdFromCookie(boolean requestedSessionIdCookie)
 	{
-		_requestedSessionIdFromCookie = requestedSessionIdCookie;
+		_isSessionIdFromCookie = requestedSessionIdCookie;
 	}
 
 	/* ------------------------------------------------------------ */
