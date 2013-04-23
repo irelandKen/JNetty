@@ -98,14 +98,12 @@ import org.ireland.jnetty.config.ListenerConfig;
 import org.ireland.jnetty.config.WebXmlLoader;
 import org.ireland.jnetty.dispatch.Invocation;
 import org.ireland.jnetty.dispatch.filter.FilterConfigImpl;
-import org.ireland.jnetty.dispatch.filter.FilterConfigurator;
 import org.ireland.jnetty.dispatch.filter.FilterManager;
 import org.ireland.jnetty.dispatch.filter.FilterMapper;
 import org.ireland.jnetty.dispatch.filter.FilterMapping;
 import org.ireland.jnetty.dispatch.filterchain.ExceptionFilterChain;
 import org.ireland.jnetty.dispatch.filterchain.ServletRequestListenerFilterChain;
 import org.ireland.jnetty.dispatch.servlet.ServletConfigImpl;
-import org.ireland.jnetty.dispatch.servlet.ServletConfigurator;
 import org.ireland.jnetty.dispatch.servlet.ServletManager;
 import org.ireland.jnetty.dispatch.servlet.ServletMapper;
 import org.ireland.jnetty.dispatch.servlet.ServletMapping;
@@ -117,12 +115,7 @@ import org.ireland.jnetty.util.http.URIDecoder;
 import org.springframework.util.Assert;
 
 import com.caucho.i18n.CharacterEncoding;
-import com.caucho.make.AlwaysModified;
 
-
-import com.caucho.server.dispatch.ErrorFilterChain;
-import com.caucho.server.dispatch.VersionInvocation;
-import com.caucho.server.webapp.WebAppFilterChain;
 import com.caucho.util.CurrentTime;
 import com.caucho.util.L10N;
 import com.caucho.util.LruCache;
@@ -130,7 +123,7 @@ import com.caucho.util.LruCache;
 /**
  * Resin's webApp implementation.
  */
-public class WebApp extends ServletContextImpl implements FilterConfigurator, ServletConfigurator
+public class WebApp extends ServletContextImpl
 {
 	private static final L10N L = new L10N(WebApp.class);
 	private static final Log log = LogFactory.getLog(WebApp.class.getName());
@@ -511,7 +504,6 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 	/**
 	 * Adds a servlet configuration.
 	 */
-	@Override
 	public void addServlet(ServletConfigImpl config) throws ServletException
 	{
 		checkServlerConfig(config);
@@ -732,7 +724,6 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 	 * 
 	 * @return
 	 */
-	@Override
 	public ServletConfigImpl createNewServletConfig()
 	{
 		ServletConfigImpl config = new ServletConfigImpl(this, this, _servletManager, _servletMapper);
@@ -745,7 +736,6 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 	 * 
 	 * @return
 	 */
-	@Override
 	public ServletMapping createNewServletMapping(ServletConfigImpl config)
 	{
 		checkServlerConfig(config);
@@ -760,7 +750,6 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 	 * 
 	 * @return
 	 */
-	@Override
 	public FilterConfigImpl createNewFilterConfig()
 	{
 		FilterConfigImpl config = new FilterConfigImpl(this, this, _filterManager);
@@ -773,7 +762,6 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 	 * 
 	 * @return
 	 */
-	@Override
 	public FilterMapping createNewFilterMapping(FilterConfigImpl config)
 	{
 		checkFilterConfig(config);
@@ -786,7 +774,6 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 	/**
 	 * Adds a servlet-mapping configuration.
 	 */
-	@Override
 	public void addServletMapping(ServletMapping servletMapping) throws ServletException
 	{
 		checkServletMapping(servletMapping);
@@ -799,7 +786,6 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 	 * 
 	 * @throws ServletException
 	 */
-	@Override
 	public void addFilter(FilterConfigImpl config) throws ServletException
 	{
 		checkFilterConfig(config);
@@ -838,7 +824,6 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 	 * 
 	 * 添加一个FilterMapping,相当于添加一个web.xml的<filter-mapping>标签
 	 */
-	@Override
 	public void addFilterMapping(FilterMapping filterMapping) throws ServletException
 	{
 		checkFilterMapping(filterMapping);
