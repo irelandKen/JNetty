@@ -31,6 +31,7 @@ import java.util.Enumeration;
 import java.util.EventListener;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -275,10 +276,10 @@ public class HttpServletRequestImpl implements HttpServletRequest
 	/**
 	 * The preferred Locales associated with this HttpServletRequestImpl.
 	 */
-	protected ArrayList<Locale> locales;
+	protected List<Locale> _locales;
 
 	/**
-	 * Parse locales.
+	 * Parse _locales.
 	 */
 	protected boolean localesParsed = false;
 
@@ -726,9 +727,9 @@ public class HttpServletRequestImpl implements HttpServletRequest
 			parseLocales();
 		}
 
-		if (locales.size() > 0)
+		if (_locales.size() > 0)
 		{
-			return locales.get(0);
+			return _locales.get(0);
 		}
 
 		return defaultLocale;
@@ -747,18 +748,18 @@ public class HttpServletRequestImpl implements HttpServletRequest
 			parseLocales();
 		}
 
-		if (locales.size() > 0)
+		if (_locales.size() > 0)
 		{
-			return Collections.enumeration(locales);
+			return Collections.enumeration(_locales);
 		}
-		ArrayList<Locale> results = new ArrayList<Locale>();
+		List<Locale> results = new LinkedList<Locale>();
 		results.add(defaultLocale);
 		return Collections.enumeration(results);
 
 	}
 
 	/**
-	 * Parse request locales.
+	 * Parse request _locales.
 	 */
 	protected void parseLocales()
 	{
@@ -942,7 +943,9 @@ public class HttpServletRequestImpl implements HttpServletRequest
 	 */
 	public void addLocale(Locale locale)
 	{
-		locales.add(locale);
+		if(_locales == null)
+			_locales = new LinkedList<Locale>();
+		_locales.add(locale);
 	}
 
 	/* ------------------------------------------------------------ */
