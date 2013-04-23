@@ -276,6 +276,9 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 			throw new IllegalStateException(L.l("{0} requires an active {1}", getClass().getSimpleName()));
 
 		initClassLoader();
+		
+		//
+		Thread.currentThread().setContextClassLoader(getClassLoader());
 
 		_uriDecoder = new URIDecoder();
 
@@ -287,22 +290,8 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 	 */
 	protected void initClassLoader()
 	{
-		// "/WEB-INF/classes"
-		URL classPath = null;
-		try
-		{
-			classPath = super.getResource("/WEB-INF/classes");
-		}
-		catch (MalformedURLException e)
-		{
-			e.printStackTrace();
-		}
-
 		List<URL> urls = new ArrayList<URL>();
-
-		if (classPath != null)
-			urls.add(classPath);
-
+		
 		// "/WEB-INF/lib"
 		File libPath = new File(getRealPath("/WEB-INF/lib"));
 
@@ -324,6 +313,21 @@ public class WebApp extends ServletContextImpl implements FilterConfigurator, Se
 				}
 			}
 		}
+		
+		// "/WEB-INF/classes"
+		URL classPath = null;
+		try
+		{
+			classPath = super.getResource("/WEB-INF/classes");
+		}
+		catch (MalformedURLException e)
+		{
+			e.printStackTrace();
+		}
+
+		if (classPath != null)
+			urls.add(classPath);
+		
 
 		_classLoader = new URLClassLoader(urls.toArray(new URL[urls.size()]), this.getClassLoader());
 
