@@ -223,7 +223,7 @@ public class HttpServletResponseImpl implements HttpServletResponse
 		// the header name is Set-Cookie for both "old" and v.1 ( RFC2109 )
 		// RFC2965 is not supported by browsers and the Servlet spec
 		// asks for 2109.
-		headers.add("Set-Cookie", ServletServerCookieEncoder.encode(_cookiesOut));
+		headers.set("Set-Cookie", ServletServerCookieEncoder.encode(_cookiesOut));
 
 	}
 
