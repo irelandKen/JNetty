@@ -264,6 +264,11 @@ public class HttpServletRequestImpl implements HttpServletRequest
 
 	private HttpSessionImpl _session;
 	private SessionManager _sessionManager;
+	
+	//true: has try to Extracte the sessionid
+	private boolean _sessionIdExtracted;
+	
+	private boolean _isSessionIdFromCookie;
 
 	private long _timeStamp;
 	private long _dispatchTime;
@@ -611,7 +616,10 @@ public class HttpServletRequestImpl implements HttpServletRequest
 				Cookie cookie = new Cookie(c.getName(), c.getValue());
 
 				cookie.setComment(c.getComment());
-				cookie.setDomain(c.getDomain());
+				
+				if(c.getDomain() != null)
+					cookie.setDomain(c.getDomain());
+				
 				cookie.setHttpOnly(c.isHttpOnly());
 				cookie.setMaxAge((int) c.getMaxAge());
 				cookie.setPath(c.getPath());
@@ -943,7 +951,7 @@ public class HttpServletRequestImpl implements HttpServletRequest
 	 */
 	public void addLocale(Locale locale)
 	{
-		if(_locales == null)
+		if (_locales == null)
 			_locales = new LinkedList<Locale>();
 		_locales.add(locale);
 	}
@@ -1548,9 +1556,58 @@ public class HttpServletRequestImpl implements HttpServletRequest
 	}
 
 	/* ------------------------------------------------------------ */
-	/*
-	 * public ServletResponse getServletResponse() { return socketChannel.getResponse(); }
+
+	/**
+	 * 从请求的cookie或URL里提取SessionId
+	 * @return
 	 */
+	protected String extracteSessionId()
+	{
+		String sessionId = findSessionIdFromCookie();
+	
+		_sessionIdExtracted = true;
+		return sessionId;
+	}
+	
+
+	/**
+	 * Returns the session id in the HTTP request cookies. Because the webApp might use the cookie to change the page
+	 * contents, the caching sets vary: JSESSIONID.
+	 */
+	protected String findSessionIdFromCookie()
+	{
+		Cookie cookie = getCookie("JSESSIONID");
+
+		if (cookie != null)
+		{
+			_isSessionIdFromCookie = true;
+			return cookie.getValue();
+		}
+		else
+			return null;
+	}
+
+	/**
+	 * 查找特定名称的cookie
+	 * Returns the named cookie from the browser
+	 */
+	public Cookie getCookie(String name)
+	{
+		Cookie[] cookies = getCookies();
+
+		if (cookies == null)
+			return null;
+
+		for (Cookie cookie : cookies)
+		{
+			if (cookie.getName().equals(name))
+			{
+				return cookie;
+			}
+		}
+
+		return null;
+	}
 
 	/* ------------------------------------------------------------ */
 	/*
@@ -1578,6 +1635,24 @@ public class HttpServletRequestImpl implements HttpServletRequest
 			{
 				_session.invalidate();
 				_session = null;
+			}
+		}
+		
+		
+		//如果未从COOKIE或URL中解释SESSIONID,则try to extract sessionId from cookie OR URL
+		if(!_sessionIdExtracted)
+		{
+			String sessionId = extracteSessionId();
+			
+			if(sessionId != null)
+			{
+				HttpSessionImpl session = _sessionManager.getSession(sessionId);
+				
+				if (session != null && _sessionManager.isValid(session))
+				{
+					_session = session;
+					return _session;
+				}
 			}
 		}
 
