@@ -74,9 +74,6 @@ public final class SessionManager implements SessionCookieConfig
 	// active sessions
 	private LruCache<String, HttpSessionImpl> _sessions;
 
-	// array list for session timeout
-	private ArrayList<HttpSessionImpl> _sessionList = new ArrayList<HttpSessionImpl>();
-
 
 	// allow session rewriting
 	private boolean _enableSessionUrls = true;
@@ -788,7 +785,7 @@ public final class SessionManager implements SessionCookieConfig
 
 	public HttpSessionImpl getSession(String key)
 	{
-		if (_sessions == null)
+		if (_sessions == null || key == null)
 			return null;
 
 		return _sessions.get(key);
@@ -941,32 +938,7 @@ public final class SessionManager implements SessionCookieConfig
 	 */
 	public void clearInvalidSession()
 	{
-		try
-		{
-			_sessionList.clear();
 
-			if (_isClosed)
-				return;
-
-			for (int i = 0; i < _sessionList.size(); i++)
-			{
-				HttpSessionImpl session = _sessionList.get(i);
-
-				try
-				{
-					_sessions.remove(session.getId());
-
-					session.timeout();
-				}
-				catch (Throwable e)
-				{
-					log.log(Level.FINE, e.toString(), e);
-				}
-			}
-		}
-		finally
-		{
-		}
 	}
 
 	/**
@@ -1007,7 +979,6 @@ public final class SessionManager implements SessionCookieConfig
 			}
 		}
 
-		_sessionList = new ArrayList<HttpSessionImpl>();
 	}
 
 	/**
@@ -1070,20 +1041,20 @@ public final class SessionManager implements SessionCookieConfig
 	/***
 	 * 验证指定 session是否有效
 	 * 
-	 * @param _session
+	 * @param session
 	 * @return
 	 */
-	public boolean isValid(HttpSessionImpl _session)
+	public boolean isValid(HttpSessionImpl session)
 	{
-		if(_sessions == null)
+		if(session == null)
 			return false;
 		
-		HttpSessionImpl session = _sessions.get(_session.getId());
+		HttpSessionImpl trueSession = _sessions.get(session.getId());
 
-		if (session == null)
+		if (trueSession == null)
 			return false;
 
-		if (session == _session && !session.isTimeout())
+		if (trueSession == session && !trueSession.isTimeout())
 			return true;
 
 		return true;
@@ -1099,7 +1070,6 @@ public final class SessionManager implements SessionCookieConfig
 	public Cookie getSessionCookie(HttpSessionImpl session, String contextPath, boolean secure)
 	{
 
-		//TODO: 修正Cookie失效时间
 		String sessionPath = contextPath;
 
 		sessionPath = (sessionPath == null || sessionPath.length() == 0) ? "/" : sessionPath;
