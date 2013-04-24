@@ -40,7 +40,7 @@ public class JNettySocketChannelInitializer extends ChannelInitializer<SocketCha
 	static 
 	{	
     	//String rootDirectory = System.getProperty("user.dir") + SLASH + "src" + SLASH + "main" + SLASH + "webapp";
-    	String rootDirectory = System.getProperty("user.dir");
+    	String rootDirectory = System.getProperty("user.dir")+SLASH+"ROOT";
     	
     	String host = "127.0.0.1";
     	
