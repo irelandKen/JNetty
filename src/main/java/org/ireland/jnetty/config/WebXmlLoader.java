@@ -83,6 +83,7 @@ public class WebXmlLoader
 	 */
 	public void loadInitParam()
 	{
+		log.debug("loading <context-param>.");
 		Element rootElt = doc.getRootElement(); // 获取根节点
 
 		Iterator iter = rootElt.elementIterator("context-param"); // 获取根节点下的子节点context-param
@@ -105,6 +106,8 @@ public class WebXmlLoader
 	 */
 	public void loadListener()
 	{
+		log.debug("loading <listener>");
+		
 		Element rootElt = doc.getRootElement(); // 获取根节点
 
 		Iterator iter = rootElt.elementIterator("listener"); // 获取根节点下的子节点listener
@@ -129,6 +132,8 @@ public class WebXmlLoader
 	 */
 	public LinkedHashMap<String, FilterConfigImpl> praseFilter() throws ClassNotFoundException
 	{
+		log.debug("loading <filter>.");
+		
 		Element rootElt = doc.getRootElement(); // 获取根节点
 
 		Iterator iter = rootElt.elementIterator("filter"); // 获取根节点下的子节点<filter>
@@ -187,6 +192,8 @@ public class WebXmlLoader
 	 */
 	public void parseFilterMapping(LinkedHashMap<String, FilterConfigImpl> filterMap) throws ClassNotFoundException
 	{
+		log.debug("loading <filter-mapping>.");
+		
 		Element rootElt = doc.getRootElement(); // 获取根节点
 
 		Iterator iter = rootElt.elementIterator("filter-mapping"); // 获取根节点下的子节点<filter-mapping>
@@ -269,6 +276,8 @@ public class WebXmlLoader
 	 */
 	public LinkedHashMap<String, ServletConfigImpl> praseServletConfig() throws ClassNotFoundException
 	{
+		log.debug("loading <servlet>.");
+		
 		Element rootElt = doc.getRootElement(); // 获取根节点
 
 		Iterator iter = rootElt.elementIterator("servlet"); // 获取根节点下的子节点<servlet>
@@ -328,6 +337,7 @@ public class WebXmlLoader
 
 	public void parseServletMapping(LinkedHashMap<String, ServletConfigImpl> servletMap) throws ClassNotFoundException
 	{
+		log.debug("loading <servlet-mapping>.");
 
 		/**
 		 * find <servlet-mapping> for <servlet> 查找 当前<servlet>标签 所关联 的所有 "<servlet-mapping>"标签

@@ -116,8 +116,6 @@ import org.springframework.util.Assert;
 
 import com.caucho.i18n.CharacterEncoding;
 
-import com.caucho.util.CurrentTime;
-import com.caucho.util.L10N;
 import com.caucho.util.LruCache;
 
 /**
@@ -125,7 +123,6 @@ import com.caucho.util.LruCache;
  */
 public class WebApp extends ServletContextImpl
 {
-	private static final L10N L = new L10N(WebApp.class);
 	private static final Log log = LogFactory.getLog(WebApp.class.getName());
 
 	// The context path is the URL prefix for the web-app
@@ -1166,7 +1163,7 @@ public class WebApp extends ServletContextImpl
 	@PostConstruct
 	public void init()
 	{
-
+		log.debug("Initializing.");
 		// setAttribute("javax.servlet.context.tempdir", new File(_tempDir));
 		setAttribute(InstanceManager.class.getName(), _beanFactory);
 
@@ -1177,6 +1174,7 @@ public class WebApp extends ServletContextImpl
 
 	public void parseWebXml() throws ServletException
 	{
+		log.debug("parseing webXml.");
 		WebXmlLoader loader = new WebXmlLoader(this);
 
 		try
@@ -1216,6 +1214,7 @@ public class WebApp extends ServletContextImpl
 	 */
 	public void start()
 	{
+		log.debug(" Starting.");
 
 		try
 		{
@@ -1770,7 +1769,7 @@ public class WebApp extends ServletContextImpl
 	public void stop()
 	{
 
-		long beginStop = CurrentTime.getCurrentTime();
+		long beginStop = System.currentTimeMillis();
 
 		clearCache();
 
