@@ -35,6 +35,10 @@ import com.caucho.server.http.HttpServletRequestImpl;
 
 /**
  * A repository for request information gleaned from the uri.
+ * 
+ * and the FilterChain that match the URI
+ * 
+ * A Invocation include the URI information and the FilterChain that match the URI
  */
 public class Invocation extends ServletInvocation
 {

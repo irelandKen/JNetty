@@ -40,7 +40,11 @@ import java.util.logging.Logger;
 import java.util.logging.Level;
 
 /**
- * A repository for request information gleaned from the uri. KEN
+ * A repository for request information gleaned from the uri.
+ * 
+ * and the FilterChain that match the URI
+ * 
+ * A Invocation include the URI information and the FilterChain that match the URI
  */
 public class ServletInvocation
 {
@@ -107,11 +111,11 @@ public class ServletInvocation
 	 * 
 	 * contextPath: "/myapp"<br>
 	 * 
-	 * ContextURI:  "/blog/page1.jsp"<br>
-	 * 
 	 * servletPath: "/blog"
 	 * 
 	 * pathInfo:    "/page1.jsp"
+	 * 
+	 * ContextURI:  "/blog/page1.jsp"<br>
 	 * 
 	 *
 	 * 
