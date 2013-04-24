@@ -259,7 +259,7 @@ public class WebAppClassLoader extends URLClassLoader
 
 		if (clazz != null)
 		{
-			if (LOG.isDebugEnabled()) LOG.debug("  Returning class from cache,class: "+clazz);
+			//if (LOG.isDebugEnabled()) LOG.debug("  Returning class from cache,class: "+clazz);
 
 			return (clazz);
 		}
