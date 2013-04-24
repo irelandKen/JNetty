@@ -35,7 +35,7 @@ public class JNettyServer
 	{
 		// Configure the server.
 		EventLoopGroup bossGroup = new AioEventLoopGroup(2);
-		EventLoopGroup workerGroup = new AioEventLoopGroup(4);
+		EventLoopGroup workerGroup = new AioEventLoopGroup();
 		try
 		{
 			ServerBootstrap bootstrap = new ServerBootstrap();
