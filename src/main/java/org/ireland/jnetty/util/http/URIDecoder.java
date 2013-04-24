@@ -268,23 +268,23 @@ public class URIDecoder
 	/**
 	 * Splits out the query string, and normalizes the URI, assuming nothing needs unescaping.
 	 */
-	public void splitQuery(Invocation invocation, String rawURI) throws IOException
+	public void splitQuery(Invocation invocation, String rawContextURI) throws IOException
 	{
-		invocation.setRawURI(rawURI);
+		invocation.setRawURI(rawContextURI);
 		
-		int p = rawURI.indexOf('?');
+		int p = rawContextURI.indexOf('?');
 		if (p > 0)
 		{
 			//设置URI上的参数
-			invocation.setQueryString(rawURI.substring(p + 1));
+			invocation.setQueryString(rawContextURI.substring(p + 1));
 
-			rawURI = rawURI.substring(0, p);
+			rawContextURI = rawContextURI.substring(0, p);
 		}
 
-		String uri = normalizeUri(rawURI);
+		String contextURI = normalizeUri(rawContextURI);
 
-		invocation.setURI(uri);
-		invocation.setContextURI(uri);
+		invocation.setURI(contextURI);
+		invocation.setContextURI(contextURI);
 	}
 	
 	/**
