@@ -46,8 +46,8 @@ import org.apache.commons.logging.LogFactory;
 public class WebAppClassLoader extends URLClassLoader
 {
 	private static final Log LOG = LogFactory.getLog(WebAppClassLoader.class);
-
-	//private final ServletContext _servletContext;
+	
+	private static final boolean isDebugEnabled = LOG.isDebugEnabled();
 
 	//Default: SystemClassLoader
 	private final ClassLoader _parent;
@@ -62,7 +62,7 @@ public class WebAppClassLoader extends URLClassLoader
 	 * its own repositories first, and delegate to the parent only if the class or resource is not found locally. Note
 	 * that the default, <code>false</code>, is the behavior called for by the servlet specification.
 	 */
-	protected boolean delegate = false;
+	protected boolean delegate = true;
 
 
 	/* ------------------------------------------------------------ */
@@ -179,7 +179,7 @@ public class WebAppClassLoader extends URLClassLoader
 			
             if (url != null) {
                 
-            	if (LOG.isDebugEnabled())
+            	if (isDebugEnabled)
                 	LOG.debug("  --> Returning '" + url.toString() + "' from parent classloader: "+_parent);
                 
                 return (url);
@@ -192,7 +192,7 @@ public class WebAppClassLoader extends URLClassLoader
 		
         if (url != null) {
             
-        	if (LOG.isDebugEnabled())
+        	if (isDebugEnabled)
             	LOG.debug("  --> Returning '" + url.toString() + "' from "+toString());
             
             return (url);
@@ -206,7 +206,7 @@ public class WebAppClassLoader extends URLClassLoader
 			
             if (url != null) {
                 
-            	if (LOG.isDebugEnabled())
+            	if (isDebugEnabled)
                 	LOG.debug("  --> Returning '" + url.toString() + "' from parent classloader: "+_parent);
                 
                 return (url);
@@ -215,7 +215,7 @@ public class WebAppClassLoader extends URLClassLoader
 
 		
         // (4) Resource was not found
-        if (LOG.isDebugEnabled())
+        if (isDebugEnabled)
             LOG.debug("  --> Resource not found, returning null");
         return (null);
 	}
@@ -259,7 +259,7 @@ public class WebAppClassLoader extends URLClassLoader
 
 		if (clazz != null)
 		{
-			//if (LOG.isDebugEnabled()) LOG.debug("  Returning class from cache,class: "+clazz);
+			//if (isDebugEnabled) LOG.debug("  Returning class from cache,class: "+clazz);
 
 			return (clazz);
 		}
@@ -268,7 +268,7 @@ public class WebAppClassLoader extends URLClassLoader
 		// (1) Delegate to our parent if requested
 		if (delegate)
 		{
-			if (LOG.isDebugEnabled())
+			if (isDebugEnabled)
 				LOG.debug("  Delegating to parent classloader1: " + _parent);
 
 			ClassLoader loader = _parent;
@@ -277,7 +277,7 @@ public class WebAppClassLoader extends URLClassLoader
 				clazz = Class.forName(name, false, loader);
 				if (clazz != null)
 				{
-					if (LOG.isDebugEnabled())
+					if (isDebugEnabled)
 						LOG.debug("  Loaded class from parent,class: "+clazz);
 					return (clazz);
 				}
@@ -289,7 +289,7 @@ public class WebAppClassLoader extends URLClassLoader
 		}
 		
 		// (2) Search local resources
-		if (LOG.isDebugEnabled())
+		if (isDebugEnabled)
 			LOG.debug("  Searching local ClassPaths @ " + name);
 		
 		try
@@ -297,7 +297,7 @@ public class WebAppClassLoader extends URLClassLoader
 			clazz = findClass(name);
 			if (clazz != null)
 			{
-				if (LOG.isDebugEnabled())
+				if (isDebugEnabled)
 					LOG.debug("  Loaded class from local ClassPaths,class: "+clazz);
 				return (clazz);
 			}
@@ -310,7 +310,7 @@ public class WebAppClassLoader extends URLClassLoader
 		// (3) Delegate to parent unconditionally
 		if (!delegate)
 		{
-			if (LOG.isDebugEnabled())
+			if (isDebugEnabled)
 				LOG.debug("  Delegating to parent classloader at end: " + _parent);
 
 			ClassLoader loader = _parent;
@@ -320,7 +320,7 @@ public class WebAppClassLoader extends URLClassLoader
 				clazz = Class.forName(name, false, loader);
 				if (clazz != null)
 				{
-					if (LOG.isDebugEnabled())
+					if (isDebugEnabled)
 						LOG.debug("  Loaded class from parent,class: "+clazz);
 					return (clazz);
 				}
