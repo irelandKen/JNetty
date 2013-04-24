@@ -55,13 +55,14 @@ public class ForwardRequest extends HttpServletRequestWrapper
 {
 	private static final L10N L = new L10N(ForwardRequest.class);
 
-
-	private Invocation _invocation;
-
 	// the wrapped request
 	private HttpServletRequest _request;
 
 	private HttpServletResponse _response;
+	
+	
+	//the Invocation for this ForwardRequest
+	private Invocation _invocation;
 
 	//paremeters from the QueryString of forward + Original Parameters
 	private Map<String, String[]> _parameters;

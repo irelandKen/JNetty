@@ -36,6 +36,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.ireland.jnetty.dispatch.Invocation;
+import org.ireland.jnetty.http.HttpServletRequestImpl;
 import org.ireland.jnetty.http.HttpServletResponseImpl;
 import org.ireland.jnetty.util.http.URIDecoder;
 
@@ -101,6 +102,11 @@ public class RequestDispatcherImpl implements RequestDispatcher
 			buildDispatchInvocation(_dispatchInvocation, _rawContextURI);
 		}
 		
+		if(request instanceof HttpServletRequestImpl)
+		{
+			((HttpServletRequestImpl)request).setInvocation(_dispatchInvocation);
+		}
+		
 		doDispatch(request, response,_dispatchInvocation);
 	}
 	
@@ -145,6 +151,11 @@ public class RequestDispatcherImpl implements RequestDispatcher
 			_forwardInvocation = new Invocation(_webApp);
 
 			buildForwardInvocation(_forwardInvocation, _rawContextURI);
+		}
+		
+		if(request instanceof HttpServletRequestImpl)
+		{
+			((HttpServletRequestImpl)request).setInvocation(_forwardInvocation);
 		}
 
 		doForward((HttpServletRequest) request, (HttpServletResponse) response, _forwardInvocation);
@@ -225,6 +236,11 @@ public class RequestDispatcherImpl implements RequestDispatcher
 			buildErrorInvocation(_errorInvocation, _rawContextURI);
 		}
 
+		if(request instanceof HttpServletRequestImpl)
+		{
+			((HttpServletRequestImpl)request).setInvocation(_errorInvocation);
+		}
+		
 		doError(request, response, "error", _errorInvocation, DispatcherType.ERROR);
 	}
 
@@ -423,6 +439,11 @@ public class RequestDispatcherImpl implements RequestDispatcher
 
 			buildIncludeInvocation(_includeInvocation, _rawContextURI);
 		}
+		
+		if(request instanceof HttpServletRequestImpl)
+		{
+			((HttpServletRequestImpl)request).setInvocation(_includeInvocation);
+		}
 
 		doInclude(request, response, _includeInvocation, null);
 	}
@@ -533,11 +554,11 @@ public class RequestDispatcherImpl implements RequestDispatcher
 	 * 
 	 * @throws IOException
 	 */
-	private void buildDispatchInvocation(Invocation invocation, String rawURI) throws ServletException, IOException
+	private void buildDispatchInvocation(Invocation invocation, String rawContextURI) throws ServletException, IOException
 	{
 		URIDecoder decoder = _webApp.getURIDecoder();
 
-		decoder.splitQuery(invocation, rawURI);
+		decoder.splitQuery(invocation, rawContextURI);
 
 		_webApp.buildDispatchInvocation(invocation);
 	}
