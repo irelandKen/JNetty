@@ -35,56 +35,34 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
-import java.util.Enumeration;
 import java.util.EventListener;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.logging.Level;
-
 
 import javax.annotation.PostConstruct;
 import javax.servlet.DispatcherType;
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
 import javax.servlet.FilterRegistration;
-import javax.servlet.MultipartConfigElement;
 import javax.servlet.RequestDispatcher;
 import javax.servlet.Servlet;
-import javax.servlet.ServletContainerInitializer;
 import javax.servlet.ServletContext;
 import javax.servlet.ServletContextAttributeListener;
 import javax.servlet.ServletContextEvent;
 import javax.servlet.ServletContextListener;
 import javax.servlet.ServletException;
 import javax.servlet.ServletRegistration;
-import javax.servlet.ServletRequest;
 import javax.servlet.ServletRequestAttributeListener;
 import javax.servlet.ServletRequestListener;
-import javax.servlet.ServletSecurityElement;
 import javax.servlet.SessionCookieConfig;
-import javax.servlet.SessionTrackingMode;
 import javax.servlet.UnavailableException;
-import javax.servlet.annotation.HandlesTypes;
-import javax.servlet.annotation.ServletSecurity;
-import javax.servlet.annotation.WebFilter;
-import javax.servlet.annotation.WebInitParam;
-import javax.servlet.annotation.WebListener;
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
 import javax.servlet.http.HttpSessionActivationListener;
 import javax.servlet.http.HttpSessionAttributeListener;
-import javax.servlet.http.HttpSessionEvent;
 import javax.servlet.http.HttpSessionListener;
 
 import org.apache.commons.logging.Log;
@@ -139,17 +117,15 @@ public class WebApp extends ServletContextImpl
 	private String _url;
 
 	private String _serverName = "";
-	private int _serverPort = 0;
+	private int _serverPort;
 
 	// The webbeans container
 	private BeanFactory _beanFactory;
 
 	private URIDecoder _uriDecoder;
 
-
 	private String _servletVersion;
 
-	
 	// -----servlet--------------------------
 
 	// The servlet manager
@@ -159,25 +135,22 @@ public class WebApp extends ServletContextImpl
 	private ServletMapper _servletMapper;
 	// -----servlet--------------------------
 
-
 	// -----filter--------------------------
 	// The filter manager
 	private FilterManager _filterManager;
 
-	
 	// The dispatch filter mapper (DispatcherType#REQUEST)
 	private FilterMapper _dispatchFilterMapper;
 
 	// The forward filter mapper (DispatcherType#FORWARD)
 	private FilterMapper _forwardFilterMapper;
-	
+
 	// The include filter mapper (DispatcherType#INCLUDE)
 	private FilterMapper _includeFilterMapper;
 
 	// The error filter mapper (DispatcherType#ERROR)
 	private FilterMapper _errorFilterMapper;
 	// -----filter--------------------------
-
 
 	// The FilterChain Cache
 
@@ -187,8 +160,7 @@ public class WebApp extends ServletContextImpl
 	private LruCache<String, FilterChainEntry> _includeFilterChainCache = new LruCache<String, FilterChainEntry>(32);
 	private LruCache<String, FilterChainEntry> _errorFilterChainCache = new LruCache<String, FilterChainEntry>(32);
 
-	
-	//<rowContextURI,_requestDispatcherCache>
+	// <rowContextURI,_requestDispatcherCache>
 	private LruCache<String, RequestDispatcherImpl> _requestDispatcherCache;
 
 	// True for SSL secure.
@@ -220,7 +192,6 @@ public class WebApp extends ServletContextImpl
 	// List of the ServletContextAttributeListeners from the configuration file
 	private ArrayList<ServletContextAttributeListener> _contextAttributeListeners = new ArrayList<ServletContextAttributeListener>();
 
-	
 	// List of the ServletRequestListeners from the configuration file
 	private ArrayList<ServletRequestListener> _requestListeners = new ArrayList<ServletRequestListener>();
 
@@ -229,7 +200,6 @@ public class WebApp extends ServletContextImpl
 
 	// listeners-----------------------------------------------
 
-	
 	// WebApp的根目录
 	private final String _rootDirectory;
 
@@ -239,15 +209,12 @@ public class WebApp extends ServletContextImpl
 
 	private HashMap<String, Object> _extensions = new HashMap<String, Object>();
 
-
 	private boolean _isEnabled = true;
 
-	
 	// The session manager
 	private SessionManager _sessionManager;
 
 	private String _characterEncoding;
-
 
 	/**
 	 * Creates the webApp with its environment loader.
@@ -266,7 +233,9 @@ public class WebApp extends ServletContextImpl
 			throw new IllegalStateException(L.l("{0} requires an active {1}", getClass().getSimpleName()));
 
 		initClassLoader();
-		
+
+		//if (log.isDebugEnabled())
+		//	displayClassLoader();
 		//
 		Thread.currentThread().setContextClassLoader(getClassLoader());
 
@@ -284,20 +253,19 @@ public class WebApp extends ServletContextImpl
 		try
 		{
 			ClassLoader parent = Thread.currentThread().getContextClassLoader();
-			
-			if(parent == null)
+
+			if (parent == null)
 				parent = WebApp.class.getClassLoader();
-			
+
 			webAppClassLoader = new WebAppClassLoader(parent);
 		}
 		catch (IOException e)
 		{
 			e.printStackTrace();
 		}
-		
-		
+
 		List<URL> urls = new ArrayList<URL>();
-		
+
 		// JarFile: "/WEB-INF/lib"
 		File libPath = new File(getRealPath("/WEB-INF/lib"));
 
@@ -319,15 +287,13 @@ public class WebApp extends ServletContextImpl
 				}
 			}
 		}
-		
-		for(URL jarFile : urls)
+
+		for (URL jarFile : urls)
 		{
 			webAppClassLoader.addJar(jarFile);
 		}
-		
-		
-		
-		// ClassPath:  "/WEB-INF/classes/"
+
+		// ClassPath: "/WEB-INF/classes/"
 		URL classPath = null;
 		try
 		{
@@ -342,59 +308,54 @@ public class WebApp extends ServletContextImpl
 		{
 			webAppClassLoader.addClassPath(classPath);
 		}
-		
 
-		
 		_classLoader = webAppClassLoader;
-		
-		if (log.isDebugEnabled())
-			displayClassLoader();
 	}
 
 	void displayClassLoader()
 	{
-		System.out.println("BootstrapClassLoader 的加载路径: ");
+		log.debug("BootstrapClassLoader 的加载路径: ");
 
 		URL[] urls = sun.misc.Launcher.getBootstrapClassPath().getURLs();
 		for (URL url : urls)
-			System.out.println(url);
-		System.out.println("----------------------------");
+			log.debug(url);
+		log.debug("----------------------------");
 
 		// 取得扩展类加载器
 		URLClassLoader extClassLoader = (URLClassLoader) ClassLoader.getSystemClassLoader().getParent();
 
-		System.out.println(extClassLoader);
-		System.out.println("扩展类加载器 的加载路径: ");
+		log.debug(extClassLoader);
+		log.debug("扩展类加载器 的加载路径: ");
 
 		urls = extClassLoader.getURLs();
 		for (URL url : urls)
-			System.out.println(url);
+			log.debug(url);
 
-		System.out.println("----------------------------");
+		log.debug("----------------------------");
 
 		// 取得应用(系统)类加载器
 		URLClassLoader appClassLoader = (URLClassLoader) _classLoader.getParent();
 
-		System.out.println(appClassLoader);
-		System.out.println("应用(系统)类加载器 的加载路径: ");
+		log.debug(appClassLoader);
+		log.debug("应用(系统)类加载器 的加载路径: ");
 
 		urls = appClassLoader.getURLs();
 		for (URL url : urls)
-			System.out.println(url);
+			log.debug(url);
 
-		System.out.println("----------------------------");
+		log.debug("----------------------------");
 
 		// 取得应用(系统)类加载器
 		appClassLoader = (URLClassLoader) _classLoader;
 
-		System.out.println(appClassLoader);
-		System.out.println("应用(系统)类加载器 的加载路径: ");
+		log.debug(appClassLoader);
+		log.debug("应用(系统)类加载器 的加载路径: ");
 
 		urls = appClassLoader.getURLs();
 		for (URL url : urls)
-			System.out.println(url);
+			log.debug(url);
 
-		System.out.println("----------------------------");
+		log.debug("----------------------------");
 	}
 
 	private void initConstructor()
@@ -457,7 +418,6 @@ public class WebApp extends ServletContextImpl
 		return _host;
 	}
 
-
 	public URIDecoder getURIDecoder()
 	{
 
@@ -473,15 +433,13 @@ public class WebApp extends ServletContextImpl
 		if (_classLoader == null)
 		{
 			_classLoader = Thread.currentThread().getContextClassLoader();
-			
-			if(_classLoader == null)
+
+			if (_classLoader == null)
 				_classLoader = this.getClass().getClassLoader();
 		}
 
 		return _classLoader;
 	}
-
-
 
 	/**
 	 * Sets the servlet version.
@@ -500,7 +458,6 @@ public class WebApp extends ServletContextImpl
 		return _servletVersion;
 	}
 
-
 	public void setEnabled(boolean isEnabled)
 	{
 		_isEnabled = isEnabled;
@@ -510,8 +467,6 @@ public class WebApp extends ServletContextImpl
 	{
 		return _isEnabled;
 	}
-
-
 
 	/**
 	 * Gets the URL
@@ -745,8 +700,6 @@ public class WebApp extends ServletContextImpl
 		return _characterEncoding;
 	}
 
-
-
 	/**
 	 * 创建一个新的ServletConfigImpl
 	 * 
@@ -929,8 +882,6 @@ public class WebApp extends ServletContextImpl
 	{
 		return _cookieHttpOnly;
 	}
-
-
 
 	/**
 	 * Adds a mime-mapping
@@ -1127,12 +1078,6 @@ public class WebApp extends ServletContextImpl
 
 	// special config
 
-
-
-
-
-
-
 	/**
 	 * Sets the temporary directory
 	 */
@@ -1170,7 +1115,6 @@ public class WebApp extends ServletContextImpl
 		_characterEncoding = CharacterEncoding.getLocalEncoding();
 
 	}
-
 
 	public void parseWebXml() throws ServletException
 	{
@@ -1353,36 +1297,36 @@ public class WebApp extends ServletContextImpl
 	 */
 	public void buildDispatchInvocation(Invocation invocation) throws ServletException
 	{
-		//try to get from Cache
-        FilterChainEntry entry = _dispatchFilterChainCache.get(invocation.getContextURI());
+		// try to get from Cache
+		FilterChainEntry entry = _dispatchFilterChainCache.get(invocation.getContextURI());
 
-        if (entry != null) {
-          
-          invocation.setFilterChain(entry.getFilterChain());
-          
-          invocation.setServletName(entry.getServletName());
-          invocation.setServletPath(entry.getServletPath());
-          invocation.setPathInfo(entry.getPathInfo());
-          
-          if (! entry.isAsyncSupported())
-            invocation.clearAsyncSupported();
-          
-          return;
-        } 
-        
-        //build it
+		if (entry != null)
+		{
+
+			invocation.setFilterChain(entry.getFilterChain());
+
+			invocation.setServletName(entry.getServletName());
+			invocation.setServletPath(entry.getServletPath());
+			invocation.setPathInfo(entry.getPathInfo());
+
+			if (!entry.isAsyncSupported())
+				invocation.clearAsyncSupported();
+
+			return;
+		}
+
+		// build it
 		buildInvocation(invocation, _dispatchFilterMapper);
-		
-		
-		//Build FilterChain for the notification of ServletRequestListener(s)
-		if(_requestListeners != null && _requestListeners.size() > 0)
+
+		// Build FilterChain for the notification of ServletRequestListener(s)
+		if (_requestListeners != null && _requestListeners.size() > 0)
 		{
 			FilterChain filterChain = new ServletRequestListenerFilterChain(invocation.getFilterChain(), this, _requestListeners);
 			invocation.setFilterChain(filterChain);
 		}
-		
-		//put to cache
-		if(invocation.getFilterChain()!= null)
+
+		// put to cache
+		if (invocation.getFilterChain() != null)
 		{
 			FilterChainEntry filterChainEntry = new FilterChainEntry(invocation.getFilterChain(), invocation);
 			_dispatchFilterChainCache.put(invocation.getContextURI(), filterChainEntry);
@@ -1394,28 +1338,29 @@ public class WebApp extends ServletContextImpl
 	 */
 	public void buildForwardInvocation(Invocation invocation) throws ServletException
 	{
-		//try to get from Cache
-        FilterChainEntry entry = _forwardFilterChainCache.get(invocation.getContextURI());
+		// try to get from Cache
+		FilterChainEntry entry = _forwardFilterChainCache.get(invocation.getContextURI());
 
-        if (entry != null) {
-          
-          invocation.setFilterChain(entry.getFilterChain());
-          
-          invocation.setServletName(entry.getServletName());
-          invocation.setServletPath(entry.getServletPath());
-          invocation.setPathInfo(entry.getPathInfo());
-          
-          if (! entry.isAsyncSupported())
-            invocation.clearAsyncSupported();
-          
-          return;
-        } 
-        
-        //build it
+		if (entry != null)
+		{
+
+			invocation.setFilterChain(entry.getFilterChain());
+
+			invocation.setServletName(entry.getServletName());
+			invocation.setServletPath(entry.getServletPath());
+			invocation.setPathInfo(entry.getPathInfo());
+
+			if (!entry.isAsyncSupported())
+				invocation.clearAsyncSupported();
+
+			return;
+		}
+
+		// build it
 		buildInvocation(invocation, _forwardFilterMapper);
-		
-		//put to cache
-		if(invocation.getFilterChain()!= null)
+
+		// put to cache
+		if (invocation.getFilterChain() != null)
 		{
 			FilterChainEntry filterChainEntry = new FilterChainEntry(invocation.getFilterChain(), invocation);
 			_forwardFilterChainCache.put(invocation.getContextURI(), filterChainEntry);
@@ -1427,28 +1372,29 @@ public class WebApp extends ServletContextImpl
 	 */
 	public void buildIncludeInvocation(Invocation invocation) throws ServletException
 	{
-		//try to get from Cache
-        FilterChainEntry entry = _includeFilterChainCache.get(invocation.getContextURI());
+		// try to get from Cache
+		FilterChainEntry entry = _includeFilterChainCache.get(invocation.getContextURI());
 
-        if (entry != null) {
-          
-          invocation.setFilterChain(entry.getFilterChain());
-          
-          invocation.setServletName(entry.getServletName());
-          invocation.setServletPath(entry.getServletPath());
-          invocation.setPathInfo(entry.getPathInfo());
-          
-          if (! entry.isAsyncSupported())
-            invocation.clearAsyncSupported();
-          
-          return;
-        } 
-        
-        //build it
+		if (entry != null)
+		{
+
+			invocation.setFilterChain(entry.getFilterChain());
+
+			invocation.setServletName(entry.getServletName());
+			invocation.setServletPath(entry.getServletPath());
+			invocation.setPathInfo(entry.getPathInfo());
+
+			if (!entry.isAsyncSupported())
+				invocation.clearAsyncSupported();
+
+			return;
+		}
+
+		// build it
 		buildInvocation(invocation, _includeFilterMapper);
-		
-		//put to cache
-		if(invocation.getFilterChain()!= null)
+
+		// put to cache
+		if (invocation.getFilterChain() != null)
 		{
 			FilterChainEntry filterChainEntry = new FilterChainEntry(invocation.getFilterChain(), invocation);
 			_includeFilterChainCache.put(invocation.getContextURI(), filterChainEntry);
@@ -1460,28 +1406,29 @@ public class WebApp extends ServletContextImpl
 	 */
 	public void buildErrorInvocation(Invocation invocation) throws ServletException
 	{
-		//try to get from Cache
-        FilterChainEntry entry = _errorFilterChainCache.get(invocation.getContextURI());
+		// try to get from Cache
+		FilterChainEntry entry = _errorFilterChainCache.get(invocation.getContextURI());
 
-        if (entry != null) {
-          
-          invocation.setFilterChain(entry.getFilterChain());
-          
-          invocation.setServletName(entry.getServletName());
-          invocation.setServletPath(entry.getServletPath());
-          invocation.setPathInfo(entry.getPathInfo());
-          
-          if (! entry.isAsyncSupported())
-            invocation.clearAsyncSupported();
-          
-          return;
-        } 
-        
-        //build it
+		if (entry != null)
+		{
+
+			invocation.setFilterChain(entry.getFilterChain());
+
+			invocation.setServletName(entry.getServletName());
+			invocation.setServletPath(entry.getServletPath());
+			invocation.setPathInfo(entry.getPathInfo());
+
+			if (!entry.isAsyncSupported())
+				invocation.clearAsyncSupported();
+
+			return;
+		}
+
+		// build it
 		buildInvocation(invocation, _errorFilterMapper);
-		
-		//put to cache
-		if(invocation.getFilterChain()!= null)
+
+		// put to cache
+		if (invocation.getFilterChain() != null)
 		{
 			FilterChainEntry filterChainEntry = new FilterChainEntry(invocation.getFilterChain(), invocation);
 			_errorFilterChainCache.put(invocation.getContextURI(), filterChainEntry);
@@ -1493,9 +1440,9 @@ public class WebApp extends ServletContextImpl
 	 */
 	void buildInvocation(Invocation invocation, FilterMapper filterMapper) throws ServletException
 	{
-		if(log.isDebugEnabled())
-			log.debug("buildInvocation:"+invocation.getRawURI());
-		
+		if (log.isDebugEnabled())
+			log.debug("buildInvocation:" + invocation.getRawURI());
+
 		try
 		{
 			FilterChain chain;
@@ -1522,11 +1469,10 @@ public class WebApp extends ServletContextImpl
 			invocation.setFilterChain(chain);
 		}
 	}
-	
-
 
 	/**
 	 * 创建用于触发ServletRequestListener相关事件的FilterChain
+	 * 
 	 * @param chain
 	 * @return
 	 */
@@ -1541,8 +1487,8 @@ public class WebApp extends ServletContextImpl
 	}
 
 	/**
-	 * Returns a dispatcher for the named servlet. 
-	 *
+	 * Returns a dispatcher for the named servlet.
+	 * 
 	 */
 	@Override
 	public RequestDispatcherImpl getRequestDispatcher(String rawContextURI)
@@ -1551,8 +1497,8 @@ public class WebApp extends ServletContextImpl
 			throw new IllegalArgumentException(L.l("request dispatcher url can't be null."));
 		else if (!rawContextURI.startsWith("/"))
 			throw new IllegalArgumentException(L.l("request dispatcher url '{0}' must be absolute", rawContextURI));
-		
-		//尝试从缓存中取出RequestDispatcher
+
+		// 尝试从缓存中取出RequestDispatcher
 		RequestDispatcherImpl disp = getRequestDispatcherCache().get(rawContextURI);
 
 		if (disp != null)
@@ -1563,7 +1509,7 @@ public class WebApp extends ServletContextImpl
 			// 将Invocation的创建延迟到RequestDispatcher的具体的dispatch或forward方法调用时再进行(很情况下不需要所有DispatcherType都创建)
 			disp = new RequestDispatcherImpl(this, rawContextURI);
 
-			//缓存RequestDispatcher
+			// 缓存RequestDispatcher
 			getRequestDispatcherCache().put(rawContextURI, disp);
 
 			return disp;
@@ -1744,11 +1690,6 @@ public class WebApp extends ServletContextImpl
 		return _errorPageManager;
 	}
 
-
-
-
-
-
 	/**
 	 * Returns the active session count.
 	 */
@@ -1761,7 +1702,6 @@ public class WebApp extends ServletContextImpl
 		else
 			return 0;
 	}
-
 
 	/**
 	 * Stops the webApp.
@@ -1898,9 +1838,7 @@ public class WebApp extends ServletContextImpl
 		}
 	}
 
-
 	// --util-----------------------------------------------------------------
-
 
 	/**
 	 * Error logging
