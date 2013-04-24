@@ -86,7 +86,6 @@ import javax.servlet.http.HttpSessionActivationListener;
 import javax.servlet.http.HttpSessionAttributeListener;
 import javax.servlet.http.HttpSessionEvent;
 import javax.servlet.http.HttpSessionListener;
-import javax.validation.OverridesAttribute;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -108,6 +107,7 @@ import org.ireland.jnetty.dispatch.servlet.ServletManager;
 import org.ireland.jnetty.dispatch.servlet.ServletMapper;
 import org.ireland.jnetty.dispatch.servlet.ServletMapping;
 import org.ireland.jnetty.jsp.JspServletComposite;
+import org.ireland.jnetty.loader.WebAppClassLoader;
 import org.ireland.jnetty.server.session.SessionManager;
 import org.ireland.jnetty.util.http.Encoding;
 import org.ireland.jnetty.util.http.URIDecoder;
@@ -283,9 +283,25 @@ public class WebApp extends ServletContextImpl
 	 */
 	protected void initClassLoader()
 	{
+		WebAppClassLoader webAppClassLoader = null;
+		try
+		{
+			ClassLoader parent = Thread.currentThread().getContextClassLoader();
+			
+			if(parent == null)
+				parent = WebApp.class.getClassLoader();
+			
+			webAppClassLoader = new WebAppClassLoader(parent);
+		}
+		catch (IOException e)
+		{
+			e.printStackTrace();
+		}
+		
+		
 		List<URL> urls = new ArrayList<URL>();
 		
-		// "/WEB-INF/lib"
+		// JarFile: "/WEB-INF/lib"
 		File libPath = new File(getRealPath("/WEB-INF/lib"));
 
 		if (libPath.isDirectory())
@@ -307,11 +323,18 @@ public class WebApp extends ServletContextImpl
 			}
 		}
 		
-		// "/WEB-INF/classes"
+		for(URL jarFile : urls)
+		{
+			webAppClassLoader.addJar(jarFile);
+		}
+		
+		
+		
+		// ClassPath:  "/WEB-INF/classes/"
 		URL classPath = null;
 		try
 		{
-			classPath = super.getResource("/WEB-INF/classes");
+			classPath = super.getResource("/WEB-INF/classes/");
 		}
 		catch (MalformedURLException e)
 		{
@@ -319,11 +342,14 @@ public class WebApp extends ServletContextImpl
 		}
 
 		if (classPath != null)
-			urls.add(classPath);
+		{
+			webAppClassLoader.addClassPath(classPath);
+		}
 		
 
-		_classLoader = new URLClassLoader(urls.toArray(new URL[urls.size()]), this.getClassLoader());
-
+		
+		_classLoader = webAppClassLoader;
+		
 		if (log.isDebugEnabled())
 			displayClassLoader();
 	}
@@ -448,7 +474,12 @@ public class WebApp extends ServletContextImpl
 	public ClassLoader getClassLoader()
 	{
 		if (_classLoader == null)
-			_classLoader = this.getClass().getClassLoader();
+		{
+			_classLoader = Thread.currentThread().getContextClassLoader();
+			
+			if(_classLoader == null)
+				_classLoader = this.getClass().getClassLoader();
+		}
 
 		return _classLoader;
 	}
@@ -1143,13 +1174,6 @@ public class WebApp extends ServletContextImpl
 
 	}
 
-	private boolean isAttributeListener(Class<?> cl)
-	{
-		if (ServletContextAttributeListener.class.isAssignableFrom(cl))
-			return true;
-		else
-			return false;
-	}
 
 	public void parseWebXml() throws ServletException
 	{
