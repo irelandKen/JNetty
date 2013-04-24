@@ -86,12 +86,14 @@ import org.eclipse.jetty.util.StringUtil;
 import org.eclipse.jetty.util.URIUtil;
 import org.eclipse.jetty.util.UrlEncoded;
 
+import org.ireland.jnetty.dispatch.Invocation;
 import org.ireland.jnetty.http.io.ByteBufServletInputStream;
 import org.ireland.jnetty.server.session.HttpSessionImpl;
 import org.ireland.jnetty.server.session.SessionManager;
 import org.ireland.jnetty.util.StringParser;
 import org.ireland.jnetty.util.http.ContentTypeUtil;
 import org.ireland.jnetty.webapp.WebApp;
+
 
 /* ------------------------------------------------------------ */
 /**
@@ -153,6 +155,9 @@ public class HttpServletRequestImpl implements HttpServletRequest
 	//
 
 	private final ServletContext servletContext;
+	
+	//the Invocation of this Request()
+	private Invocation _invocation;
 
 	// Netty
 	private final SocketChannel socketChannel;
@@ -508,10 +513,9 @@ public class HttpServletRequestImpl implements HttpServletRequest
 	 * @see javax.servlet.http.HttpServletRequest#getAuthType()
 	 */
 	@Override
-	// OK
 	public String getAuthType()
 	{
-		throw new UnsupportedOperationException();
+		return null;
 	}
 
 	/* ------------------------------------------------------------ */
@@ -1099,7 +1103,10 @@ public class HttpServletRequestImpl implements HttpServletRequest
 	@Override
 	public String getPathInfo()
 	{
-		return _pathInfo;
+	    if (_invocation != null)
+	        return _invocation.getPathInfo();
+	      else
+	        return null;
 	}
 
 	/* ------------------------------------------------------------ */
@@ -1147,12 +1154,10 @@ public class HttpServletRequestImpl implements HttpServletRequest
 	@Override
 	public String getQueryString()
 	{
-		if (!_queryStringExtracted)
-		{
-			parseRequestURIAndQueryString();
-		}
-
-		return _queryString;
+	    if (_invocation != null)
+	        return _invocation.getQueryString();
+	      else
+	        return null;
 	}
 
 	/**
@@ -1231,8 +1236,8 @@ public class HttpServletRequestImpl implements HttpServletRequest
 	/*
 	 * @see javax.servlet.ServletRequest#getRealPath(java.lang.String)
 	 */
+	@Deprecated
 	@Override
-	// OK
 	public String getRealPath(String path)
 	{
 		if (servletContext == null)
@@ -1346,15 +1351,12 @@ public class HttpServletRequestImpl implements HttpServletRequest
 	 * @see javax.servlet.http.HttpServletRequest#getRequestURI()
 	 */
 	@Override
-	// waiting
 	public String getRequestURI()
 	{
-		if (_requestURI == null)
-		{
-			parseRequestURIAndQueryString();
-		}
-
-		return _requestURI;
+	    if (_invocation != null)
+	        return _invocation.getRawURI();
+	      else
+	        return "";
 	}
 
 	/* ------------------------------------------------------------ */
@@ -1362,7 +1364,6 @@ public class HttpServletRequestImpl implements HttpServletRequest
 	 * @see javax.servlet.http.HttpServletRequest#getRequestURL()
 	 */
 	@Override
-	// OK
 	public StringBuffer getRequestURL()
 	{
 		final StringBuffer url = new StringBuffer(48);
@@ -1551,9 +1552,10 @@ public class HttpServletRequestImpl implements HttpServletRequest
 	@Override
 	public String getServletPath()
 	{
-		if (_servletPath == null)
-			_servletPath = "";
-		return _servletPath;
+	    if (_invocation != null)
+	        return _invocation.getServletPath();
+	      else
+	        return "";
 	}
 
 	/* ------------------------------------------------------------ */
@@ -1713,7 +1715,7 @@ public class HttpServletRequestImpl implements HttpServletRequest
 		 * 
 		 * return null;
 		 */
-		throw new UnsupportedOperationException();
+		return null;
 	}
 
 	/* ------------------------------------------------------------ */
@@ -1736,8 +1738,8 @@ public class HttpServletRequestImpl implements HttpServletRequest
 	@Override
 	public boolean isAsyncStarted()
 	{
-		/* return getHttpChannelState().isAsync(); */
-		throw new UnsupportedOperationException();
+		//TODO:NOT support now
+		return false;
 	}
 
 	/* ------------------------------------------------------------ */
@@ -1821,7 +1823,8 @@ public class HttpServletRequestImpl implements HttpServletRequest
 		 * if (_authentication instanceof Authentication.User) return
 		 * ((Authentication.User)_authentication).isUserInRole(_scope,role); return false;
 		 */
-		throw new UnsupportedOperationException();
+		//TODO: 
+		return false;
 	}
 
 
@@ -2498,5 +2501,15 @@ public class HttpServletRequestImpl implements HttpServletRequest
 		 * 
 		 * setParameters(parameters); setQueryString(query);
 		 */
+	}
+
+	public Invocation getInvocation()
+	{
+		return _invocation;
+	}
+
+	public void setInvocation(Invocation invocation)
+	{
+		this._invocation = invocation;
 	}
 }
