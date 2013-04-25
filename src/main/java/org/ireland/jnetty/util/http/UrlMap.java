@@ -328,7 +328,7 @@ public class UrlMap<E>
 					cb.append(".*");
 				}
 				else
-					throw new ServletException(L.l("illegal url-pattern '{0}'", pattern));
+					throw new ServletException("illegal url-pattern :"+pattern);
 				break;
 
 			case '.':

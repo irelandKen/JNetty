@@ -37,18 +37,13 @@ import javax.servlet.http.HttpSessionActivationListener;
 import javax.servlet.http.HttpSessionAttributeListener;
 import javax.servlet.http.HttpSessionListener;
 
-import com.caucho.config.ConfigException;
-import com.caucho.config.Configurable;
-import com.caucho.util.L10N;
 
 /**
  * Configuration for the listener
  * 
  */
-@Configurable
 public class ListenerConfig<T>
 {
-	static L10N L = new L10N(ListenerConfig.class);
 
 	// The listener class
 	private Class<T> _listenerClass;
@@ -78,9 +73,7 @@ public class ListenerConfig<T>
 		} else if (HttpSessionActivationListener.class.isAssignableFrom(cl))
 		{
 		} else
-			throw new ConfigException(
-					L.l("listener-class '{0}' does not implement any web-app listener interface.",
-							cl.getName()));
+			throw new ConfigException("listener-class '"+cl.getName()+"' does not implement any web-app listener interface.");
 
 		_listenerClass = cl;
 	}

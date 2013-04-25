@@ -29,7 +29,7 @@
 
 package org.ireland.jnetty.dispatch.filter;
 
-import com.caucho.util.L10N;
+
 
 import javax.annotation.PostConstruct;
 import javax.servlet.ServletException;
@@ -65,9 +65,7 @@ import java.util.HashSet;
  */
 public class FilterMapping
 {
-	static L10N L = new L10N(FilterMapping.class);
-
-
+	
 	private final FilterConfigImpl filterConfig;
 
 	

@@ -29,7 +29,7 @@
 
 package org.ireland.jnetty.dispatch.servlet;
 
-import com.caucho.util.L10N;
+
 
 import javax.annotation.PostConstruct;
 import javax.servlet.FilterChain;
@@ -42,8 +42,8 @@ import org.ireland.jnetty.webapp.WebApp;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.apache.commons.logging.LogFactory;
+import org.apache.commons.logging.Log;
 
 /**
  * Manages the servlets.
@@ -53,8 +53,8 @@ import java.util.logging.Logger;
  */
 public class ServletManager
 {
-	static final Logger log = Logger.getLogger(ServletManager.class.getName());
-	static final L10N L = new L10N(ServletManager.class);
+	static final Log log = LogFactory.getLog(ServletManager.class.getName());
+	static final boolean debug = log.isDebugEnabled();
 
 	// <ServletName,ServletConfigImpl>
 	private HashMap<String, ServletConfigImpl> _servlets = new HashMap<String, ServletConfigImpl>();
@@ -107,12 +107,12 @@ public class ServletManager
 			}
 			catch (Exception e)
 			{
-				if (log.isLoggable(Level.FINE))
-					log.log(Level.FINE, e.toString(), e);
+				if (debug)
+					log.debug( e.toString(), e);
 				else if (e instanceof ConfigException)
-					log.config(e.getMessage());
+					log.debug(e.getMessage());
 				else
-					log.config(e.toString());
+					log.debug(e.toString());
 			}
 
 			_servlets.put(config.getServletName(), config);
@@ -177,7 +177,7 @@ public class ServletManager
 			}
 			catch (ServletException e)
 			{
-				log.log(Level.WARNING, e.toString(), e);
+				log.warn( e.toString(), e);
 			}
 		}
 	}
@@ -191,7 +191,7 @@ public class ServletManager
 
 		if (config == null)
 		{
-			throw new ServletException(L.l("'{0}' is not a known servlet.  Servlets must be defined by <servlet> before being used.", servletName));
+			throw new ServletException(servletName+" is not a known servlet.  Servlets must be defined by <servlet> before being used.");
 		}
 
 		if (invocation != null)
@@ -213,7 +213,7 @@ public class ServletManager
 
 		if (config == null)
 		{
-			throw new ServletException(L.l("'{0}' is not a known servlet.  Servlets must be defined by <servlet> before being used."));
+			throw new ServletException(config.getName()+" is not a known servlet.  Servlets must be defined by <servlet> before being used.");
 		}
 
 		if (invocation != null)
@@ -242,7 +242,7 @@ public class ServletManager
 
 		if (config == null)
 		{
-			throw new ServletException(L.l("'{0}' is not a known servlet.  Servlets must be defined by <servlet> before being used.", servletName));
+			throw new ServletException(servletName+" : is not a known servlet.  Servlets must be defined by <servlet> before being used.");
 		}
 
 		return config.getInstance();
@@ -279,7 +279,7 @@ public class ServletManager
 			}
 			catch (Throwable e)
 			{
-				log.log(Level.FINE, e.toString(), e);
+				log.debug( e.toString(), e);
 			}
 		}
 	}

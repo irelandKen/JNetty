@@ -35,13 +35,13 @@ import com.caucho.server.dispatch.BadRequestException;
 
 import com.caucho.util.CharBuffer;
 import com.caucho.util.FreeList;
-import com.caucho.util.L10N;
+
 import com.caucho.vfs.ByteToChar;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.apache.commons.logging.LogFactory;
+import org.apache.commons.logging.Log;
 
 import org.ireland.jnetty.dispatch.Invocation;
 
@@ -52,8 +52,7 @@ public class URIDecoder
 {
 	private static boolean isWindows = true;
 	
-	private static final Logger log = Logger.getLogger(URIDecoder.class.getName());
-	private static final L10N L = new L10N(URIDecoder.class);
+	private static final Log log = LogFactory.getLog(URIDecoder.class.getName());
 
 	private static final FreeList<ByteToChar> _freeConverters = new FreeList<ByteToChar>(256);
 
@@ -157,7 +156,7 @@ public class URIDecoder
 			prefix = '/' + prefix;
 
 		if (prefix.lastIndexOf('/') > 0)
-			throw new ConfigException(L.l("`{0}' is an invalidate alternate-session-url-prefix.  The url-prefix must not have any embedded '/'.", prefix));
+			throw new ConfigException("'"+prefix+"' is an invalidate alternate-session-url-prefix.  The url-prefix must not have any embedded '/'.");
 
 		_sessionPrefix = prefix;
 		_sessionSuffix = null;
@@ -326,7 +325,7 @@ public class URIDecoder
 		}
 		catch (UnsupportedEncodingException e)
 		{
-			log.log(Level.FINE, e.toString(), e);
+			log.debug( e.toString(), e);
 		}
 
 		String result;
@@ -374,7 +373,7 @@ public class URIDecoder
 		int len = uri.length();
 
 		if (_maxURILength < len)
-			throw new BadRequestException(L.l("The request contains an illegal URL because it is too long."));
+			throw new BadRequestException("The request contains an illegal URL because it is too long.");
 
 		char ch;
 		if (len == 0 || (ch = uri.charAt(0)) != '/' && ch != '\\')
@@ -417,7 +416,7 @@ public class URIDecoder
 					}
 					else
 					{
-						throw new BadRequestException(L.l("The request contains an illegal URL."));
+						throw new BadRequestException("The request contains an illegal URL.");
 					}
 				}
 
@@ -436,7 +435,7 @@ public class URIDecoder
 				cb.append('/');
 			}
 			else if (ch == 0)
-				throw new BadRequestException(L.l("The request contains an illegal URL."));
+				throw new BadRequestException("The request contains an illegal URL.");
 			else
 				cb.append(ch);
 		}
@@ -477,7 +476,7 @@ public class URIDecoder
 		}
 		catch (UnsupportedEncodingException e)
 		{
-			log.log(Level.FINE, e.toString(), e);
+			log.debug( e.toString(), e);
 		}
 
 		try
@@ -500,7 +499,7 @@ public class URIDecoder
 		}
 		catch (Exception e)
 		{
-			throw new BadRequestException(L.l("The URL contains escaped bytes unsupported by the {0} encoding.", encoding));
+			throw new BadRequestException("The URL contains escaped bytes unsupported by the '"+encoding+"' encoding.");
 		}
 	}
 

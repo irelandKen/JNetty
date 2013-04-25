@@ -29,8 +29,6 @@
 
 package org.ireland.jnetty.dispatch.filter;
 
-import com.caucho.util.L10N;
-
 import javax.servlet.DispatcherType;
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
@@ -45,7 +43,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Logger;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 /**
  * Manages dispatching: servlets and filters.
@@ -72,8 +72,7 @@ import java.util.logging.Logger;
  */
 public class FilterMapper
 {
-	private static final Logger log = Logger.getLogger(FilterMapper.class.getName());
-	private static final L10N L = new L10N(FilterMapper.class);
+	private static final Log log = LogFactory.getLog(FilterMapper.class.getName());
 
 	//本FilterMapper支持的匹配的DispatcherType
 	private final DispatcherType _sameDispatcherType;
@@ -149,7 +148,7 @@ public class FilterMapper
 			}
 
 			if (_filterManager.getFilter(filterName) == null)
-				throw new ConfigException(L.l("'{0}' is an unknown filter-name.  filter-mapping requires that the named filter be defined in a <filter> configuration before the <filter-mapping>.",filterName));
+				throw new ConfigException(filterName+" | is an unknown filter-name.  filter-mapping requires that the named filter be defined in a <filter> configuration before the <filter-mapping>.");
 
 			//持有<url-pattern>元素,添加至_filterMappingsWithUrl
 			if(filterMapping.getURLPatterns() != null && !filterMapping.getURLPatterns().isEmpty())
@@ -176,7 +175,7 @@ public class FilterMapper
 			}
 			
 
-			log.fine("filter-mapping " + filterMapping + " -> " + filterName);
+			log.debug("filter-mapping " + filterMapping + " -> " + filterName);
 		}
 		catch (Exception e)
 		{

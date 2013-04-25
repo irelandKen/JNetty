@@ -33,15 +33,20 @@ import javax.servlet.FilterChain;
 import javax.servlet.ServletException;
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
+
 import java.io.IOException;
-import java.util.logging.*;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 /**
  * Represents the next filter in a filter chain. The final filter will be the servlet itself.
  */
 public class FilterFilterChain implements FilterChain
 {
-	private static final Logger log = Logger.getLogger(FilterFilterChain.class.getName());
+	private static final Log log = LogFactory.getLog(FilterFilterChain.class.getName());
+	
+	private static final boolean trace = log.isTraceEnabled();
 
 	// Next filter chain
 	private FilterChain _next;
@@ -49,7 +54,6 @@ public class FilterFilterChain implements FilterChain
 	// filter
 	private Filter _filter;
 
-	private boolean _isFinest;
 
 	/**
 	 * Creates a new FilterChainFilter.
@@ -64,7 +68,6 @@ public class FilterFilterChain implements FilterChain
 		_next = next;
 		_filter = filter;
 
-		_isFinest = log.isLoggable(Level.FINEST);
 	}
 
 	/**
@@ -79,8 +82,8 @@ public class FilterFilterChain implements FilterChain
 	@Override
 	public void doFilter(ServletRequest request, ServletResponse response) throws ServletException, IOException
 	{
-		if (_isFinest)
-			log.finest("Dispatch " + request + " filter=" + _filter + " next=" + _next);
+		if (trace)
+			log.trace("Dispatch " + request + " filter=" + _filter + " next=" + _next);
 
 		_filter.doFilter(request, response, _next);
 	}

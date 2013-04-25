@@ -31,7 +31,7 @@ package org.ireland.jnetty.webapp;
 import com.caucho.server.http.CauchoResponse;
 import com.caucho.server.http.RequestAdapter;
 import com.caucho.server.webapp.DispatchResponse;
-import com.caucho.util.L10N;
+
 
 import javax.servlet.FilterChain;
 import javax.servlet.RequestDispatcher;
@@ -56,7 +56,6 @@ import java.io.PrintWriter;
  */
 public class NamedDispatcherImpl implements RequestDispatcher {
 
-  private static final L10N L = new L10N(NamedDispatcherImpl.class);
 
   private WebApp _webApp;
   
@@ -94,8 +93,8 @@ public class NamedDispatcherImpl implements RequestDispatcher {
     } else if (topRequest instanceof HttpServletRequest) {
       parentReq = (HttpServletRequest) topRequest;
     } else {
-      throw new IllegalStateException(L.l(
-        "expected instance of ServletRequestWrapper at `{0}'", topResponse));
+      throw new IllegalStateException(
+        "expected instance of ServletRequestWrapper at "+topResponse);
     }
 
     HttpServletResponse parentRes;
@@ -114,8 +113,8 @@ public class NamedDispatcherImpl implements RequestDispatcher {
     } else if (topResponse instanceof HttpServletResponse) {
       parentRes = (HttpServletResponse) topResponse;
     } else {
-      throw new IllegalStateException(L.l(
-        "expected instance of ServletResponse at `{0}'", topResponse));
+      throw new IllegalStateException(
+        "expected instance of ServletResponse at "+topResponse);
     }
 
     RequestAdapter subRequest = RequestAdapter.create();

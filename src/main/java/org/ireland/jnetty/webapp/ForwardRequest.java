@@ -49,11 +49,10 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.ireland.jnetty.dispatch.Invocation;
 
-import com.caucho.util.L10N;
+
 
 public class ForwardRequest extends HttpServletRequestWrapper
 {
-	private static final L10N L = new L10N(ForwardRequest.class);
 
 	// the wrapped request
 	private HttpServletRequest _request;
@@ -168,9 +167,9 @@ public class ForwardRequest extends HttpServletRequestWrapper
 	public AsyncContext startAsync() throws IllegalStateException
 	{
 		if (!isAsyncSupported())
-			throw new IllegalStateException(L.l(
-					"The servlet '{0}' at '{1}' does not support async because the servlet or one of the filters does not support asynchronous mode.",
-					getServletName(), getServletPath()));
+			throw new IllegalStateException(
+					"The servlet '"+getServletName()+"' at '"+getServletPath()+"' does not support async because the servlet or one of the filters does not support asynchronous mode."
+					);
 		return super.startAsync();
 	}
 

@@ -31,8 +31,8 @@ package org.ireland.jnetty.server.session;
 
 import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.apache.commons.logging.LogFactory;
+import org.apache.commons.logging.Log;
 
 import javax.servlet.SessionCookieConfig;
 import javax.servlet.http.Cookie;
@@ -47,7 +47,7 @@ import org.ireland.jnetty.config.ConfigException;
 import org.ireland.jnetty.webapp.WebApp;
 
 import com.caucho.util.Crc64;
-import com.caucho.util.L10N;
+
 import com.caucho.util.LruCache;
 import com.caucho.util.RandomUtil;
 
@@ -56,8 +56,8 @@ import com.caucho.util.RandomUtil;
  */
 public final class SessionManager implements SessionCookieConfig
 {
-	private static final L10N L = new L10N(SessionManager.class);
-	private static final Logger log = Logger.getLogger(SessionManager.class.getName());
+	private static final Log log = LogFactory.getLog(SessionManager.class.getName());
+	private static final boolean debug = log.isDebugEnabled();
 
 	private static final int FALSE = 0;
 	private static final int COOKIE = 1;
@@ -323,7 +323,7 @@ public final class SessionManager implements SessionCookieConfig
 	public void setSessionMax(int max)
 	{
 		if (max < 1)
-			throw new ConfigException(L.l("session-max '{0}' is too small.  session-max must be a positive number", max));
+			throw new ConfigException("session-max '["+max+"]' is too small.  session-max must be a positive number");
 
 		_sessionMax = max;
 	}
@@ -804,7 +804,7 @@ public final class SessionManager implements SessionCookieConfig
 	{
 		if (_sessions == null)
 		{
-			log.fine(this + " createSession called when sessionManager closed");
+			log.debug(this + " createSession called when sessionManager closed");
 
 			return null;
 		}
@@ -837,7 +837,7 @@ public final class SessionManager implements SessionCookieConfig
 	{
 		if (_sessions == null)
 		{
-			log.fine(this + " createSession called when sessionManager closed");
+			log.debug(this + " createSession called when sessionManager closed");
 
 			return null;
 		}
@@ -965,8 +965,8 @@ public final class SessionManager implements SessionCookieConfig
 			if (!session.isValid())
 				continue;
 
-			if (log.isLoggable(Level.FINE))
-				log.fine("close session " + session.getId());
+			if (debug)
+				log.debug("close session " + session.getId());
 
 			try
 			{
@@ -975,7 +975,7 @@ public final class SessionManager implements SessionCookieConfig
 			}
 			catch (Exception e)
 			{
-				log.log(Level.FINE, e.toString(), e);
+				log.debug( e.toString(), e);
 			}
 		}
 

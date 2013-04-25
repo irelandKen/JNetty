@@ -36,16 +36,15 @@ import javax.servlet.FilterRegistration;
 import javax.servlet.DispatcherType;
 import javax.servlet.ServletException;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.ireland.jnetty.config.ConfigException;
-import org.ireland.jnetty.dispatch.servlet.ServletConfigImpl;
+
 import org.ireland.jnetty.webapp.WebApp;
+
 import org.springframework.util.Assert;
 
-import com.caucho.util.L10N;
-
 import java.util.*;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * Configuration for a filter.
@@ -72,8 +71,9 @@ import java.util.logging.Logger;
  */
 public class FilterConfigImpl implements FilterConfig, FilterRegistration.Dynamic
 {
-	static L10N L = new L10N(ServletConfigImpl.class);
-	protected static final Logger log = Logger.getLogger(FilterConfigImpl.class.getName());
+	protected static final Log log = LogFactory.getLog(FilterConfigImpl.class.getName());
+	
+	protected static final boolean debug = log.isDebugEnabled();
 	
 	private final WebApp _webApp;
 
@@ -211,7 +211,7 @@ public class FilterConfigImpl implements FilterConfig, FilterRegistration.Dynami
 		Class<? extends Filter> filterClass = getFilterClass();
 
 		if (filterClass == null)
-			throw new NullPointerException(L.l("Null servlet class for '{0}'.", _filterName));
+			throw new NullPointerException("Null servlet class for "+_filterName);
 		
 		try
 		{
@@ -229,8 +229,8 @@ public class FilterConfigImpl implements FilterConfig, FilterRegistration.Dynami
 		//初始化
 		_filter.init(this);
 
-		if (log.isLoggable(Level.FINE))
-			log.finer("Filter[" + _filterName + "] instantiated and inited");
+		if (debug)
+			log.debug("Filter[" + _filterName + "] instantiated and inited");
 		
 		return _filter;
 	}

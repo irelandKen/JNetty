@@ -29,18 +29,18 @@
 
 package org.ireland.jnetty.config;
 
-import com.caucho.util.*;
-
 import java.io.*;
 import java.lang.reflect.*;
-import java.util.logging.*;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 /**
  * Thrown by the various Builders
  */
-public class ConfigException extends RuntimeException implements CompileException, DisplayableException
+public class ConfigException extends RuntimeException
 {
-	private static final Logger log = Logger.getLogger(ConfigException.class.getName());
+	private static final Log log = LogFactory.getLog(ConfigException.class.getName());
 
 	/**
 	 * Create a null exception
@@ -75,7 +75,7 @@ public class ConfigException extends RuntimeException implements CompileExceptio
 
 	protected static String getMessage(Throwable e)
 	{
-		if (e instanceof DisplayableException || e instanceof CompileException)
+		if (e.getMessage() != null)
 			return e.getMessage();
 		else
 			return e.toString();
@@ -133,19 +133,12 @@ public class ConfigException extends RuntimeException implements CompileExceptio
 			e = e.getCause();
 		}
 
-		if (e instanceof RuntimeException)
-			return (RuntimeException) e;
-		else if (e instanceof LineCompileException)
-			return new ConfigException(e.getMessage(), e);
-		else if (e instanceof DisplayableException || e instanceof CompileException)
-			return new ConfigException(e.getMessage(), e);
-		else
-			return new ConfigException(e);
+		return (RuntimeException) e;
 	}
 
 	public void print(PrintWriter out)
 	{
-		out.println(Html.escapeHtml(getMessage()));
+		out.println(getMessage());
 	}
 
 	public static String loc(Field field)

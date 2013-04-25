@@ -36,29 +36,26 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import javax.annotation.PostConstruct;
 import javax.servlet.Filter;
 import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import org.ireland.jnetty.dispatch.servlet.ServletConfigImpl;
 import org.ireland.jnetty.webapp.WebApp;
 import org.springframework.util.Assert;
 
-
-
-import com.caucho.util.L10N;
 
 /**
  * Manages the Filters.
  */
 public class FilterManager
 {
-	static final Logger log = Logger.getLogger(FilterManager.class.getName());
-	static final L10N L = new L10N(FilterManager.class);
+	static final Log log = LogFactory.getLog(FilterManager.class.getName());
 	
 	private final WebApp _webApp;
 
@@ -122,7 +119,7 @@ public class FilterManager
 				createFilter(name);
 			} catch (Exception e)
 			{
-				log.log(Level.WARNING, e.toString(), e);
+				log.warn(e.toString(), e);
 			}
 		}
 	}
@@ -186,7 +183,7 @@ public class FilterManager
 		FilterConfigImpl config = _filters.get(filterName);
 
 		if (config == null)
-			throw new ServletException(L.l("`{0}' is not a known filter.  Filters must be defined by <filter> before being used.",filterName));
+			throw new ServletException(filterName + " is not a known filter.  Filters must be defined by <filter> before being used.");
 
 		synchronized (config)
 		{
@@ -229,7 +226,7 @@ public class FilterManager
 				filter.destroy();
 			} catch (Throwable e)
 			{
-				log.log(Level.WARNING, e.toString(), e);
+				log.warn(e.toString(), e);
 			}
 		}
 	}

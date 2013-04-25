@@ -40,8 +40,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.apache.commons.logging.LogFactory;
+import org.apache.commons.logging.Log;
 
 import javax.servlet.FilterChain;
 import javax.servlet.ServletContext;
@@ -57,7 +57,7 @@ import org.ireland.jnetty.util.http.UrlMap;
 import org.ireland.jnetty.webapp.WebApp;
 import org.springframework.util.Assert;
 
-import com.caucho.util.L10N;
+
 
 /**
  * Manages dispatching: servlets and filters. :TODO: rename "ServletMapper" TO "ServletMatcher"
@@ -67,9 +67,8 @@ import com.caucho.util.L10N;
  */
 public class ServletMapperForTest
 {
-	private static final Logger LOG = Logger.getLogger(ServletMapperForTest.class.getName());
+	private static final Log log = LogFactory.getLog(ServletMapperForTest.class.getName());
 
-	private static final L10N L = new L10N(ServletMapperForTest.class);
 
 	private final WebApp _webApp;
 
@@ -143,7 +142,7 @@ public class ServletMapperForTest
 
 /*			if (_servletManager.getServlet(servletName) == null)
 				throw new ConfigException(
-						L.l("'{0}' is an unknown servlet-name.  servlet-mapping requires that the named servlet be defined in a <servlet> configuration before the <servlet-mapping>.",
+						"'{0}' is an unknown servlet-name.  servlet-mapping requires that the named servlet be defined in a <servlet> configuration before the <servlet-mapping>.",
 								servletName));*/
 
 			if ("/".equals(urlPattern)) // Default servlet
@@ -180,7 +179,7 @@ public class ServletMapperForTest
 			patterns.add(urlPattern);
 			
 			//
-			LOG.config("servlet-mapping " + urlPattern + " -> " + servletName);
+			log.debug("servlet-mapping " + urlPattern + " -> " + servletName);
 		}
 		catch (RuntimeException e)
 		{
@@ -247,7 +246,7 @@ public class ServletMapperForTest
 		// 5:无法找到合适的Servlet,返回404
 		if (config == null && servletName == null)
 		{
-			LOG.fine(L.l("'{0}' has no default servlet defined", contextURI));
+			log.debug(contextURI+" has no default servlet defined");
 
 			return new ErrorFilterChain(404);
 		}
@@ -263,9 +262,9 @@ public class ServletMapperForTest
 
 		invocation.setServletName(servletName);
 
-		if (LOG.isLoggable(Level.FINER))
+		if (log.isDebugEnabled())
 		{
-			LOG.finer(_webApp + " map (uri:" + contextURI + " -> " + servletName + ")");
+			log.debug(_webApp + " map (uri:" + contextURI + " -> " + servletName + ")");
 		}
 
 		// 创建FilterChain

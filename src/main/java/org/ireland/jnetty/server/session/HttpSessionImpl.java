@@ -29,7 +29,7 @@
 
 package org.ireland.jnetty.server.session;
 
-import com.caucho.util.L10N;
+
 
 import javax.servlet.ServletContext;
 import javax.servlet.http.HttpSession;
@@ -40,6 +40,9 @@ import javax.servlet.http.HttpSessionContext;
 import javax.servlet.http.HttpSessionEvent;
 import javax.servlet.http.HttpSessionListener;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import org.ireland.jnetty.webapp.WebApp;
 
 import java.io.Serializable;
@@ -48,16 +51,15 @@ import java.util.Collections;
 import java.util.Enumeration;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * Implements a HTTP session.
  */
 public class HttpSessionImpl implements HttpSession
 {
-	private static final Logger log = Logger.getLogger(HttpSessionImpl.class.getName());
-	private static final L10N L = new L10N(HttpSessionImpl.class);
+	private static final Log log = LogFactory.getLog(HttpSessionImpl.class.getName());
+	
+	private static final boolean debug = log.isDebugEnabled();
 
 	// the session's identifier
 	private String _id;
@@ -115,8 +117,8 @@ public class HttpSessionImpl implements HttpSession
 
 		_values = createValueMap();
 
-		if (log.isLoggable(Level.FINE))
-			log.fine(this + " new");
+		if (debug)
+			log.debug(this + " new");
 	}
 
 	/**
@@ -135,7 +137,7 @@ public class HttpSessionImpl implements HttpSession
 	{
 		// this test forced by TCK
 		if (!_isValid)
-			throw new IllegalStateException(L.l("{0}: can't call getCreationTime() when session is no longer valid.", this));
+			throw new IllegalStateException(this+": can't call getCreationTime() when session is no longer valid.");
 
 		return _creationTime;
 	}
@@ -157,7 +159,7 @@ public class HttpSessionImpl implements HttpSession
 	{
 		// this test forced by TCK
 		if (!_isValid)
-			throw new IllegalStateException(L.l("{0}: can't call getLastAccessedTime() when session is no longer valid.", this));
+			throw new IllegalStateException(this+": can't call getLastAccessedTime() when session is no longer valid.");
 
 		return _accessTime;
 	}
@@ -226,7 +228,7 @@ public class HttpSessionImpl implements HttpSession
 	public boolean isNew()
 	{
 		if (!_isValid)
-			throw new IllegalStateException(L.l("{0} can't call isNew() when session is no longer valid.", this));
+			throw new IllegalStateException(this+" can't call isNew() when session is no longer valid.");
 
 		return _isNew;
 	}
@@ -277,7 +279,7 @@ public class HttpSessionImpl implements HttpSession
 	public Object getAttribute(String name)
 	{
 		if (!_isValid)
-			throw new IllegalStateException(L.l("{0}: can't call getAttribute() when session is no longer valid.", this));
+			throw new IllegalStateException(this+": can't call getAttribute() when session is no longer valid.");
 
 		synchronized (_values)
 		{
@@ -300,13 +302,13 @@ public class HttpSessionImpl implements HttpSession
 	public void setAttribute(String name, Object value)
 	{
 		if (!_isValid)
-			throw new IllegalStateException(L.l("{0}: can't call setAttribute(String, Object) when session is no longer valid.", this));
+			throw new IllegalStateException(this+": can't call setAttribute(String, Object) when session is no longer valid.");
 
 		Object oldValue;
 
-		if (value != null && !(value instanceof Serializable) && log.isLoggable(Level.FINE))
+		if (value != null && !(value instanceof Serializable) && debug)
 		{
-			log.fine(L.l("{0} attribute '{1}' value is non-serializable type '{2}'", this, name, value.getClass().getName()));
+			log.debug(this+" attribute '"+name+"' value is non-serializable type '"+value.getClass().getName()+"'");
 		}
 
 		synchronized (_values)
@@ -369,7 +371,7 @@ public class HttpSessionImpl implements HttpSession
 	public void removeAttribute(String name)
 	{
 		if (!_isValid)
-			throw new IllegalStateException(L.l("{0}: can't call removeAttribute(String) when session is no longer valid.", this));
+			throw new IllegalStateException(this+": can't call removeAttribute(String) when session is no longer valid.");
 
 		Object oldValue;
 
@@ -426,7 +428,7 @@ public class HttpSessionImpl implements HttpSession
 		synchronized (_values)
 		{
 			if (!_isValid)
-				throw new IllegalStateException(L.l("{0} can't call getAttributeNames() when session is no longer valid.", this));
+				throw new IllegalStateException(this+" can't call getAttributeNames() when session is no longer valid.");
 
 			return Collections.enumeration(_values.keySet());
 		}
@@ -464,7 +466,7 @@ public class HttpSessionImpl implements HttpSession
 		synchronized (_values)
 		{
 			if (!_isValid)
-				throw new IllegalStateException(L.l("{0} can't call getValueNames() when session is no longer valid.", this));
+				throw new IllegalStateException(this+" can't call getValueNames() when session is no longer valid.");
 
 			if (_values == null)
 				return new String[0];
@@ -489,9 +491,9 @@ public class HttpSessionImpl implements HttpSession
 	 */
 	void create(long now, boolean isCreate)
 	{
-		if (log.isLoggable(Level.FINE))
+		if (debug)
 		{
-			log.fine(this + " create session");
+			log.debug(this + " create session");
 		}
 
 		if (_isValid)
@@ -518,8 +520,8 @@ public class HttpSessionImpl implements HttpSession
 	@Override
 	public void invalidate()
 	{
-		if (log.isLoggable(Level.FINE))
-			log.fine(this + " invalidate");
+		if (debug)
+			log.debug(this + " invalidate");
 		
 		clearAllAttributes();
 		
@@ -613,8 +615,8 @@ public class HttpSessionImpl implements HttpSession
 	public void removeEvent()
 	{
 
-		if (log.isLoggable(Level.FINE))
-			log.fine(this + " remove");
+		if (debug)
+			log.debug(this + " remove");
 
 		long now = System.currentTimeMillis();
 

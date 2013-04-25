@@ -34,10 +34,12 @@ import com.caucho.network.listen.TcpSocketLink;
 import com.caucho.server.http.AbstractHttpRequest;
 
 import javax.servlet.*;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.logging.Logger;
-import java.util.logging.Level;
 
 /**
  * A repository for request information gleaned from the uri.
@@ -48,9 +50,9 @@ import java.util.logging.Level;
  */
 public class ServletInvocation
 {
-	private static final Logger log = Logger.getLogger(ServletInvocation.class.getName());
+	private static final Log log = LogFactory.getLog(ServletInvocation.class.getName());
 
-	private final boolean _isFiner;
+	private static final boolean debug = log.isDebugEnabled();
 
 	private ClassLoader _classLoader;
 
@@ -77,7 +79,6 @@ public class ServletInvocation
 	{
 		_classLoader = Thread.currentThread().getContextClassLoader();
 
-		_isFiner = log.isLoggable(Level.FINER);
 	}
 
 	/**
@@ -282,8 +283,8 @@ public class ServletInvocation
 	{
 		_requestCount.incrementAndGet();
 
-		if (_isFiner)
-			log.finer("Dispatch '" + _contextUri + "' to " + _filterChain);
+		if (debug)
+			log.debug("Dispatch '" + _contextUri + "' to " + _filterChain);
 
 		_filterChain.doFilter(request, response);
 	}

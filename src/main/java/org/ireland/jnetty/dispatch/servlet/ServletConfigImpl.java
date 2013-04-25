@@ -40,8 +40,8 @@ import java.util.Hashtable;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.apache.commons.logging.LogFactory;
+import org.apache.commons.logging.Log;
 
 import javax.servlet.FilterChain;
 import javax.servlet.MultipartConfigElement;
@@ -60,7 +60,7 @@ import org.ireland.jnetty.dispatch.filterchain.ServletFilterChain;
 import org.ireland.jnetty.webapp.WebApp;
 import org.springframework.util.Assert;
 
-import com.caucho.util.L10N;
+
 
 /**
  * Configuration for a servlet.
@@ -95,9 +95,8 @@ import com.caucho.util.L10N;
  */
 public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dynamic
 {
-
-	static L10N L = new L10N(ServletConfigImpl.class);
-	protected static final Logger log = Logger.getLogger(ServletConfigImpl.class.getName());
+	protected static final Log log = LogFactory.getLog(ServletConfigImpl.class.getName());
+	private static final boolean debug = log.isDebugEnabled();
 
 	
 	private final WebApp _webApp;
@@ -237,7 +236,7 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 			}
 			catch (Exception e)
 			{
-				log.log(Level.FINER, e.toString(), e);
+				log.debug(e.toString(), e);
 			}
 
 			if (servletClass != null)
@@ -281,9 +280,9 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 
 				if (!_servletName.equals(servletName) && servletName != null)				//检查存在urlPattern冲突(同一个urlPattern映射多个Servlet)
 				{
-					if (log.isLoggable(Level.FINE))
+					if (debug)
 					{
-						log.fine(L.l("programmatic addMapping for '{0}' ignored because of existing servlet-mapping to '{1}'", urlPattern, servletName));
+						log.debug("programmatic addMapping for '"+urlPattern+"' ignored because of existing servlet-mapping to '"+servletName+"'");
 					}
 
 					conflictPattern.add(urlPattern);
@@ -409,7 +408,7 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 		}
 		catch (ClassNotFoundException e)
 		{
-			log.log(Level.ALL, e.toString(), e);
+			log.debug(e.toString(), e);
 		}
 	}
 
@@ -443,7 +442,7 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 			}
 			catch (Exception e)
 			{
-				error(L.l("'{0}' is not a known servlet class.  Servlets belong in the classpath, for example WEB-INF/classes.", _servletClassName), e);
+				error(_servletClassName+" | is not a known servlet class.  Servlets belong in the classpath, for example WEB-INF/classes.", e);
 			}
 		}
 
@@ -568,8 +567,8 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 
 		if (!getClassName().equals(config.getClassName()))
 			throw new RuntimeException(
-					L.l("Illegal attempt to specify different servlet-class '{0}' for servlet '{1}'. Servlet '{1}' has already been defined with servlet-class '{2}'. Consider using <absolute-ordering> to exclude conflicting web-fragment.",
-							config.getClassName(), _servletName, _servletClassName));
+					"Illegal attempt to specify different servlet-class ["+config.getClassName()+"] for servlet '"+_servletName+"'. Servlet '"+_servletName+" has already been defined with servlet-class '"+_servletClassName+"'. Consider using <absolute-ordering> to exclude conflicting web-fragment."
+						);
 
 		for (Map.Entry<String, String> param : config._initParams.entrySet())
 		{
@@ -581,8 +580,8 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 			else if (!_initParams.get(param.getKey()).equals(param.getValue()))
 			{
 				throw new RuntimeException(
-						L.l("Illegal attempt to specify different param-value of '{0}' for parameter '{1}'. This error indicates that two web-fragments use different values. Consider defining the parameter in web.xml to override definitions in web-fragment.",
-								param.getValue(), param.getKey()));
+						"Illegal attempt to specify different param-value of ["+param.getValue()+"] for parameter ["+param.getKey()+"]. This error indicates that two web-fragments use different values. Consider defining the parameter in web.xml to override definitions in web-fragment."
+								);
 			}
 		}
 	}
@@ -627,7 +626,7 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 				}
 				catch (ClassNotFoundException e)
 				{
-					log.log(Level.FINER, e.toString(), e);
+					log.debug(e.toString(), e);
 				}
 			}
 
@@ -636,19 +635,19 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 			}
 			else if (requireClass)
 			{
-				throw error(L.l("'{0}' is not a known servlet class.  Servlets belong in the classpath, for example WEB-INF/classes.", _servletClassName));
+				throw error(_servletClassName+" | is not a known servlet class.  Servlets belong in the classpath, for example WEB-INF/classes.");
 			}
 			else
 			{
 				String location = _location != null ? _location : "";
 
-				log.warning(L.l(location + "'{0}' is not a known servlet.  Servlets belong in the classpath, often in WEB-INF/classes.", _servletClassName));
+				log.warn(location + _servletClassName+ " | is not a known servlet.  Servlets belong in the classpath, often in WEB-INF/classes.");
 				return;
 			}
 
 			if (!Servlet.class.isAssignableFrom(_servletClass))
 			{
-				throw error(L.l("'{0}' must implement javax.servlet.Servlet  All servlets must implement the Servlet interface.", _servletClassName));
+				throw error(_servletClassName+" | must implement javax.servlet.Servlet  All servlets must implement the Servlet interface.");
 			}
 
 		}
@@ -672,11 +671,11 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 		}
 
 		if (zeroArg == null)
-			throw error(L.l("'{0}' must have a zero arg constructor.  Servlets must have public zero-arg constructors.\n{1} is not a valid constructor.",
-					_servletClassName, constructors != null ? constructors[0] : null));
+			throw error(_servletClassName+" | must have a zero arg constructor.  Servlets must have public zero-arg constructors.\n"+(constructors != null ? constructors[0] : null)+" is not a valid constructor."
+					);
 
 		if (!Modifier.isPublic(zeroArg.getModifiers()))
-			throw error(L.l("'{0}' must be public.  '{1}' must have a public, zero-arg constructor.", zeroArg, _servletClassName));
+			throw error(zeroArg+" | must be public.  '"+_servletClassName+"' must have a public, zero-arg constructor.");
 	}
 
 	public FilterChain createServletChain() throws ServletException
@@ -713,7 +712,7 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 
 		if (servletClass == null)
 		{
-			throw new IllegalStateException(L.l("servlet class for {0} can't be null", getServletName()));
+			throw new IllegalStateException("servlet class for '"+getServletName()+"' can't be null");
 		}
 		else
 		{
@@ -762,7 +761,7 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 		Servlet servlet;
 
 		if (servletClass == null)
-			throw new ServletException(L.l("Null servlet class for '{0}'.", _servletName));
+			throw new ServletException("Null servlet class for "+_servletName);
 
 		
 		try
@@ -781,8 +780,8 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 		//初始化
 		servlet.init(this);
 
-		if (log.isLoggable(Level.FINE))
-			log.finer("Servlet[" + _servletName + "] instantiated and inited");
+		if (debug)
+			log.debug("Servlet[" + _servletName + "] instantiated and inited");
 		
 		return servlet;
 	}
@@ -826,7 +825,7 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 		else
 			e = new ServletException(msg);
 
-		log.warning(e.getMessage());
+		log.warn(e.getMessage());
 
 		return e;
 	}
@@ -840,7 +839,7 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 		else
 			e1 = new ServletException(msg, e);
 
-		log.warning(e1.getMessage());
+		log.warn(e1.getMessage());
 
 		return e1;
 	}
@@ -854,7 +853,7 @@ public class ServletConfigImpl implements ServletConfig, ServletRegistration.Dyn
 		else
 			e1 = new RuntimeException(e);
 
-		log.warning(e1.toString());
+		log.warn(e1.toString());
 
 		return e1;
 	}

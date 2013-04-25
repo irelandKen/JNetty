@@ -37,7 +37,7 @@ import org.ireland.jnetty.config.ConfigException;
 import org.ireland.jnetty.dispatch.ServletInvocation;
 import org.springframework.util.Assert;
 
-import com.caucho.util.L10N;
+
 
 /**
  * Configuration for a servlet.
@@ -54,7 +54,6 @@ import com.caucho.util.L10N;
  */
 public class ServletMapping
 {
-	private static final L10N L = new L10N(ServletMapping.class);
 
 	// <servlet>
 	private final ServletConfigImpl servletConfig;
@@ -94,7 +93,7 @@ public class ServletMapping
 	{
 		if (pattern.indexOf('\n') > -1)
 		{
-			throw new ConfigException(L.l("'url-pattern' cannot contain newline"));
+			throw new ConfigException("'url-pattern' cannot contain newline");
 		}
 
 		if(_urlPatterns.contains(pattern))		//not to add the exist parrern

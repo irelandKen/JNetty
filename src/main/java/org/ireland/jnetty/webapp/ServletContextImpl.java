@@ -29,7 +29,7 @@
 
 package org.ireland.jnetty.webapp;
 
-import com.caucho.util.L10N;
+
 
 import javax.servlet.*;
 import javax.servlet.descriptor.JspConfigDescriptor;
@@ -54,9 +54,7 @@ import java.util.*;
 public abstract class ServletContextImpl implements ServletContext
 {
 	static final Log log = LogFactory.getLog(ServletContextImpl.class);
-	
-	static final L10N L = new L10N(ServletContextImpl.class);
-	
+		
 	private final ResourceLoader resourceLoader = new FileSystemResourceLoader();
 
 	private String _name = "";
@@ -161,7 +159,7 @@ public abstract class ServletContextImpl implements ServletContext
 
 /*		if (isActive())
 			throw new IllegalStateException(
-					L.l("setInitParameter must be called before the web-app has been initialized, because it's required by the servlet spec."));*/
+					"setInitParameter must be called before the web-app has been initialized, because it's required by the servlet spec."));*/
 
 		// server/1h12
 		if (_initParams.containsKey(name))

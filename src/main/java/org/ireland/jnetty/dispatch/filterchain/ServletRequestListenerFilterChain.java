@@ -42,8 +42,8 @@ import org.ireland.jnetty.webapp.WebApp;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.apache.commons.logging.LogFactory;
+import org.apache.commons.logging.Log;
 
 /**
  * 
@@ -52,7 +52,7 @@ import java.util.logging.Logger;
  */
 public class ServletRequestListenerFilterChain implements FilterChain
 {
-	private static final Logger log = Logger.getLogger(ServletRequestListenerFilterChain.class.getName());
+	private static final Log log = LogFactory.getLog(ServletRequestListenerFilterChain.class.getName());
 
 	// Next filter chain
 	private FilterChain _next;
@@ -122,7 +122,7 @@ public class ServletRequestListenerFilterChain implements FilterChain
 				}
 				catch (Throwable e)
 				{
-					log.log(Level.WARNING, e.toString(), e);
+					log.warn( e.toString(), e);
 				}
 			}
 		}

@@ -39,8 +39,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.apache.commons.logging.LogFactory;
+import org.apache.commons.logging.Log;
 
 import javax.servlet.FilterChain;
 import javax.servlet.ServletContext;
@@ -54,7 +54,7 @@ import org.ireland.jnetty.util.http.UrlMap;
 import org.ireland.jnetty.webapp.WebApp;
 import org.springframework.util.Assert;
 
-import com.caucho.util.L10N;
+
 import com.caucho.util.LruCache;
 
 /**
@@ -65,9 +65,9 @@ import com.caucho.util.LruCache;
  */
 public class ServletMapper
 {
-	private static final Logger LOG = Logger.getLogger(ServletMapper.class.getName());
+	private static final Log log = LogFactory.getLog(ServletMapper.class.getName());
 
-	private static final L10N L = new L10N(ServletMapper.class);
+	private static final boolean debug = log.isDebugEnabled();
 
 	private final WebApp _webApp;
 
@@ -201,7 +201,7 @@ public class ServletMapper
 			patterns.add(urlPattern);
 			
 			//
-			LOG.config("servlet-mapping " + urlPattern + " -> " + servletName);
+			log.debug("servlet-mapping " + urlPattern + " -> " + servletName);
 		}
 		catch (RuntimeException e)
 		{
@@ -281,7 +281,8 @@ public class ServletMapper
 		// 5:无法找到合适的Servlet,返回404
 		if (config == null)
 		{
-			LOG.fine(L.l("'{0}' has no default servlet defined", contextURI));
+			if(debug)
+				log.debug("'"+contextURI+"' has no default servlet defined");
 
 			return new ErrorFilterChain(404);
 		}
@@ -299,10 +300,8 @@ public class ServletMapper
 
 		invocation.setServletName(servletName);
 
-		if (LOG.isLoggable(Level.FINER))
-		{
-			LOG.finer(_webApp + " map (uri:" + contextURI + " -> " + servletName + ")");
-		}
+		if (debug)
+			log.debug(_webApp + " map (uri:" + contextURI + " -> " + servletName + ")");
 
 		// 创建FilterChain
 		FilterChain chain = null;

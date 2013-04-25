@@ -43,7 +43,9 @@ import org.ireland.jnetty.util.http.URIDecoder;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
-import java.util.logging.Logger;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 /**
  * 
@@ -54,7 +56,7 @@ import java.util.logging.Logger;
  */
 public class RequestDispatcherImpl implements RequestDispatcher
 {
-	private final static Logger log = Logger.getLogger(RequestDispatcherImpl.class.getName());
+	private final static Log log = LogFactory.getLog(RequestDispatcherImpl.class.getName());
 
 	static final int MAX_DEPTH = 64;
 

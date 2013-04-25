@@ -230,7 +230,7 @@ public class WebApp extends ServletContextImpl
 			_contextPath = contextPath;
 
 		if (_host == null)
-			throw new IllegalStateException(L.l("{0} requires an active {1}", getClass().getSimpleName()));
+			throw new IllegalStateException("requires host");
 
 		initClassLoader();
 
@@ -538,7 +538,7 @@ public class WebApp extends ServletContextImpl
 		}
 		catch (ClassNotFoundException e)
 		{
-			throw new IllegalArgumentException(L.l("'{0}' is an unknown class in {1}", className, this), e);
+			throw new IllegalArgumentException(className+" is an unknown class in "+ this, e);
 		}
 
 		return addServlet(servletName, className, servletClass, null);
@@ -595,7 +595,7 @@ public class WebApp extends ServletContextImpl
 
 			if (log.isDebugEnabled())
 			{
-				log.debug(L.l("dynamic servlet added [name: '{0}', class: '{1}'] (in {2})", servletName, servletClassName, this));
+				log.debug("dynamic servlet added [name: '"+servletName+"', class: '"+servletClassName+"'] (in "+this+")");
 			}
 
 			return config;
@@ -1260,7 +1260,7 @@ public class WebApp extends ServletContextImpl
 	public ServletContext getContext(String uri)
 	{
 		if (uri == null)
-			throw new IllegalArgumentException(L.l("getContext URI must not be null."));
+			throw new IllegalArgumentException("getContext URI must not be null.");
 
 		else if (uri.startsWith("/"))
 		{
@@ -1268,7 +1268,7 @@ public class WebApp extends ServletContextImpl
 		else if (uri.equals(""))
 			uri = "/";
 		else
-			throw new IllegalArgumentException(L.l("getContext URI '{0}' must be absolute.", uri));
+			throw new IllegalArgumentException("getContext URI '"+uri+"' must be absolute.");
 
 		return this;
 	}
@@ -1449,7 +1449,7 @@ public class WebApp extends ServletContextImpl
 
 			if (!isEnabled())
 			{
-				Exception exn = new UnavailableException(L.l("'{0}' is not currently available.", getContextPath()));
+				Exception exn = new UnavailableException("'"+getContextPath()+"' is not currently available.");
 				chain = new ExceptionFilterChain(exn);
 			}
 			else
@@ -1494,9 +1494,9 @@ public class WebApp extends ServletContextImpl
 	public RequestDispatcherImpl getRequestDispatcher(String rawContextURI)
 	{
 		if (rawContextURI == null)
-			throw new IllegalArgumentException(L.l("request dispatcher url can't be null."));
+			throw new IllegalArgumentException("request dispatcher url can't be null.");
 		else if (!rawContextURI.startsWith("/"))
-			throw new IllegalArgumentException(L.l("request dispatcher url '{0}' must be absolute", rawContextURI));
+			throw new IllegalArgumentException("request dispatcher url '"+rawContextURI+"' must be absolute");
 
 		// 尝试从缓存中取出RequestDispatcher
 		RequestDispatcherImpl disp = getRequestDispatcherCache().get(rawContextURI);
