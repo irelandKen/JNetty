@@ -87,7 +87,6 @@ import org.ireland.jnetty.dispatch.servlet.ServletMapping;
 import org.ireland.jnetty.jsp.JspServletComposite;
 import org.ireland.jnetty.loader.WebAppClassLoader;
 import org.ireland.jnetty.server.session.SessionManager;
-import org.ireland.jnetty.util.http.Encoding;
 import org.ireland.jnetty.util.http.URIDecoder;
 
 import org.springframework.util.Assert;
@@ -970,37 +969,7 @@ public class WebApp extends ServletContextImpl
 		_localeMapping.put(locale.toLowerCase(Locale.ENGLISH), encoding);
 	}
 
-	/**
-	 * Returns the locale encoding.
-	 */
-	public String getLocaleEncoding(Locale locale)
-	{
-		String encoding;
 
-		String key = locale.toString();
-		encoding = _localeMapping.get(key.toLowerCase(Locale.ENGLISH));
-
-		if (encoding != null)
-			return encoding;
-
-		if (locale.getVariant() != null)
-		{
-			key = locale.getLanguage() + '_' + locale.getCountry();
-			encoding = _localeMapping.get(key.toLowerCase(Locale.ENGLISH));
-			if (encoding != null)
-				return encoding;
-		}
-
-		if (locale.getCountry() != null)
-		{
-			key = locale.getLanguage();
-			encoding = _localeMapping.get(key.toLowerCase(Locale.ENGLISH));
-			if (encoding != null)
-				return encoding;
-		}
-
-		return Encoding.getMimeName(locale);
-	}
 
 	/**
 	 * Sets the secure requirement.

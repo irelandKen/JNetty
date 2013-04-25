@@ -29,9 +29,7 @@
 
 package org.ireland.jnetty.util.http;
 
-import com.caucho.config.ConfigException;
-import com.caucho.i18n.CharacterEncoding;
-import com.caucho.server.dispatch.BadRequestException;
+
 
 import com.caucho.util.CharBuffer;
 import com.caucho.util.FreeList;
@@ -40,9 +38,11 @@ import com.caucho.vfs.ByteToChar;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+
 import org.apache.commons.logging.LogFactory;
 import org.apache.commons.logging.Log;
 
+import org.ireland.jnetty.config.ConfigException;
 import org.ireland.jnetty.dispatch.Invocation;
 
 /**
@@ -74,10 +74,7 @@ public class URIDecoder
 	 */
 	public URIDecoder()
 	{
-		_encoding = CharacterEncoding.getLocalEncoding();
-
-		if (_encoding == null)
-			_encoding = "UTF-8";
+		_encoding = "UTF-8";
 	}
 
 	/**
@@ -373,7 +370,7 @@ public class URIDecoder
 		int len = uri.length();
 
 		if (_maxURILength < len)
-			throw new BadRequestException("The request contains an illegal URL because it is too long.");
+			throw new IllegalArgumentException("The request contains an illegal URL because it is too long.");
 
 		char ch;
 		if (len == 0 || (ch = uri.charAt(0)) != '/' && ch != '\\')
@@ -416,7 +413,7 @@ public class URIDecoder
 					}
 					else
 					{
-						throw new BadRequestException("The request contains an illegal URL.");
+						throw new IllegalArgumentException("The request contains an illegal URL.");
 					}
 				}
 
@@ -435,7 +432,7 @@ public class URIDecoder
 				cb.append('/');
 			}
 			else if (ch == 0)
-				throw new BadRequestException("The request contains an illegal URL.");
+				throw new IllegalArgumentException("The request contains an illegal URL.");
 			else
 				cb.append(ch);
 		}
@@ -499,7 +496,7 @@ public class URIDecoder
 		}
 		catch (Exception e)
 		{
-			throw new BadRequestException("The URL contains escaped bytes unsupported by the '"+encoding+"' encoding.");
+			throw new IllegalArgumentException("The URL contains escaped bytes unsupported by the '"+encoding+"' encoding.");
 		}
 	}
 

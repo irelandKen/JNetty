@@ -16,7 +16,7 @@
 //  ========================================================================
 //
 
-package org.ireland.jnetty.http;
+package org.ireland.jnetty.util.http;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
@@ -37,7 +37,7 @@ import org.eclipse.jetty.util.log.Logger;
 
 /* ------------------------------------------------------------ */
 /**
- * @see org.ireland.jnetty.http.MimeTypes
+ * @see org.ireland.jnetty.util.http.MimeTypes
  */
 public class MimeTypes
 {

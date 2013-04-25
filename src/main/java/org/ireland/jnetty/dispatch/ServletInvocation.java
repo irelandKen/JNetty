@@ -29,10 +29,6 @@
 
 package org.ireland.jnetty.dispatch;
 
-import com.caucho.network.listen.ProtocolConnection;
-import com.caucho.network.listen.TcpSocketLink;
-import com.caucho.server.http.AbstractHttpRequest;
-
 import javax.servlet.*;
 
 import org.apache.commons.logging.Log;
@@ -256,20 +252,7 @@ public class ServletInvocation
 		_multipartConfig = multipartConfig;
 	}
 
-	/**
-	 * Returns the thread request.
-	 */
-	public static ServletRequest getContextRequest()
-	{
-		ProtocolConnection req = TcpSocketLink.getCurrentRequest();
 
-		if (req instanceof AbstractHttpRequest)
-			return ((AbstractHttpRequest) req).getRequestFacade();
-		else if (req instanceof ServletRequest)
-			return (ServletRequest) req;
-		else
-			return null;
-	}
 
 	/**
 	 * Service a request.

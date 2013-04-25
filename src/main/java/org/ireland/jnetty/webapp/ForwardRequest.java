@@ -31,7 +31,6 @@ package org.ireland.jnetty.webapp;
 
 import io.netty.handler.codec.http.QueryStringDecoder;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;

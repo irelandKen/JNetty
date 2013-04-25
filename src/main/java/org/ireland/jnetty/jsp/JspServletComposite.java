@@ -20,10 +20,6 @@ package org.ireland.jnetty.jsp;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
-import java.net.MalformedURLException;
-import java.security.AccessController;
-import java.security.PrivilegedActionException;
-import java.security.PrivilegedExceptionAction;
 
 import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletConfig;
@@ -33,8 +29,7 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+
 import org.apache.jasper.Constants;
 import org.apache.jasper.EmbeddedServletOptions;
 import org.apache.jasper.Options;
@@ -45,6 +40,9 @@ import org.apache.jasper.servlet.JspServletWrapper;
 import org.apache.jasper.util.ExceptionUtils;
 
 import org.apache.tomcat.PeriodicEventListener;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 /**
  * 由于org.apache.jasper.servlet.JspServlet只能支持单个Jsp页面,故 用组合模式设计了此Servlet,JspServletComposite

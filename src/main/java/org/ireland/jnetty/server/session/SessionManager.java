@@ -42,7 +42,6 @@ import javax.servlet.http.HttpSessionAttributeListener;
 import javax.servlet.http.HttpSessionEvent;
 import javax.servlet.http.HttpSessionListener;
 
-import org.eclipse.jetty.http.HttpCookie;
 import org.ireland.jnetty.config.ConfigException;
 import org.ireland.jnetty.webapp.WebApp;
 

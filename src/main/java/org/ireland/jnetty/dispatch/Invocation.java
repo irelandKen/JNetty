@@ -31,8 +31,6 @@ package org.ireland.jnetty.dispatch;
 
 import org.ireland.jnetty.webapp.WebApp;
 
-import com.caucho.server.http.HttpServletRequestImpl;
-
 /**
  * A repository for request information gleaned from the uri.
  * 
@@ -204,16 +202,7 @@ public class Invocation extends ServletInvocation
 		_webApp = app;
 	}
 
-	/**
-	 * Returns the versioned invocation based on this request.
-	 * 
-	 * @param request
-	 *            the servlet request
-	 */
-	public Invocation getRequestInvocation(HttpServletRequestImpl request)
-	{
-		return this;
-	}
+
 
 	/**
 	 * Copies from the invocation.

@@ -30,9 +30,6 @@
 package org.ireland.jnetty.dispatch.filter;
 
 
-
-import javax.annotation.PostConstruct;
-import javax.servlet.ServletException;
 import javax.servlet.DispatcherType;
 
 import org.ireland.jnetty.dispatch.ServletInvocation;
