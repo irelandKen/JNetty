@@ -35,6 +35,7 @@ import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpObject;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
+import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.LastHttpContent;
 import io.netty.handler.codec.http.QueryStringDecoder;
 import io.netty.handler.codec.http.ServerCookieEncoder;
@@ -96,9 +97,11 @@ public class HttpHandler extends ChannelInboundMessageHandlerAdapter<FullHttpMes
 
 	private void handle(ChannelHandlerContext ctx, FullHttpRequest fullHttpRequest, FullHttpResponse fullHttpResponse) throws ServletException, IOException
 	{
-		HttpServletResponseImpl response = new HttpServletResponseImpl((SocketChannel) ctx.channel(), ctx, fullHttpResponse, fullHttpRequest);
+		HttpServletResponseImpl response = new HttpServletResponseImpl(webApp,(SocketChannel) ctx.channel(), ctx, fullHttpResponse, fullHttpRequest);
 
 		HttpServletRequestImpl request = new HttpServletRequestImpl(webApp, webApp, (SocketChannel) ctx.channel(), ctx, fullHttpResponse, fullHttpRequest,response);
+		
+		response.setHttpServletRequest(request);
 
 		//
 		String rawUri = fullHttpRequest.getUri();
@@ -123,24 +126,57 @@ public class HttpHandler extends ChannelInboundMessageHandlerAdapter<FullHttpMes
 		dispatcher.dispatch(request, response);
 	}
 
+	/**
+	 * 向客户端返回响应
+	 * 
+	 * @param ctx
+	 * @param request
+	 * @param response
+	 */
 	private void writeResponse(ChannelHandlerContext ctx, FullHttpRequest request, FullHttpResponse response)
-	{
-		// Decide whether to close the connection or not.
-		boolean keepAlive = HttpHeaders.isKeepAlive(request);
+	{	
+		// set the Servlet Header :)
+		response.headers().set(HttpHeaders.Names.SERVER, "JNetty");
+		
+		boolean keepAlive = true;
 
-		if (keepAlive)
+		if (response.headers().get(HttpHeaders.Names.CONNECTION) != null)
 		{
-
-			// Add keep alive header as per:
-			// - http://www.w3.org/Protocols/HTTP/1.1/draft-ietf-http-v11-spec-01.html#Connection
-			response.headers().set(CONNECTION, HttpHeaders.Values.KEEP_ALIVE);
+			keepAlive = HttpHeaders.isKeepAlive(response); // 用户显式设置KeepAlive
 		}
+		else
+		// 用户未设置CONNECTION响应头
+		{
+			// Decide whether to close the connection or not.
+			keepAlive = HttpHeaders.isKeepAlive(request); // 用户未设置CONNECTION,则保持未请求头的CONNECTION一致
+
+			// TODO:think about how to decide keepAlive or not
+			if (keepAlive)
+			{
+				// Add 'Content-Length' header only for a keep-alive connection.
+				response.headers().set(CONTENT_LENGTH, response.data().readableBytes());
+				// Add keep alive header as per:
+				// http://www.w3.org/Protocols/HTTP/1.1/draft-ietf-http-v11-spec-01.html#Connection
+				response.headers().set(CONNECTION, HttpHeaders.Values.KEEP_ALIVE);
+			}
+			else
+			{
+				response.headers().set(CONTENT_LENGTH, response.data().readableBytes());
+
+				response.headers().set(CONNECTION, HttpHeaders.Values.CLOSE);
+			}
+		}
+
 
 		// Write the response.
 		ctx.nextOutboundMessageBuffer().add(response);
 
-		// Close the non-keep-alive connection after the write operation is done.
-		if (!keepAlive)
+		// if CONNECTION == "close" Close the non-keep-alive connection after the write operation is done.
+		if (keepAlive)
+		{
+			ctx.flush();
+		}
+		else
 		{
 			ctx.flush().addListener(ChannelFutureListener.CLOSE);
 		}

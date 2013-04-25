@@ -59,6 +59,7 @@ import org.ireland.jnetty.http.io.HttpWriter;
 import org.ireland.jnetty.http.io.Iso88591HttpWriter;
 import org.ireland.jnetty.http.io.Utf8HttpWriter;
 import org.ireland.jnetty.util.http.ServletServerCookieEncoder;
+import org.ireland.jnetty.webapp.WebApp;
 
 /**
  * <p>
@@ -90,6 +91,8 @@ public class HttpServletResponseImpl implements HttpServletResponse
 
 	private final FullHttpRequest request;
 
+	private HttpServletRequestImpl _httpRequest;
+
 	// response
 	private final FullHttpResponse response;
 
@@ -100,6 +103,8 @@ public class HttpServletResponseImpl implements HttpServletResponse
 	private final LastHttpContent body;
 
 	// response end
+
+	private final WebApp _webApp;
 
 	/**
 	 * Using output stream flag.
@@ -149,7 +154,7 @@ public class HttpServletResponseImpl implements HttpServletResponse
 	private PrintWriter _writer;
 	private long _contentLength = -1;
 
-	public HttpServletResponseImpl(SocketChannel socketChannel, ChannelHandlerContext ctx, FullHttpResponse response, FullHttpRequest request)
+	public HttpServletResponseImpl(WebApp webApp, SocketChannel socketChannel, ChannelHandlerContext ctx, FullHttpResponse response, FullHttpRequest request)
 	{
 		this.socketChannel = socketChannel;
 		this.ctx = ctx;
@@ -164,6 +169,8 @@ public class HttpServletResponseImpl implements HttpServletResponse
 
 		// Response Body
 		this.body = response;
+
+		this._webApp = webApp;
 
 	}
 
@@ -443,35 +450,188 @@ public class HttpServletResponseImpl implements HttpServletResponse
 	}
 
 	@Override
-	// TODO
 	public void sendRedirect(String location) throws IOException
 	{
-		/*
-		 * if (isIncluding()) return;
-		 * 
-		 * if (location == null) throw new IllegalArgumentException();
-		 * 
-		 * if (!URIUtil.hasScheme(location)) { StringBuilder buf = httpServletRequest.getRootURL(); if
-		 * (location.startsWith("/")) buf.append(location); else { String path = httpServletRequest.getRequestURI();
-		 * String parent = (path.endsWith("/")) ? path : URIUtil.parentPath(path); location = URIUtil.addPaths(parent,
-		 * location); if (location == null) throw new IllegalStateException("path cannot be above root"); if
-		 * (!location.startsWith("/")) buf.append('/'); buf.append(location); }
-		 * 
-		 * location = buf.toString(); HttpURI uri = new HttpURI(location); String path = uri.getDecodedPath(); String
-		 * canonical = URIUtil.canonicalPath(path); if (canonical == null) throw new IllegalArgumentException(); if
-		 * (!canonical.equals(path)) { buf = socketChannel.getRequest().getRootURL();
-		 * buf.append(URIUtil.encodePath(canonical)); String param=uri.getParam(); if (param!=null) { buf.append(';');
-		 * buf.append(param); } String query=uri.getQuery(); if (query!=null) { buf.append('?'); buf.append(query); }
-		 * String fragment=uri.getFragment(); if (fragment!=null) { buf.append('#'); buf.append(fragment); } location =
-		 * buf.toString(); } }
-		 * 
-		 * resetBuffer(); setHeader(HttpHeaders.Names.LOCATION, location);
-		 * setStatus(HttpServletResponse.SC_MOVED_TEMPORARILY); complete();
-		 */
+
+		if (isCommitted())
+		{
+			throw new IllegalStateException("Can't sendRedirect() after data has committed to the client.");
+		}
+
+		// Ignore any call from an included servlet
+		if (isIncluding())
+		{
+			return;
+		}
+
+		// Clear any data content that has been buffered
+		resetBuffer();
+
+		// Generate a temporary redirect to the specified location
+
+		String absolute = encodeAbsoluteRedirect(location);
+		setStatus(SC_FOUND);
+		setHeader(HttpHeaders.Names.LOCATION, absolute);
+
+		// Commit the response
+		flushBuffer();
+	}
+
+	/**
+	 * Convert a URL to a AbsoluteUrl
+	 * 
+	 * @param url
+	 * @return
+	 */
+	public String encodeAbsoluteRedirect(String url)
+	{
+		String path = getAbsolutePath(url);
+
+		// Bug #3051
+		String encoding = getCharacterEncoding();
+
+		boolean isLatin1 = "iso-8859-1".equalsIgnoreCase(encoding);
+
+		return escapeUrl(path, isLatin1);
+	}
+
+	private String escapeUrl(String path, boolean isLatin1)
+	{
+		StringBuilder cb = new StringBuilder();
+
+		for (int i = 0; i < path.length(); i++)
+		{
+			char ch = path.charAt(i);
+
+			if (ch == '<')
+				cb.append("%3c");
+			else if (ch == '"')
+			{
+				cb.append("%22");
+			}
+			else if (ch < 0x80)
+				cb.append(ch);
+			else if (isLatin1)
+			{
+				addHex(cb, ch);
+			}
+			else if (ch < 0x800)
+			{
+				int d1 = 0xc0 + ((ch >> 6) & 0x1f);
+				int d2 = 0x80 + (ch & 0x3f);
+
+				addHex(cb, d1);
+				addHex(cb, d2);
+			}
+			else if (ch < 0x8000)
+			{
+				int d1 = 0xe0 + ((ch >> 12) & 0xf);
+				int d2 = 0x80 + ((ch >> 6) & 0x3f);
+				int d3 = 0x80 + (ch & 0x3f);
+
+				addHex(cb, d1);
+				addHex(cb, d2);
+				addHex(cb, d3);
+			}
+		}
+
+		return cb.toString();
+	}
+
+	/**
+	 * Returns the absolute path for a given relative path.
+	 * 
+	 * @param path
+	 *            the possibly relative url to send to the browser
+	 */
+	private String getAbsolutePath(String path)
+	{
+		int slash = path.indexOf('/');
+
+		int len = path.length();
+
+		for (int i = 0; i < len; i++)
+		{
+			char ch = path.charAt(i);
+
+			if (ch == ':')
+				return path;
+			else if (ch >= 'a' && ch <= 'z' || ch >= 'A' && ch <= 'Z')
+				continue;
+			else
+				break;
+		}
+
+		String hostPrefix = null;
+		String hostAndPort = request.headers().get("Host");
+		String serverName = _httpRequest.getServerName();
+
+		int port = _httpRequest.getServerPort();
+
+		if (serverName.startsWith("http:") || serverName.startsWith("https:"))
+			hostPrefix = serverName;
+		else if (hostAndPort != null)
+		{
+			hostPrefix = _httpRequest.getScheme() + "://" + hostAndPort;
+		}
+		else
+		{
+			hostPrefix = _httpRequest.getScheme() + "://" + serverName;
+
+			if (serverName.indexOf(':') < 0 && port != 0 && port != 80 && port != 443)
+				hostPrefix += ":" + port;
+		}
+
+		if (slash == 0)
+			return hostPrefix + path;
+
+		String uri = _httpRequest.getRequestURI();
+		String contextPath = _httpRequest.getContextPath();
+		String queryString = null;
+
+		int p = path.indexOf('?');
+		if (p > 0)
+		{
+			queryString = path.substring(p + 1);
+			path = path.substring(0, p);
+		}
+
+		if (uri.equals(contextPath))
+		{
+			path = uri + "/" + path;
+		}
+		else
+		{
+			p = uri.lastIndexOf('/');
+
+			if (p >= 0)
+				path = uri.substring(0, p + 1) + path;
+		}
+
+		try
+		{
+			if (queryString != null)
+				return hostPrefix + _webApp.getURIDecoder().normalizeUri(path) + '?' + queryString;
+			else
+				return hostPrefix + _webApp.getURIDecoder().normalizeUri(path);
+		}
+		catch (IOException e)
+		{
+			throw new RuntimeException(e);
+		}
+	}
+
+	private void addHex(StringBuilder cb, int hex)
+	{
+		int d1 = (hex >> 4) & 0xf;
+		int d2 = (hex) & 0xf;
+
+		cb.append('%');
+		cb.append(d1 < 10 ? (char) (d1 + '0') : (char) (d1 - 10 + 'a'));
+		cb.append(d2 < 10 ? (char) (d2 + '0') : (char) (d2 - 10 + 'a'));
 	}
 
 	@Override
-	// OK
 	public void setDateHeader(String name, long date)
 	{
 		if (name == null || name.length() == 0)
@@ -494,7 +654,6 @@ public class HttpServletResponseImpl implements HttpServletResponse
 	}
 
 	@Override
-	// OK
 	public void addDateHeader(String name, long date)
 	{
 		if (name == null || name.length() == 0)
@@ -540,7 +699,6 @@ public class HttpServletResponseImpl implements HttpServletResponse
 	 */
 
 	@Override
-	// OK
 	public void setHeader(String name, String value)
 	{
 		if (name == null || name.length() == 0 || value == null)
@@ -570,7 +728,7 @@ public class HttpServletResponseImpl implements HttpServletResponse
 				if (HttpHeaders.Names.CONTENT_LENGTH.equalsIgnoreCase(name))
 				{
 					if (value == null)
-						_contentLength = -1l;
+						_contentLength = -1;
 					else
 						_contentLength = Long.parseLong(value);
 				}
@@ -740,11 +898,11 @@ public class HttpServletResponseImpl implements HttpServletResponse
 
 		if (sc <= 0)
 			throw new IllegalArgumentException();
-		if (!isIncluding())
-		{
-			_status = sc;
-			_reason = sm;
-		}
+
+		
+		_status = sc;
+		_reason = sm;
+		
 	}
 
 	@Override
@@ -1019,6 +1177,12 @@ public class HttpServletResponseImpl implements HttpServletResponse
 	 */
 	private void writeResponse(ChannelHandlerContext ctx, FullHttpRequest request, FullHttpResponse response)
 	{
+		//Set the Status Code
+		response.setStatus(_reason == null ? HttpResponseStatus.valueOf(_status) : new HttpResponseStatus(_status, _reason));
+		
+		// set the Servlet Header :)
+		response.headers().set(HttpHeaders.Names.SERVER, "JNetty");
+		
 		boolean keepAlive = true;
 
 		if (headers.get(HttpHeaders.Names.CONNECTION) != null)
@@ -1047,6 +1211,7 @@ public class HttpServletResponseImpl implements HttpServletResponse
 				response.headers().set(CONNECTION, HttpHeaders.Values.CLOSE);
 			}
 		}
+
 
 		// Write the response.
 		ctx.nextOutboundMessageBuffer().add(response);
@@ -1259,5 +1424,10 @@ public class HttpServletResponseImpl implements HttpServletResponse
 		resetBuffer();
 		usingOutputStream = false;
 		usingWriter = false;
+	}
+
+	public void setHttpServletRequest(HttpServletRequestImpl httpRequest)
+	{
+		_httpRequest = httpRequest;
 	}
 }
