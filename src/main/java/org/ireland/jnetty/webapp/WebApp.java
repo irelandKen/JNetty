@@ -71,7 +71,6 @@ import org.apache.tomcat.InstanceManager;
 
 import org.ireland.jnetty.beans.BeanFactory;
 import org.ireland.jnetty.config.ConfigException;
-import org.ireland.jnetty.config.ListenerConfig;
 import org.ireland.jnetty.config.WebXmlLoader;
 import org.ireland.jnetty.dispatch.Invocation;
 import org.ireland.jnetty.dispatch.filter.FilterConfigImpl;
@@ -92,8 +91,6 @@ import org.ireland.jnetty.util.http.URIDecoder;
 
 import org.springframework.util.Assert;
 
-import com.caucho.i18n.CharacterEncoding;
-
 import com.caucho.util.LruCache;
 
 /**
@@ -104,7 +101,7 @@ public class WebApp extends ServletContextImpl
 	private static final Log log = LogFactory.getLog(WebApp.class.getName());
 
 	// The context path is the URL prefix for the web-app
-	private String _contextPath;
+	private String _contextPath = "";
 
 	// The environment class loader
 	private ClassLoader _classLoader;
@@ -113,10 +110,8 @@ public class WebApp extends ServletContextImpl
 
 	private String _hostName = "";
 
-	// The canonical URL
-	private String _url;
-
 	private String _serverName = "";
+	
 	private int _serverPort;
 
 	// The webbeans container
@@ -183,8 +178,6 @@ public class WebApp extends ServletContextImpl
 	private HashMap<String, String> _localeMapping = new HashMap<String, String>();
 
 	// listeners------------
-	// List of all the listeners.
-	private List<ListenerConfig> _listeners = new ArrayList<ListenerConfig>();
 
 	// List of the ServletContextListeners from the configuration file
 	private ArrayList<ServletContextListener> _contextListeners = new ArrayList<ServletContextListener>();
@@ -986,21 +979,6 @@ public class WebApp extends ServletContextImpl
 		addListenerObject(listener, false);
 	}
 
-	/**
-	 * Returns true if a listener with the given type exists.
-	 */
-	public boolean hasListener(Class<?> listenerClass)
-	{
-		for (int i = 0; i < _listeners.size(); i++)
-		{
-			ListenerConfig listener = _listeners.get(i);
-
-			if (listenerClass.equals(listener.getListenerClass()))
-				return true;
-		}
-
-		return false;
-	}
 
 	/**
 	 * Adds the listener object.
@@ -1112,7 +1090,7 @@ public class WebApp extends ServletContextImpl
 		// setAttribute("javax.servlet.context.tempdir", new File(_tempDir));
 		setAttribute(InstanceManager.class.getName(), _beanFactory);
 
-		_characterEncoding = CharacterEncoding.getLocalEncoding();
+		_characterEncoding = "utf-8";
 
 	}
 
@@ -1167,18 +1145,7 @@ public class WebApp extends ServletContextImpl
 
 			configJsp();
 
-			// 初始化Listener
-			for (ListenerConfig listener : _listeners)
-			{
-				try
-				{
-					addListenerObject(listener.createListenerObject(), false);
-				}
-				catch (Exception e)
-				{
-					throw ConfigException.create(e);
-				}
-			}
+
 
 			//
 			publishContextInitializedEvent();
@@ -1733,20 +1700,6 @@ public class WebApp extends ServletContextImpl
 		// 发布 ServletContextListener#contextDestroyed事件
 		publishContextDestroyedEvent(event);
 
-		// server/10g8 -- webApp listeners after session
-		for (int i = _listeners.size() - 1; i >= 0; i--)
-		{
-			ListenerConfig listener = _listeners.get(i);
-
-			try
-			{
-				listener.destroy();
-			}
-			catch (Exception e)
-			{
-				log.warn(e.toString(), e);
-			}
-		}
 	}
 
 	/**

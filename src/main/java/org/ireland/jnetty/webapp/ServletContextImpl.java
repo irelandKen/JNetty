@@ -37,7 +37,6 @@ import javax.servlet.descriptor.JspConfigDescriptor;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import org.ireland.jnetty.config.ListenerConfig;
 import org.springframework.core.io.FileSystemResourceLoader;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
@@ -523,10 +522,6 @@ public abstract class ServletContextImpl implements ServletContext
 
 
 
-	public void addListener(ListenerConfig config) throws Exception
-	{
-
-	}
 
 
 	public <T extends EventListener> void addListener(T t)
