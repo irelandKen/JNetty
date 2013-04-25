@@ -31,6 +31,7 @@ package org.ireland.jnetty.webapp;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
@@ -111,7 +112,7 @@ public class WebApp extends ServletContextImpl
 	private String _hostName = "";
 
 	private String _serverName = "";
-	
+
 	private int _serverPort;
 
 	// The webbeans container
@@ -210,6 +211,12 @@ public class WebApp extends ServletContextImpl
 	private String _characterEncoding;
 
 	/**
+	 * true: use a separate WebAppClassLoader for separate WebApp false: add class path of the WebApp to
+	 * SystemClassLoader(sun.misc.Launcher.AppClassLoader) by reflect false: only use for single WebApp mode
+	 */
+	boolean useWebAppClassLoader = true;
+
+	/**
 	 * Creates the webApp with its environment loader.
 	 */
 	public WebApp(String rootDirectory, String host, String contextPath)
@@ -225,11 +232,23 @@ public class WebApp extends ServletContextImpl
 		if (_host == null)
 			throw new IllegalStateException("requires host");
 
-		initClassLoader();
+		if (useWebAppClassLoader)
+			_classLoader = createWebAppClassLoader();
+		else
+		{
+			try
+			{
+				_classLoader = addClassPathToSystemClassLoader();
+			}
+			catch (Exception e)
+			{
+				e.printStackTrace();
+			}
+		}
 
-		//if (log.isDebugEnabled())
-		//	displayClassLoader();
-		//
+		// if (log.isDebugEnabled())
+		// displayClassLoader();
+
 		Thread.currentThread().setContextClassLoader(getClassLoader());
 
 		_uriDecoder = new URIDecoder();
@@ -240,7 +259,7 @@ public class WebApp extends ServletContextImpl
 	/**
 	 * 使用自定义的类加载器,将/WEB-INF/classes和/WEB-INF/lib/*.jar加入类加载器的classPath
 	 */
-	protected void initClassLoader()
+	protected WebAppClassLoader createWebAppClassLoader()
 	{
 		WebAppClassLoader webAppClassLoader = null;
 		try
@@ -302,7 +321,65 @@ public class WebApp extends ServletContextImpl
 			webAppClassLoader.addClassPath(classPath);
 		}
 
-		_classLoader = webAppClassLoader;
+		return webAppClassLoader;
+	}
+
+	/**
+	 * add class path of the WebApp to SystemClassLoader(sun.misc.Launcher.AppClassLoader) by reflect NOTICE: only use
+	 * for single WebApp mode
+	 * 
+	 * 因为如果使用上面的webAppClassLoader,有些情况下,对于外部的模块,它不一定严格使用ServletContext的类加载器(这里即webAppClassLoader)来加载,
+	 * 也不一定使用绑定到线程的Thread#ContextClassLoader来加载,这时候,很容易出现ClassNotFoundException.
+	 * 
+	 * 利用反射,将/WEB-INF/classes和/WEB-INF/lib/*.jar加入到SystemClassLoader中
+	 * 
+	 * @throws Exception
+	 * 
+	 * 
+	 */
+	protected ClassLoader addClassPathToSystemClassLoader() throws Exception
+	{
+		URLClassLoader sysClassLoader = (URLClassLoader) ClassLoader.getSystemClassLoader();
+
+		// 取得
+		Method method = URLClassLoader.class.getDeclaredMethod("addURL", URL.class);
+
+		method.setAccessible(true); // 压制JAVA访问检查,来直接访问其私有方法
+
+		List<URL> urls = new ArrayList<URL>();
+
+		// JarFile: "/WEB-INF/lib"
+		File libPath = new File(getRealPath("/WEB-INF/lib"));
+
+		if (libPath.isDirectory())
+		{
+			for (File file : libPath.listFiles())
+			{
+				if (file.getPath().endsWith(".jar"))
+				{
+					URL url = file.toURI().toURL();
+					urls.add(url);
+
+				}
+			}
+		}
+
+		for (URL jarFile : urls)
+		{
+			// sysClassLoader.classPath(jarFile);
+			method.invoke(sysClassLoader, jarFile);
+		}
+
+		// ClassPath: "/WEB-INF/classes/"
+		URL classPath = super.getResource("/WEB-INF/classes/");
+
+		if (classPath != null)
+		{
+			// sysClassLoader.classPath(classPath);
+			method.invoke(sysClassLoader, classPath);
+		}
+
+		return sysClassLoader;
 	}
 
 	void displayClassLoader()
@@ -531,7 +608,7 @@ public class WebApp extends ServletContextImpl
 		}
 		catch (ClassNotFoundException e)
 		{
-			throw new IllegalArgumentException(className+" is an unknown class in "+ this, e);
+			throw new IllegalArgumentException(className + " is an unknown class in " + this, e);
 		}
 
 		return addServlet(servletName, className, servletClass, null);
@@ -588,7 +665,7 @@ public class WebApp extends ServletContextImpl
 
 			if (log.isDebugEnabled())
 			{
-				log.debug("dynamic servlet added [name: '"+servletName+"', class: '"+servletClassName+"'] (in "+this+")");
+				log.debug("dynamic servlet added [name: '" + servletName + "', class: '" + servletClassName + "'] (in " + this + ")");
 			}
 
 			return config;
@@ -979,7 +1056,6 @@ public class WebApp extends ServletContextImpl
 		addListenerObject(listener, false);
 	}
 
-
 	/**
 	 * Adds the listener object.
 	 */
@@ -1145,8 +1221,6 @@ public class WebApp extends ServletContextImpl
 
 			configJsp();
 
-
-
 			//
 			publishContextInitializedEvent();
 
@@ -1235,7 +1309,7 @@ public class WebApp extends ServletContextImpl
 		else if (uri.equals(""))
 			uri = "/";
 		else
-			throw new IllegalArgumentException("getContext URI '"+uri+"' must be absolute.");
+			throw new IllegalArgumentException("getContext URI '" + uri + "' must be absolute.");
 
 		return this;
 	}
@@ -1416,7 +1490,7 @@ public class WebApp extends ServletContextImpl
 
 			if (!isEnabled())
 			{
-				Exception exn = new UnavailableException("'"+getContextPath()+"' is not currently available.");
+				Exception exn = new UnavailableException("'" + getContextPath() + "' is not currently available.");
 				chain = new ExceptionFilterChain(exn);
 			}
 			else
@@ -1463,7 +1537,7 @@ public class WebApp extends ServletContextImpl
 		if (rawContextURI == null)
 			throw new IllegalArgumentException("request dispatcher url can't be null.");
 		else if (!rawContextURI.startsWith("/"))
-			throw new IllegalArgumentException("request dispatcher url '"+rawContextURI+"' must be absolute");
+			throw new IllegalArgumentException("request dispatcher url '" + rawContextURI + "' must be absolute");
 
 		// 尝试从缓存中取出RequestDispatcher
 		RequestDispatcherImpl disp = getRequestDispatcherCache().get(rawContextURI);
