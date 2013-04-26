@@ -86,7 +86,7 @@ import org.eclipse.jetty.util.StringUtil;
 import org.eclipse.jetty.util.URIUtil;
 import org.eclipse.jetty.util.UrlEncoded;
 
-import org.ireland.jnetty.dispatch.Invocation;
+import org.ireland.jnetty.dispatch.HttpInvocation;
 import org.ireland.jnetty.http.io.ByteBufServletInputStream;
 import org.ireland.jnetty.server.session.HttpSessionImpl;
 import org.ireland.jnetty.server.session.SessionManager;
@@ -156,8 +156,8 @@ public class HttpServletRequestImpl implements HttpServletRequest
 
 	private final ServletContext servletContext;
 	
-	//the Invocation of this Request()
-	private Invocation _invocation;
+	//the HttpInvocation of this Request()
+	private HttpInvocation _invocation;
 
 	// Netty
 	private final SocketChannel socketChannel;
@@ -1104,7 +1104,7 @@ public class HttpServletRequestImpl implements HttpServletRequest
 	public String getPathInfo()
 	{
 	    if (_invocation != null)
-	        return _invocation.getPathInfo();
+	        return _invocation.getFilterChainInvocation().getPathInfo();
 	      else
 	        return null;
 	}
@@ -1354,7 +1354,7 @@ public class HttpServletRequestImpl implements HttpServletRequest
 	public String getRequestURI()
 	{
 	    if (_invocation != null)
-	        return _invocation.getRawURI();
+	        return _invocation.getFilterChainInvocation().getRequestURI();
 	      else
 	        return "";
 	}
@@ -1553,7 +1553,7 @@ public class HttpServletRequestImpl implements HttpServletRequest
 	public String getServletPath()
 	{
 	    if (_invocation != null)
-	        return _invocation.getServletPath();
+	        return _invocation.getFilterChainInvocation().getServletPath();
 	      else
 	        return "";
 	}
@@ -2503,12 +2503,12 @@ public class HttpServletRequestImpl implements HttpServletRequest
 		 */
 	}
 
-	public Invocation getInvocation()
+	public HttpInvocation getInvocation()
 	{
 		return _invocation;
 	}
 
-	public void setInvocation(Invocation invocation)
+	public void setInvocation(HttpInvocation invocation)
 	{
 		this._invocation = invocation;
 	}
