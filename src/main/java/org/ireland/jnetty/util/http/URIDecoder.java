@@ -43,7 +43,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.commons.logging.Log;
 
 import org.ireland.jnetty.config.ConfigException;
-import org.ireland.jnetty.dispatch.Invocation;
+import org.ireland.jnetty.dispatch.HttpInvocation;
 
 /**
  * Decodes invocation URI.
@@ -180,7 +180,7 @@ public class URIDecoder
 	/**
 	 * Splits out the query string and unescape the value.
 	 */
-	public void splitQueryAndUnescape(Invocation invocation, byte[] rawURI, int uriLength) throws IOException
+	public void splitQueryAndUnescape(HttpInvocation invocation, byte[] rawURI, int uriLength) throws IOException
 	{
 		for (int i = 0; i < uriLength; i++)
 		{
@@ -198,7 +198,7 @@ public class URIDecoder
 		}
 
 		String rawURIString = byteToChar(rawURI, 0, uriLength, "ISO-8859-1");
-		invocation.setRawURI(rawURIString);
+		invocation.setRawContextURI(rawURIString);
 
 		String decodedURI = normalizeUriEscape(rawURI, 0, uriLength, _encoding);
 
@@ -225,7 +225,7 @@ public class URIDecoder
 				if (p > 0)
 				{
 					rawURIString = rawURIString.substring(0, p);
-					invocation.setRawURI(rawURIString);
+					invocation.setRawContextURI(rawURIString);
 				}
 			}
 		}
@@ -242,13 +242,13 @@ public class URIDecoder
 				{
 					sessionId = decodedURI.substring(prefixLength, tail);
 					decodedURI = decodedURI.substring(tail);
-					invocation.setRawURI(rawURIString.substring(tail));
+					invocation.setRawContextURI(rawURIString.substring(tail));
 				}
 				else
 				{
 					sessionId = decodedURI.substring(prefixLength);
 					decodedURI = "/";
-					invocation.setRawURI("/");
+					invocation.setRawContextURI("/");
 				}
 
 				invocation.setSessionId(sessionId);
@@ -257,16 +257,15 @@ public class URIDecoder
 
 		String uri = normalizeUri(decodedURI);
 
-		invocation.setURI(uri);
 		invocation.setContextURI(uri);
 	}
 
 	/**
 	 * Splits out the query string, and normalizes the URI, assuming nothing needs unescaping.
 	 */
-	public void splitQuery(Invocation invocation, String rawContextURI) throws IOException
+	public void splitQuery(HttpInvocation invocation, String rawContextURI)
 	{
-		invocation.setRawURI(rawContextURI);
+		invocation.setRawContextURI(rawContextURI);
 		
 		int p = rawContextURI.indexOf('?');
 		if (p > 0)
@@ -279,7 +278,6 @@ public class URIDecoder
 
 		String contextURI = normalizeUri(rawContextURI);
 
-		invocation.setURI(contextURI);
 		invocation.setContextURI(contextURI);
 	}
 	
@@ -298,13 +296,12 @@ public class URIDecoder
 	/**
 	 * Just normalize the URI.
 	 */
-	public void normalizeURI(Invocation invocation, String rawURI) throws IOException
+	public void normalizeURI(HttpInvocation invocation, String rawURI) throws IOException
 	{
-		invocation.setRawURI(rawURI);
+		invocation.setRawContextURI(rawURI);
 
 		String uri = normalizeUri(rawURI);
 
-		invocation.setURI(uri);
 		invocation.setContextURI(uri);
 	}
 
@@ -351,7 +348,7 @@ public class URIDecoder
 	 *            the raw uri to be normalized
 	 * @return a normalized URI
 	 */
-	public String normalizeUri(String uri) throws IOException
+	public String normalizeUri(String uri)
 	{
 		return normalizeUri(uri, this.isWindows);
 	}
@@ -363,7 +360,7 @@ public class URIDecoder
 	 *            the raw uri to be normalized
 	 * @return a normalized URI
 	 */
-	public String normalizeUri(String uri, boolean isWindows) throws IOException
+	public String normalizeUri(String uri, boolean isWindows)
 	{
 		CharBuffer cb = new CharBuffer();
 
