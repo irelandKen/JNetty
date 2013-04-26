@@ -29,16 +29,17 @@
 
 package org.ireland.jnetty.webapp;
 
-import com.caucho.server.http.CauchoResponse;
 
 import javax.servlet.*;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.ireland.jnetty.dispatch.Invocation;
+import org.ireland.jnetty.dispatch.HttpInvocation;
 import org.ireland.jnetty.http.HttpServletRequestImpl;
 import org.ireland.jnetty.http.HttpServletResponseImpl;
-import org.ireland.jnetty.util.http.URIDecoder;
+import org.ireland.jnetty.http.wrapper.ErrorRequest;
+import org.ireland.jnetty.http.wrapper.ForwardRequest;
+import org.ireland.jnetty.http.wrapper.IncludeRequest;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -50,6 +51,10 @@ import org.apache.commons.logging.LogFactory;
 /**
  * 
  * 对于每一个请求,要生成一个与之对应的RequestDispatcher
+ * 
+ * 对于相同的rawContextURI的多个不同的请求,其生成的RequestDispatcherImpl是一样的, 故可以根据rawContextURI来缓存RequestDispatcherImpl
+ * 
+ * 只要rawContextURI相同(即包括参数也相同),并发的情况下也是可重用的和共享的,像单例一般的重用
  * 
  * @author KEN
  * 
@@ -65,12 +70,13 @@ public class RequestDispatcherImpl implements RequestDispatcher
 
 	private final String _rawContextURI;
 
-	private Invocation _includeInvocation;
-	private Invocation _forwardInvocation;
-	private Invocation _errorInvocation;
-	private Invocation _dispatchInvocation;
+	private HttpInvocation _dispatchInvocation;
+	private HttpInvocation _forwardInvocation;
+	private HttpInvocation _includeInvocation;
+	private HttpInvocation _errorInvocation;
+	
 
-	// private Invocation _asyncInvocation;
+	// private HttpInvocation _asyncInvocation;
 
 	public RequestDispatcherImpl(WebApp webApp, String rawContextURI)
 	{
@@ -79,7 +85,6 @@ public class RequestDispatcherImpl implements RequestDispatcher
 		_rawContextURI = rawContextURI;
 	}
 
-	
 	/**
 	 * This method sets the dispatcher type of the given request to DispatcherType.REQUEST.
 	 * 
@@ -99,31 +104,31 @@ public class RequestDispatcherImpl implements RequestDispatcher
 		// build invocation,if not exist
 		if (_dispatchInvocation == null)
 		{
-			_dispatchInvocation = new Invocation(_webApp);
+			_dispatchInvocation = buildDispatchInvocation(_rawContextURI);
+		}
 
-			buildDispatchInvocation(_dispatchInvocation, _rawContextURI);
-		}
-		
-		if(request instanceof HttpServletRequestImpl)
-		{
-			((HttpServletRequestImpl)request).setInvocation(_dispatchInvocation);
-		}
-		
-		doDispatch(request, response,_dispatchInvocation);
+		doDispatch(request, response, _dispatchInvocation);
 	}
-	
-	private void doDispatch(HttpServletRequest request, HttpServletResponse response, Invocation invocation) throws ServletException, IOException
+
+	private void doDispatch(HttpServletRequest request, HttpServletResponse response, HttpInvocation invocation) throws ServletException, IOException
 	{
 
 		// 到这里,response的buffer一定为空的,TODO: need resetBuffer()?
 		response.resetBuffer();
+
+		// Set the invocation into HttpServlerRequestImpl
+		if (request instanceof HttpServletRequestImpl)
+		{
+			((HttpServletRequestImpl) request).setInvocation(_dispatchInvocation);
+			((HttpServletRequestImpl) request).setDispatcherType(DispatcherType.REQUEST);
+		}
 
 		boolean isValid = false;
 
 		try
 		{
 
-			invocation.service(request, response);
+			invocation.getFilterChainInvocation().service(request, response);
 			isValid = true;
 		}
 		finally
@@ -142,48 +147,39 @@ public class RequestDispatcherImpl implements RequestDispatcher
 			}
 		}
 	}
-	
-	
+
 	@Override
 	public void forward(ServletRequest request, ServletResponse response) throws ServletException, IOException
 	{
+		// jsp/15m8
+		if (response.isCommitted())
+			throw new IllegalStateException("forward() not allowed after buffer has committed.");
+
 		// build invocation,if not exist
 		if (_forwardInvocation == null)
 		{
-			_forwardInvocation = new Invocation(_webApp);
-
-			buildForwardInvocation(_forwardInvocation, _rawContextURI);
-		}
-		
-		if(request instanceof HttpServletRequestImpl)
-		{
-			((HttpServletRequestImpl)request).setInvocation(_forwardInvocation);
+			_forwardInvocation = buildForwardInvocation(_rawContextURI);
 		}
 
 		doForward((HttpServletRequest) request, (HttpServletResponse) response, _forwardInvocation);
 	}
 
-	private void doForward(HttpServletRequest request, HttpServletResponse response, Invocation invocation) throws ServletException, IOException
+	private void doForward(HttpServletRequest request, HttpServletResponse response, HttpInvocation invocation) throws ServletException, IOException
 	{
-		// jsp/15m8
-		if (response.isCommitted())
-		{
-			throw new IllegalStateException("forward() not allowed after buffer has committed.");
-		}
 
 		// Reset any output that has been buffered, but keep headers/cookies
 		response.resetBuffer(); // Servlet-3_1-PFD 9.4
 
+		//Wrap the request
 		ForwardRequest wrequest = new ForwardRequest(request, response, invocation);
 
-		
-		//If we have already been forwarded previously, then keep using the established
-        //original value. Otherwise, this is the first forward and we need to establish the values.
-        //Note: the established value on the original request for pathInfo and
-        //for queryString is allowed to be null, but cannot be null for the other values.
-		if (request.getAttribute(RequestDispatcher.FORWARD_REQUEST_URI) == null)			
+		// If we have already been forwarded previously, then keep using the established
+		// original value. Otherwise, this is the first forward and we need to establish the values.
+		// Note: the established value on the original request for pathInfo and
+		// for queryString is allowed to be null, but cannot be null for the other values.
+		if (request.getAttribute(RequestDispatcher.FORWARD_REQUEST_URI) == null)
 		{
-			//只有在第一次请求转发,记下最开始的请求的相关属性
+			// 只有在第一次请求转发,记下最开始的请求的相关属性
 			wrequest.setAttribute(RequestDispatcher.FORWARD_REQUEST_URI, request.getRequestURI());
 
 			wrequest.setAttribute(RequestDispatcher.FORWARD_CONTEXT_PATH, request.getContextPath());
@@ -192,14 +188,12 @@ public class RequestDispatcherImpl implements RequestDispatcher
 			wrequest.setAttribute(RequestDispatcher.FORWARD_QUERY_STRING, request.getQueryString());
 		}
 
-		
-
 		boolean isValid = false;
 
 		try
 		{
 
-			invocation.service(wrequest, response);
+			invocation.getFilterChainInvocation().service(wrequest, response);
 
 			isValid = true;
 		}
@@ -220,8 +214,74 @@ public class RequestDispatcherImpl implements RequestDispatcher
 		}
 	}
 
+
+
+	@Override
+	public void include(ServletRequest request, ServletResponse response) throws ServletException, IOException
+	{
+		// jsp/15m8
+		if (response.isCommitted())
+			throw new IllegalStateException("include() not allowed after buffer has committed.");
+
+		// build invocation,if not exist
+		if (_includeInvocation == null)
+		{
+			_includeInvocation = buildIncludeInvocation(_rawContextURI);
+		}
+
+		doInclude((HttpServletRequest) request, (HttpServletResponse) response, _forwardInvocation);
+	}
+
+	private void doInclude(HttpServletRequest request, HttpServletResponse response, HttpInvocation invocation) throws ServletException, IOException
+	{
+
+		//Wrap the request
+		IncludeRequest wrequest = new IncludeRequest(request, response, invocation);
+
+		// If we have already been include previously, then keep using the established
+		// original value. Otherwise, this is the first include and we need to establish the values.
+		// Note: the established value on the original request for pathInfo and
+		// for queryString is allowed to be null, but cannot be null for the other values.
+		if (request.getAttribute(RequestDispatcher.INCLUDE_REQUEST_URI) == null)
+		{
+			// 只有在第一次Include请求,记下最开始的请求的相关属性
+			wrequest.setAttribute(RequestDispatcher.INCLUDE_REQUEST_URI, request.getRequestURI());
+
+			wrequest.setAttribute(RequestDispatcher.INCLUDE_CONTEXT_PATH, request.getContextPath());
+			wrequest.setAttribute(RequestDispatcher.INCLUDE_SERVLET_PATH, request.getServletPath());
+			wrequest.setAttribute(RequestDispatcher.INCLUDE_PATH_INFO, request.getPathInfo());
+			wrequest.setAttribute(RequestDispatcher.INCLUDE_QUERY_STRING, request.getQueryString());
+		}
+
+		boolean isValid = false;
+
+		try
+		{
+
+			invocation.getFilterChainInvocation().service(wrequest, response);
+
+			isValid = true;
+		}
+		finally
+		{
+			if (request.getAsyncContext() != null)
+			{
+				// An async request was started during the forward, don't close the
+				// response as it may be written to during the async handling
+				return;
+			}
+
+			// server/106r, ioc/0310
+			if (isValid)
+			{
+				finishResponse(response);
+			}
+		}
+	}
+
+	
 	/**
-	 * This method sets the dispatcher type of the given request to DispatcherType.ERROR.
+	 * This method Wrap the dispatcher type of the given request to DispatcherType.ERROR.
 	 * 
 	 * @param request
 	 * @param response
@@ -230,325 +290,56 @@ public class RequestDispatcherImpl implements RequestDispatcher
 	 */
 	public void error(ServletRequest request, ServletResponse response) throws ServletException, IOException
 	{
+		// jsp/15m8
+		if (response.isCommitted())
+			throw new IllegalStateException("error() not allowed after buffer has committed.");
+
 		// build invocation,if not exist
 		if (_errorInvocation == null)
 		{
-			_errorInvocation = new Invocation(_webApp);
-
-			buildErrorInvocation(_errorInvocation, _rawContextURI);
+			_errorInvocation = buildErrorInvocation(_rawContextURI);
 		}
 
-		if(request instanceof HttpServletRequestImpl)
-		{
-			((HttpServletRequestImpl)request).setInvocation(_errorInvocation);
-		}
-		
-		doError(request, response, "error", _errorInvocation, DispatcherType.ERROR);
+		doError((HttpServletRequest) request, (HttpServletResponse) response, _errorInvocation);
 	}
 
-	/**
-	 * Forwards the request to the servlet named by the request dispatcher.
-	 * 
-	 * @param topRequest
-	 *            the servlet request.
-	 * @param topResponse
-	 *            the servlet response.
-	 * @param method
-	 *            special to tell if from error.
-	 */
-	private void doError(ServletRequest topRequest, ServletResponse topResponse, String method, Invocation invocation, DispatcherType type)
-			throws ServletException, IOException
+	private void doError(HttpServletRequest request, HttpServletResponse response, HttpInvocation invocation) throws ServletException, IOException
 	{
-		CauchoResponse cauchoResp = null;
 
-		boolean isAllowForwardAfterFlush = false;
+		// Reset any output that has been buffered, but keep headers/cookies
+		response.resetBuffer(); // Servlet-3_1-PFD 9.4
 
-		if (topResponse instanceof CauchoResponse)
-		{
-			cauchoResp = (CauchoResponse) topResponse;
+		
+		//Wrap the request
+		ErrorRequest wrequest = new ErrorRequest(request, response, invocation);
 
-			cauchoResp.setForwardEnclosed(!isAllowForwardAfterFlush);
-		}
-
-		// jsp/15m8
-		if (topResponse.isCommitted() && method == null)
-		{
-			IllegalStateException exn;
-			exn = new IllegalStateException("forward() not allowed after buffer has committed.");
-
-			if (cauchoResp == null || !cauchoResp.hasError())
-			{
-				if (cauchoResp != null)
-					cauchoResp.setHasError(true);
-				throw exn;
-			}
-
-			_webApp.log(exn.getMessage(), exn);
-
-			return;
-		}
-		else if ("error".equals(method) || (method == null))
-		{
-			// server/10yg
-
-			topResponse.resetBuffer();
-
-			if (cauchoResp != null)
-			{
-				// server/10yh
-				// ServletResponse resp = cauchoRes.getResponse();
-				ServletResponse resp = cauchoResp;
-
-				while (resp != null)
-				{
-					if (isAllowForwardAfterFlush)// if (isAllowForwardAfterFlush && resp instanceof IncludeResponse)
-					{
-						// server/10yh
-						break;
-					}
-					else if (resp instanceof CauchoResponse)
-					{
-						CauchoResponse cr = (CauchoResponse) resp;
-						cr.resetBuffer();
-						resp = cr.getResponse();
-					}
-					else
-					{
-						resp.resetBuffer();
-
-						resp = null;
-					}
-				}
-			}
-		}
-
-		HttpServletRequest parentReq;
-		ServletRequestWrapper reqWrapper = null;
-
-		if (topRequest instanceof ServletRequestWrapper)
-		{
-
-			ServletRequest request = topRequest;
-
-			while (request instanceof ServletRequestWrapper)
-			{
-				reqWrapper = (ServletRequestWrapper) request;
-
-				request = ((ServletRequestWrapper) request).getRequest();
-			}
-
-			parentReq = (HttpServletRequest) request;
-		}
-		else if (topRequest instanceof HttpServletRequest)
-		{
-			parentReq = (HttpServletRequest) topRequest;
-		}
-		else
-		{
-			throw new IllegalStateException("expected instance of ServletRequest at `{0}'");
-		}
-
-		HttpServletResponse parentRes;
-		ServletResponseWrapper resWrapper = null;
-
-		if (topResponse instanceof ServletResponseWrapper)
-		{
-			ServletResponse response = topResponse;
-
-			while (response instanceof ServletResponseWrapper)
-			{
-				resWrapper = (ServletResponseWrapper) response;
-
-				response = ((ServletResponseWrapper) response).getResponse();
-			}
-
-			parentRes = (HttpServletResponse) response;
-		}
-		else if (topResponse instanceof HttpServletResponse)
-		{
-			parentRes = (HttpServletResponse) topResponse;
-		}
-		else
-		{
-			throw new IllegalStateException("expected instance of ServletResponse at `{0}'");
-		}
-
-		ForwardRequest subRequest;
-
-		if (type == DispatcherType.ERROR)
-			subRequest = new ErrorRequest(parentReq, parentRes, invocation);
-/*		else if (type == DispatcherType.REQUEST)
-			subRequest = new DispatchRequest(parentReq, parentRes, invocation);*/
-		else
-			subRequest = new ForwardRequest(parentReq, parentRes, invocation);
-
-		HttpServletResponse subResponse = subRequest.getResponse();
-
-		if (reqWrapper != null)
-		{
-			reqWrapper.setRequest(subRequest);
-		}
-		else
-		{
-			topRequest = subRequest;
-		}
-
-		if (resWrapper != null)
-		{
-			resWrapper.setResponse(subResponse);
-		}
-		else
-		{
-			topResponse = subResponse;
-		}
 
 		boolean isValid = false;
-
-		//subRequest.startRequest();
 
 		try
 		{
 
-			invocation.service(topRequest, topResponse);
+			invocation.getFilterChainInvocation().service(wrequest, response);
 
 			isValid = true;
 		}
 		finally
 		{
-			if (reqWrapper != null)
-				reqWrapper.setRequest(parentReq);
-
-			if (resWrapper != null)
-				resWrapper.setResponse(parentRes);
-
-			//subRequest.finishRequest(isValid);
+			if (request.getAsyncContext() != null)
+			{
+				// An async request was started during the forward, don't close the
+				// response as it may be written to during the async handling
+				return;
+			}
 
 			// server/106r, ioc/0310
 			if (isValid)
 			{
-				finishResponse(topResponse);
+				finishResponse(response);
 			}
 		}
 	}
-
-	@Override
-	public void include(ServletRequest request, ServletResponse response) throws ServletException, IOException
-	{
-		// build invocation,if not exist
-		if (_includeInvocation == null)
-		{
-			_includeInvocation = new Invocation(_webApp);
-
-			buildIncludeInvocation(_includeInvocation, _rawContextURI);
-		}
-		
-		if(request instanceof HttpServletRequestImpl)
-		{
-			((HttpServletRequestImpl)request).setInvocation(_includeInvocation);
-		}
-
-		doInclude(request, response, _includeInvocation, null);
-	}
-
-	/**
-	 * Include a request into the current page.
-	 */
-	private void doInclude(ServletRequest topRequest, ServletResponse topResponse, Invocation invocation, String method) throws ServletException, IOException
-	{
-
-		HttpServletRequest parentReq;
-		ServletRequestWrapper reqWrapper = null;
-
-		if (topRequest instanceof ServletRequestWrapper)
-		{
-			ServletRequest request = topRequest;
-
-			while (request instanceof ServletRequestWrapper)
-			{
-				reqWrapper = (ServletRequestWrapper) request;
-
-				request = ((ServletRequestWrapper) request).getRequest();
-			}
-
-			parentReq = (HttpServletRequest) request;
-		}
-		else if (topRequest instanceof HttpServletRequest)
-		{
-			parentReq = (HttpServletRequest) topRequest;
-		}
-		else
-		{
-			throw new IllegalStateException("expected instance of ServletRequestWrapper at `{0}'");
-		}
-
-		HttpServletResponse parentRes;
-		ServletResponseWrapper resWrapper = null;
-
-		if (topResponse instanceof ServletResponseWrapper)
-		{
-			ServletResponse response = topResponse;
-
-			while (response instanceof ServletResponseWrapper)
-			{
-				resWrapper = (ServletResponseWrapper) response;
-
-				response = ((ServletResponseWrapper) response).getResponse();
-			}
-
-			parentRes = (HttpServletResponse) response;
-		}
-		else if (topResponse instanceof HttpServletResponse)
-		{
-			parentRes = (HttpServletResponse) topResponse;
-		}
-		else
-		{
-			throw new IllegalStateException("expected instance of ServletResponse at '{0}'");
-		}
-
-		IncludeRequest subRequest = new IncludeRequest(parentReq, parentRes, invocation);
-
-		HttpServletResponse subResponse = subRequest.getResponse();
-
-		if (reqWrapper != null)
-		{
-			reqWrapper.setRequest(subRequest);
-		}
-		else
-		{
-			topRequest = subRequest;
-		}
-
-		if (resWrapper != null)
-		{
-			resWrapper.setResponse(subResponse);
-		}
-		else
-		{
-			topResponse = subResponse;
-		}
-
-		// jsp/15lf, jsp/17eg - XXX: integrated with ResponseStream?
-		// res.flushBuffer();
-
-		subRequest.startRequest();
-
-		try
-		{
-			invocation.service(topRequest, topResponse);
-		}
-		finally
-		{
-			if (reqWrapper != null)
-				reqWrapper.setRequest(parentReq);
-
-			if (resWrapper != null)
-				resWrapper.setResponse(parentRes);
-
-			subRequest.finishRequest();
-		}
-	}
-
+	
 	// -----------------------------------------------------------------------------------
 
 	/**
@@ -556,13 +347,10 @@ public class RequestDispatcherImpl implements RequestDispatcher
 	 * 
 	 * @throws IOException
 	 */
-	private void buildDispatchInvocation(Invocation invocation, String rawContextURI) throws ServletException, IOException
+	private HttpInvocation buildDispatchInvocation(String rawContextURI) throws ServletException
 	{
-		URIDecoder decoder = _webApp.getURIDecoder();
 
-		decoder.splitQuery(invocation, rawContextURI);
-
-		_webApp.buildDispatchInvocation(invocation);
+		return _webApp.buildDispatchInvocation(rawContextURI);
 	}
 
 	/**
@@ -570,13 +358,10 @@ public class RequestDispatcherImpl implements RequestDispatcher
 	 * 
 	 * @throws IOException
 	 */
-	private void buildForwardInvocation(Invocation invocation, String rawURI) throws ServletException, IOException
+	private HttpInvocation buildForwardInvocation(String rawContextURI) throws ServletException
 	{
-		URIDecoder decoder = _webApp.getURIDecoder();
 
-		decoder.splitQuery(invocation, rawURI);
-
-		_webApp.buildForwardInvocation(invocation);
+		return _webApp.buildForwardInvocation(rawContextURI);
 	}
 
 	/**
@@ -584,13 +369,10 @@ public class RequestDispatcherImpl implements RequestDispatcher
 	 * 
 	 * @throws IOException
 	 */
-	private void buildIncludeInvocation(Invocation invocation, String rawURI) throws ServletException, IOException
+	private HttpInvocation buildIncludeInvocation(String rawContextURI) throws ServletException
 	{
-		URIDecoder decoder = _webApp.getURIDecoder();
 
-		decoder.splitQuery(invocation, rawURI);
-
-		_webApp.buildIncludeInvocation(invocation);
+		return _webApp.buildIncludeInvocation(rawContextURI);
 	}
 
 	/**
@@ -598,13 +380,10 @@ public class RequestDispatcherImpl implements RequestDispatcher
 	 * 
 	 * @throws IOException
 	 */
-	private void buildErrorInvocation(Invocation invocation, String rawURI) throws ServletException, IOException
+	private HttpInvocation buildErrorInvocation(String rawContextURI) throws ServletException
 	{
-		URIDecoder decoder = _webApp.getURIDecoder();
 
-		decoder.splitQuery(invocation, rawURI);
-
-		_webApp.buildErrorInvocation(invocation);
+		return _webApp.buildErrorInvocation(rawContextURI);
 	}
 
 	// ------------------------------------------------------------------------------------
@@ -621,7 +400,7 @@ public class RequestDispatcherImpl implements RequestDispatcher
 			{
 				OutputStream os = res.getOutputStream();
 				os.flush();
-				//os.close();
+				// os.close();
 			}
 			catch (Exception e)
 			{
@@ -631,7 +410,7 @@ public class RequestDispatcherImpl implements RequestDispatcher
 			{
 				PrintWriter out = res.getWriter();
 				out.flush();
-				//out.close();
+				// out.close();
 			}
 			catch (Exception e)
 			{
@@ -642,7 +421,7 @@ public class RequestDispatcherImpl implements RequestDispatcher
 	@Override
 	public String toString()
 	{
-		return (getClass().getSimpleName() + "[" + _dispatchInvocation.getRawURI() + "]");
+		return (getClass().getSimpleName() + "[" + _dispatchInvocation.getRawContextURI() + "]");
 	}
 
 	// Util------------------------------------------------------------
