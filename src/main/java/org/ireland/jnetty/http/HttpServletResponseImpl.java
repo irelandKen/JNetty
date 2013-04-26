@@ -608,17 +608,10 @@ public class HttpServletResponseImpl implements HttpServletResponse
 				path = uri.substring(0, p + 1) + path;
 		}
 
-		try
-		{
-			if (queryString != null)
-				return hostPrefix + _webApp.getURIDecoder().normalizeUri(path) + '?' + queryString;
-			else
-				return hostPrefix + _webApp.getURIDecoder().normalizeUri(path);
-		}
-		catch (IOException e)
-		{
-			throw new RuntimeException(e);
-		}
+		if (queryString != null)
+			return hostPrefix + _webApp.getURIDecoder().normalizeUri(path) + '?' + queryString;
+		else
+			return hostPrefix + _webApp.getURIDecoder().normalizeUri(path);
 	}
 
 	private void addHex(StringBuilder cb, int hex)
@@ -899,10 +892,9 @@ public class HttpServletResponseImpl implements HttpServletResponse
 		if (sc <= 0)
 			throw new IllegalArgumentException();
 
-		
 		_status = sc;
 		_reason = sm;
-		
+
 	}
 
 	@Override
@@ -1177,12 +1169,12 @@ public class HttpServletResponseImpl implements HttpServletResponse
 	 */
 	private void writeResponse(ChannelHandlerContext ctx, FullHttpRequest request, FullHttpResponse response)
 	{
-		//Set the Status Code
+		// Set the Status Code
 		response.setStatus(_reason == null ? HttpResponseStatus.valueOf(_status) : new HttpResponseStatus(_status, _reason));
-		
+
 		// set the Servlet Header :)
 		response.headers().set(HttpHeaders.Names.SERVER, "JNetty");
-		
+
 		boolean keepAlive = true;
 
 		if (headers.get(HttpHeaders.Names.CONNECTION) != null)
@@ -1211,7 +1203,6 @@ public class HttpServletResponseImpl implements HttpServletResponse
 				response.headers().set(CONNECTION, HttpHeaders.Values.CLOSE);
 			}
 		}
-
 
 		// Write the response.
 		ctx.nextOutboundMessageBuffer().add(response);
