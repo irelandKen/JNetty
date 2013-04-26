@@ -37,7 +37,7 @@ import javax.servlet.Servlet;
 import javax.servlet.ServletException;
 
 import org.ireland.jnetty.config.ConfigException;
-import org.ireland.jnetty.dispatch.ServletInvocation;
+import org.ireland.jnetty.dispatch.FilterChainInvocation;
 import org.ireland.jnetty.webapp.WebApp;
 
 import java.util.ArrayList;
@@ -185,7 +185,7 @@ public class ServletManager
 	/**
 	 * Creates the servlet chain for the servlet. 根据ServletName和Invocation创建一个FilterChain
 	 */
-	public FilterChain createServletChain(String servletName, ServletInvocation invocation) throws ServletException
+	public FilterChain createServletChain(String servletName, FilterChainInvocation invocation) throws ServletException
 	{
 		ServletConfigImpl config = _servlets.get(servletName);
 
@@ -208,7 +208,7 @@ public class ServletManager
 	/**
 	 * Creates the servlet chain for the servlet. 根据ServletConfigImpl和Invocation创建一个FilterChain
 	 */
-	public FilterChain createServletChain(ServletConfigImpl config, ServletInvocation invocation) throws ServletException
+	public FilterChain createServletChain(ServletConfigImpl config, FilterChainInvocation invocation) throws ServletException
 	{
 
 		if (config == null)

@@ -36,7 +36,7 @@ import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
 
 import org.ireland.jnetty.config.ConfigException;
-import org.ireland.jnetty.dispatch.Invocation;
+import org.ireland.jnetty.dispatch.FilterChainInvocation;
 import org.ireland.jnetty.dispatch.filterchain.FilterFilterChain;
 
 import java.util.ArrayList;
@@ -192,12 +192,12 @@ public class FilterMapper
 	 * 容器使用的用于构建应用到一个特定请求URI的过滤器链的顺序如下所示：
 	 * 1. 首先，    <url-pattern>按照在部署描述符中的出现顺序匹配过滤器映射。
      * 2. 接下来，<servlet-name>按照在部署描述符中的出现顺序匹配过滤器映射。
-	 * @param invocation
+	 * @param fcInvocation
 	 * @param chain
 	 * @return
 	 * @throws ServletException
 	 */
-	public FilterChain buildDispatchChain(Invocation invocation, FilterChain chain) throws ServletException
+	public FilterChain buildFilterChain(FilterChainInvocation fcInvocation, FilterChain chain) throws ServletException
 	{
 		//TODO: why first matche the ServletName and the Match the URI? why not match the FilterMapping'ServletName and  FilterMapping'urlPattern as the same time?
 		
@@ -215,13 +215,13 @@ public class FilterMapper
 					{
 						FilterMapping filterMapping = mappings.get(i);
 		
-						chain = addFilter(invocation, chain, filterMapping);
+						chain = addFilter(fcInvocation, chain, filterMapping);
 					}
 				}
 				
 				
 				//查找 指定servletName匹配的FilterMapping,并将其Filter实例 添加到FilterChain中
-				String servletName = invocation.getServletName();
+				String servletName = fcInvocation.getServletName();
 				
 				mappings = 	_filterMappingsWithServletName.get(servletName);
 				
@@ -231,7 +231,7 @@ public class FilterMapper
 					{
 						FilterMapping filterMapping = mappings.get(i);
 		
-						chain = addFilter(invocation, chain, filterMapping);
+						chain = addFilter(fcInvocation, chain, filterMapping);
 					}
 				}
 			}
@@ -246,48 +246,22 @@ public class FilterMapper
 				{
 					FilterMapping filterMapping = _filterMappingsWithUrl.get(i);
 	
-					if (filterMapping.isMatch(invocation))
+					if (filterMapping.isMatch(fcInvocation))
 					{
-						chain = addFilter(invocation, chain, filterMapping);
+						chain = addFilter(fcInvocation, chain, filterMapping);
 					}
 				}
 			}
 		}
 			
 
-		invocation.setFilterChain(chain);
+		fcInvocation.setFilterChain(chain);
 
 		return chain;
 	}
 	
 
 
-	/**
-	 * Fills in the invocation.
-	 */
-	@Deprecated
-	public FilterChain buildFilterChain(FilterChain chain, String servletName) throws ServletException
-	{
-		//根据ServletName去查找匹配的FilterMapping,并将其Filter实例 添加到FilterChain中
-		synchronized (_filterMappings)
-		{
-			for (int i = _filterMappings.size() - 1; i >= 0; i--)
-			{
-				FilterMapping filterMapping = _filterMappings.get(i);
-
-				if (filterMapping.isMatch(servletName))
-				{
-					FilterConfigImpl config = filterMapping.getFilterConfig();
-					
-					Filter filter = config.getInstance();
-
-					chain = addFilter(chain, filter);
-				}
-			}
-		}
-
-		return chain;
-	}
 
 	/**
 	 * 
@@ -297,7 +271,7 @@ public class FilterMapper
 	 * @return	增加了FilterChain节点的新的FilterChain
 	 * @throws ServletException
 	 */
-	private FilterChain addFilter(Invocation invocation,FilterChain chain, FilterMapping filterMapping) throws ServletException
+	private FilterChain addFilter(FilterChainInvocation invocation,FilterChain chain, FilterMapping filterMapping) throws ServletException
 	{
 		FilterConfigImpl config = filterMapping.getFilterConfig();
 		

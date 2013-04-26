@@ -33,48 +33,114 @@ import javax.servlet.*;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.ireland.jnetty.webapp.WebApp;
 
 import java.io.IOException;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * A repository for request information gleaned from the uri.
  * 
  * and the FilterChain that match the URI
  * 
- * A Invocation include the URI information and the FilterChain that match the URI
+ * A HttpInvocation include the URI information and the FilterChain that match the URI
+ * 
+ * FilterChainInvocation 是一个面向特定ContextURI的 FilterChain + Servlet 的调用
+ * 
+ * 对于不同的请求,如果ContextURI相同,则生成的FilterChainInvocation必定相同,所以FilterChainInvocation是是重用的和共享的,也可以根据ContextURI来缓存
+ * 
+ * 并发的情况下也是可重用的和共享的,像单例一般的重用.
+ * 
+ * 由于对一个新的ContextURI,要匹配多次才可以生成与其匹配的FilterChain和Servlet,所以对HttpInvocation作缓存的意义较大
+ * 
+ * 
  */
-public class ServletInvocation
+public class FilterChainInvocation
 {
-	private static final Log log = LogFactory.getLog(ServletInvocation.class.getName());
+	private static final Log log = LogFactory.getLog(FilterChainInvocation.class.getName());
 
 	private static final boolean debug = log.isDebugEnabled();
 
-	private ClassLoader _classLoader;
+	protected final WebApp _webApp;
 
-	private String _contextPath = "";
-
-	private String _contextUri;
-	private String _servletPath;
-	private String _pathInfo;
-
-	private String _queryString;
-
-	private String _servletName;
+	// Servlet在这FilterChain末端
 	private FilterChain _filterChain;
 
-	private boolean _isAsyncSupported = true;
-	private MultipartConfigElement _multipartConfig;
+	//RequestURI = ContextPath + (ServletPath + PathInfo) = ContextPath + ContextURI;
+	private final String _requestURI;
+	
+	// ContextURI = ServletPath + PathInfo
+	private final String _contextURI;
 
-	private AtomicLong _requestCount = new AtomicLong();
+	private String _servletPath;
+
+	private String _pathInfo;
+
+	private String _servletName;
+
+	private boolean _isAsyncSupported = true;
+
+	private MultipartConfigElement _multipartConfig;
 
 	/**
 	 * Creates a new invocation
+	 * 
+	 * @param contextURI
 	 */
-	public ServletInvocation()
+	public FilterChainInvocation(WebApp webApp, String contextURI)
 	{
-		_classLoader = Thread.currentThread().getContextClassLoader();
+		_webApp = webApp;
+		
+		_requestURI = webApp.getContextPath() + contextURI;
 
+		_contextURI = contextURI;
+
+		//默认情况下,ServletPath = ContextURI
+		_servletPath = contextURI;
+	}
+
+	/**
+	 * Returns the mapped webApp.
+	 */
+	public final WebApp getWebApp()
+	{
+		return _webApp;
+	}
+
+    /**
+     * Returns the part of this request's URL from the protocol name up to the
+     * query string in the first line of the HTTP request. The web container
+     * does not decode this String. For example:
+     * <table summary="Examples of Returned Values">
+     * <tr align=left>
+     * <th>First line of HTTP request</th>
+     * <th>Returned Value</th>
+     * <tr>
+     * <td>POST /some/path.html HTTP/1.1
+     * <td>
+     * <td>/some/path.html
+     * <tr>
+     * <td>GET http://foo.bar/a.html HTTP/1.0
+     * <td>
+     * <td>/a.html
+     * <tr>
+     * <td>HEAD /xyz?a=b HTTP/1.1
+     * <td>
+     * <td>/xyz
+     * </table>
+     * <p>
+     * To reconstruct an URL with a scheme and host, use
+     * {@link #getRequestURL}.
+     * 
+     * @return a <code>String</code> containing the part of the URL from the
+     *         protocol name up to the query string
+     * @see #getRequestURL
+     * 
+     * RequestURI = ContextPath + ServletPath + PathInfo;
+     * <br>       = ContextPath + ContextURI;
+     */
+	public String getRequestURI()
+	{
+		return _requestURI;
 	}
 
 	/**
@@ -82,21 +148,7 @@ public class ServletInvocation
 	 */
 	public final String getContextPath()
 	{
-		return _contextPath;
-	}
-
-	/**
-	 * Sets the context-path.
-	 */
-	public void setContextPath(String path)
-	{
-		_contextPath = path;
-	}
-
-	public void setContextURI(String contextURI)
-	{
-		_contextUri = contextURI;
-		_servletPath = contextURI;
+		return _webApp.getContextPath();
 	}
 
 	/**
@@ -110,16 +162,17 @@ public class ServletInvocation
 	 * 
 	 * servletPath: "/blog"
 	 * 
-	 * pathInfo:    "/page1.jsp"
+	 * pathInfo: "/page1.jsp"
 	 * 
-	 * ContextURI:  "/blog/page1.jsp"<br>
+	 * ContextURI: "/blog/page1.jsp"<br>
 	 * 
-	 *
+	 * 
+	 * ContextURI = ServletPath + PathInfo;
 	 * 
 	 */
 	public final String getContextURI()
 	{
-		return _contextUri;
+		return _contextURI;
 	}
 
 	/**
@@ -155,35 +208,11 @@ public class ServletInvocation
 	}
 
 	/**
-	 * Returns the query string. Characters remain unescaped.
-	 */
-	public final String getQueryString()
-	{
-		return _queryString;
-	}
-
-	/**
-	 * Returns the query string. Characters remain unescaped.
-	 */
-	public final void setQueryString(String queryString)
-	{
-		_queryString = queryString;
-	}
-
-	/**
-	 * Sets the class loader.
-	 */
-	public void setClassLoader(ClassLoader loader)
-	{
-		_classLoader = loader;
-	}
-
-	/**
 	 * Gets the class loader.
 	 */
 	public ClassLoader getClassLoader()
 	{
-		return _classLoader;
+		return _webApp.getClassLoader();
 	}
 
 	/**
@@ -219,14 +248,6 @@ public class ServletInvocation
 	}
 
 	/**
-	 * Returns the number of requests.
-	 */
-	public long getRequestCount()
-	{
-		return _requestCount.get();
-	}
-
-	/**
 	 * True if the invocation chain supports async (comet) requets.
 	 */
 	public boolean isAsyncSupported()
@@ -252,8 +273,6 @@ public class ServletInvocation
 		_multipartConfig = multipartConfig;
 	}
 
-
-
 	/**
 	 * Service a request.
 	 * 
@@ -264,31 +283,10 @@ public class ServletInvocation
 	 */
 	public void service(ServletRequest request, ServletResponse response) throws IOException, ServletException
 	{
-		_requestCount.incrementAndGet();
-
 		if (debug)
-			log.debug("Dispatch '" + _contextUri + "' to " + _filterChain);
+			log.debug("Dispatch '" + _contextURI + "' to " + _filterChain);
 
 		_filterChain.doFilter(request, response);
-	}
-
-	/**
-	 * Copies from the invocation.
-	 */
-	public void copyFrom(ServletInvocation invocation)
-	{
-		_classLoader = invocation._classLoader;
-		_contextPath = invocation._contextPath;
-
-		_contextUri = invocation._contextUri;
-		_servletPath = invocation._servletPath;
-		_pathInfo = invocation._pathInfo;
-
-		_queryString = invocation._queryString;
-
-		_servletName = invocation._servletName;
-		_filterChain = invocation._filterChain;
-
 	}
 
 	@Override
@@ -298,10 +296,7 @@ public class ServletInvocation
 
 		sb.append(getClass().getSimpleName());
 		sb.append("[");
-		sb.append(_contextUri);
-
-		if (_queryString != null)
-			sb.append("?").append(_queryString);
+		sb.append(_contextURI);
 
 		sb.append("]");
 

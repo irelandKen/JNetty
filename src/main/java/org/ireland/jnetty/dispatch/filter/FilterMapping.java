@@ -32,7 +32,7 @@ package org.ireland.jnetty.dispatch.filter;
 
 import javax.servlet.DispatcherType;
 
-import org.ireland.jnetty.dispatch.ServletInvocation;
+import org.ireland.jnetty.dispatch.FilterChainInvocation;
 import org.springframework.util.Assert;
 
 import java.util.ArrayList;
@@ -214,7 +214,7 @@ public class FilterMapping
 	 * @param invocation
 	 *            the request's invocation
 	 */
-	boolean isMatch(ServletInvocation invocation)
+	boolean isMatch(FilterChainInvocation invocation)
 	{
 		return isMatch(invocation.getServletPath(), invocation.getPathInfo());
 	}

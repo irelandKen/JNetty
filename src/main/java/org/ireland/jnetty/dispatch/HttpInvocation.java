@@ -36,28 +36,62 @@ import org.ireland.jnetty.webapp.WebApp;
  * 
  * and the FilterChain that match the URI
  * 
- * A Invocation include the URI information and the FilterChain that match the URI
+ * A HttpInvocation include the URI information and the FilterChain that match the URI
+ * 
+ * HttpInvocation 是面向特定_rawURI的,故QueryString部分难以重用
+ * 
+ * 对于rawContextURI相同(即包括参数也相同)时,并发的情况下是可重用的和共享的,像单例一般的重用, 但一般情况下,URL上的参数都不太相同,所以对HttpInvocation作缓存的意义不太
+ * 
  */
-public class Invocation extends ServletInvocation
+public class HttpInvocation
 {
+	protected final WebApp _webApp;
+
+	// FilterChainInvocation: maybe share with other
+	private FilterChainInvocation _filterChainInvocation;
+
 	private String _rawHost;
 
 	// canonical host and port
 	private String _hostName;
+
 	private int _port;
 
-	private String _rawURI;
-	
 	private boolean _isSecure;
 
-	private String _uri;
-	private String _sessionId;
+	// -------------------------
 
-	private WebApp _webApp;
-	
-	public Invocation(WebApp webApp)
+	private String _rawContextURI;
+
+	private String _contextURI;
+
+	private String _queryString;
+
+	private String _sessionIdFromUri;
+
+	public HttpInvocation(WebApp webApp, String rawContextURI)
 	{
 		_webApp = webApp;
+
+		_rawContextURI = rawContextURI;
+	}
+
+	/**
+	 * Returns the mapped webApp.
+	 */
+	public final WebApp getWebApp()
+	{
+		return _webApp;
+	}
+	
+	public FilterChainInvocation getFilterChainInvocation()
+	{
+		return _filterChainInvocation;
+	}
+
+	public void setFilterChainInvocation(FilterChainInvocation filterChainInvocation)
+	{
+		_filterChainInvocation = filterChainInvocation;
 	}
 
 	/**
@@ -128,17 +162,17 @@ public class Invocation extends ServletInvocation
 	/**
 	 * Returns the raw URI from the protocol before any normalization. The raw URI includes the query string. (?)
 	 */
-	public final String getRawURI()
+	public final String getRawContextURI()
 	{
-		return _rawURI;
+		return _rawContextURI;
 	}
 
 	/**
 	 * Sets the raw URI from the protocol before any normalization. The raw URI includes the query string. (?)
 	 */
-	public final void setRawURI(String uri)
+	public final void setRawContextURI(String rawContextURI)
 	{
-		_rawURI = uri;
+		_rawContextURI = rawContextURI;
 	}
 
 	/**
@@ -146,8 +180,8 @@ public class Invocation extends ServletInvocation
 	 */
 	public int getURLLength()
 	{
-		if (_rawURI != null)
-			return _rawURI.length();
+		if (_rawContextURI != null)
+			return _rawContextURI.length();
 		else
 			return 0;
 	}
@@ -155,19 +189,17 @@ public class Invocation extends ServletInvocation
 	/**
 	 * Returns the URI after normalization, e.g. character escaping, URL session, and query string.
 	 */
-	public final String getURI()
+	public final String getContextURI()
 	{
-		return _uri;
+		return _contextURI;
 	}
 
 	/**
 	 * Sets the URI after normalization.
 	 */
-	public final void setURI(String uri)
+	public final void setContextURI(String uri)
 	{
-		_uri = uri;
-
-		setContextURI(uri);
+		_contextURI = uri;
 	}
 
 	/**
@@ -175,7 +207,7 @@ public class Invocation extends ServletInvocation
 	 */
 	public final String getSessionId()
 	{
-		return _sessionId;
+		return _sessionIdFromUri;
 	}
 
 	/**
@@ -183,45 +215,23 @@ public class Invocation extends ServletInvocation
 	 */
 	public final void setSessionId(String sessionId)
 	{
-		_sessionId = sessionId;
+		_sessionIdFromUri = sessionId;
 	}
 
 	/**
-	 * Returns the mapped webApp.
+	 * Returns the query string. Characters remain unescaped.
 	 */
-	public final WebApp getWebApp()
+	public final String getQueryString()
 	{
-		return _webApp;
+		return _queryString;
 	}
 
 	/**
-	 * Sets the mapped webApp.
+	 * Returns the query string. Characters remain unescaped.
 	 */
-	public void setWebApp(WebApp app)
+	public final void setQueryString(String queryString)
 	{
-		_webApp = app;
-	}
-
-
-
-	/**
-	 * Copies from the invocation.
-	 */
-	public void copyFrom(Invocation invocation)
-	{
-		super.copyFrom(invocation);
-
-		_rawHost = invocation._rawHost;
-		_rawURI = invocation._rawURI;
-
-		_hostName = invocation._hostName;
-		_port = invocation._port;
-		_uri = invocation._uri;
-
-		// server/1h25
-		_sessionId = invocation._sessionId;
-
-		_webApp = invocation._webApp;
+		_queryString = queryString;
 	}
 
 	/**
@@ -229,7 +239,7 @@ public class Invocation extends ServletInvocation
 	 */
 	public int hashCode()
 	{
-		int hash = _rawURI.hashCode();
+		int hash = _rawContextURI.hashCode();
 
 		if (_rawHost != null)
 			hash = hash * 65521 + _rawHost.hashCode();
@@ -252,12 +262,12 @@ public class Invocation extends ServletInvocation
 		if (getClass() != o.getClass())
 			return false;
 
-		Invocation inv = (Invocation) o;
+		HttpInvocation inv = (HttpInvocation) o;
 
 		if (_isSecure != inv._isSecure)
 			return false;
 
-		if (_rawURI != inv._rawURI && (_rawURI == null || !_rawURI.equals(inv._rawURI)))
+		if (_rawContextURI != inv._rawContextURI && (_rawContextURI == null || !_rawContextURI.equals(inv._rawContextURI)))
 			return false;
 
 		if (_rawHost != inv._rawHost && (_rawHost == null || !_rawHost.equals(inv._rawHost)))
@@ -275,11 +285,6 @@ public class Invocation extends ServletInvocation
 		return true;
 	}
 
-	void close()
-	{
-		_webApp = null;
-	}
-
 	@Override
 	public String toString()
 	{
@@ -287,12 +292,9 @@ public class Invocation extends ServletInvocation
 
 		sb.append(getClass().getSimpleName());
 		sb.append("[");
-		sb.append(getContextPath());
+		sb.append(_rawContextURI);
 
-		if (getQueryString() != null)
-			sb.append("?").append(getQueryString());
-
-		sb.append(",").append(_webApp);
+		sb.append(",").append(_filterChainInvocation.getWebApp());
 
 		sb.append("]");
 

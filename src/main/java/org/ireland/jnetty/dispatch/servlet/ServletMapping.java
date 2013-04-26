@@ -34,7 +34,7 @@ import java.util.Collection;
 
 
 import org.ireland.jnetty.config.ConfigException;
-import org.ireland.jnetty.dispatch.ServletInvocation;
+import org.ireland.jnetty.dispatch.FilterChainInvocation;
 import org.springframework.util.Assert;
 
 
@@ -116,7 +116,7 @@ public class ServletMapping
 	 * @param invocation
 	 *            the request's invocation
 	 */
-	boolean isMatch(ServletInvocation invocation)
+	boolean isMatch(FilterChainInvocation invocation)
 	{
 		return isMatch(invocation.getServletPath(), invocation.getPathInfo());
 	}

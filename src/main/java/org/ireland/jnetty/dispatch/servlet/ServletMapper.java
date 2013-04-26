@@ -45,7 +45,7 @@ import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
 
 import org.ireland.jnetty.config.ConfigException;
-import org.ireland.jnetty.dispatch.ServletInvocation;
+import org.ireland.jnetty.dispatch.FilterChainInvocation;
 import org.ireland.jnetty.dispatch.filterchain.ErrorFilterChain;
 import org.ireland.jnetty.jsp.JspServletComposite;
 import org.ireland.jnetty.webapp.WebApp;
@@ -225,7 +225,7 @@ public class ServletMapper
 	}
 
 	/**
-	 * 查找 ServletInvocation 所匹配 的 Servlet,并返回生成的FilterChain
+	 * 查找 FilterChainInvocation 所匹配 的 Servlet,并返回生成的FilterChain
 	 * 
 	 * 用于映射到Servlet的路径是请求对象的请求URL减去上下文和路径参数部分。下面的URL路径映射规则按顺序使用。使用第一个匹配成功的且不会进一步尝试匹配：
 	 * 
@@ -240,13 +240,13 @@ public class ServletMapper
 	 * XXX:创建ServletFilterChain时,只看请求的contextURI(不带参数),故不同的URI,只要contextURI相同,会匹配同一个Servlet
 	 * XXX:/login.do?u=jack,/login.do?u=ken 生成的ServletFilterChain是一样的
 	 * 
-	 * @param invocation
+	 * @param fcInvocation
 	 * @return
 	 * @throws ServletException
 	 */
-	public FilterChain createServletChain(ServletInvocation invocation) throws ServletException
+	public FilterChain buildServletChain(FilterChainInvocation fcInvocation) throws ServletException
 	{
-		String contextURI = invocation.getContextURI();
+		String contextURI = fcInvocation.getContextURI();
 		
 		//尝试在cache中查找
 		FilterChain servletChain = _servletChainCache.get(contextURI);
@@ -286,16 +286,16 @@ public class ServletMapper
 
 		String servletPath = contextURI; // TODO: how to decide servletPath ?
 
-		invocation.setServletPath(servletPath);
+		fcInvocation.setServletPath(servletPath);
 
 		if (servletPath.length() < contextURI.length())
-			invocation.setPathInfo(contextURI.substring(servletPath.length()));
+			fcInvocation.setPathInfo(contextURI.substring(servletPath.length()));
 		else
-			invocation.setPathInfo(null);
+			fcInvocation.setPathInfo(null);
 		
 		String servletName = config.getServletName();
 
-		invocation.setServletName(servletName);
+		fcInvocation.setServletName(servletName);
 
 		if (debug)
 			log.debug(_webApp + " map (uri:" + contextURI + " -> " + servletName + ")");
@@ -304,7 +304,7 @@ public class ServletMapper
 		FilterChain chain = null;
 		
 		if (config != null)
-			chain = _servletManager.createServletChain(config, invocation);
+			chain = _servletManager.createServletChain(config, fcInvocation);
 		
 		//put to cache
 		_servletChainCache.put(contextURI, chain);
