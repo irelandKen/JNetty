@@ -73,7 +73,8 @@ import org.apache.tomcat.InstanceManager;
 import org.ireland.jnetty.beans.BeanFactory;
 import org.ireland.jnetty.config.ConfigException;
 import org.ireland.jnetty.config.WebXmlLoader;
-import org.ireland.jnetty.dispatch.Invocation;
+import org.ireland.jnetty.dispatch.FilterChainInvocation;
+import org.ireland.jnetty.dispatch.HttpInvocation;
 import org.ireland.jnetty.dispatch.filter.FilterConfigImpl;
 import org.ireland.jnetty.dispatch.filter.FilterManager;
 import org.ireland.jnetty.dispatch.filter.FilterMapper;
@@ -99,6 +100,8 @@ import com.caucho.util.LruCache;
 public class WebApp extends ServletContextImpl
 {
 	private static final Log log = LogFactory.getLog(WebApp.class.getName());
+	
+	private static final boolean debug = log.isDebugEnabled();
 
 	// The context path is the URL prefix for the web-app
 	private String _contextPath = "";
@@ -150,10 +153,10 @@ public class WebApp extends ServletContextImpl
 	// The FilterChain Cache
 
 	// 用LRU算法Cache最近最常使用的url与FilterChain之间的映射关系()
-	private LruCache<String, FilterChainEntry> _dispatchFilterChainCache = new LruCache<String, FilterChainEntry>(128);
-	private LruCache<String, FilterChainEntry> _forwardFilterChainCache = new LruCache<String, FilterChainEntry>(128);
-	private LruCache<String, FilterChainEntry> _includeFilterChainCache = new LruCache<String, FilterChainEntry>(32);
-	private LruCache<String, FilterChainEntry> _errorFilterChainCache = new LruCache<String, FilterChainEntry>(32);
+	private LruCache<String, FilterChainInvocation> _dispatchFilterChainCache = new LruCache<String, FilterChainInvocation>(128);
+	private LruCache<String, FilterChainInvocation> _forwardFilterChainCache = new LruCache<String, FilterChainInvocation>(128);
+	private LruCache<String, FilterChainInvocation> _includeFilterChainCache = new LruCache<String, FilterChainInvocation>(32);
+	private LruCache<String, FilterChainInvocation> _errorFilterChainCache = new LruCache<String, FilterChainInvocation>(32);
 
 	// <rowContextURI,_requestDispatcherCache>
 	private LruCache<String, RequestDispatcherImpl> _requestDispatcherCache;
@@ -245,7 +248,7 @@ public class WebApp extends ServletContextImpl
 			}
 		}
 
-		// if (log.isDebugEnabled())
+		// if (debug)
 		// displayClassLoader();
 
 		Thread.currentThread().setContextClassLoader(getClassLoader());
@@ -662,7 +665,7 @@ public class WebApp extends ServletContextImpl
 					config.setServlet(servlet);
 			}
 
-			if (log.isDebugEnabled())
+			if (debug)
 			{
 				log.debug("dynamic servlet added [name: '" + servletName + "', class: '" + servletClassName + "'] (in " + this + ")");
 			}
@@ -1293,191 +1296,266 @@ public class WebApp extends ServletContextImpl
 	 */
 	public void clearCache()
 	{
+		_requestDispatcherCache = null;
+		
 		// server/1kg1
 		synchronized (_dispatchFilterChainCache)
 		{
 			_dispatchFilterChainCache.clear();
-			_requestDispatcherCache = null;
+		}
+		
+		synchronized (_forwardFilterChainCache)
+		{
+			_forwardFilterChainCache.clear();
+		}
+		
+		synchronized (_includeFilterChainCache)
+		{
+			_includeFilterChainCache.clear();
+		}
+		
+		synchronized (_errorFilterChainCache)
+		{
+			_errorFilterChainCache.clear();
 		}
 
 	}
 
 	/**
-	 * Fills the invocation for a rewrite-dispatch/dispatch request.
+	 * Build a invocation for a dispatch request 
+	 * 
+	 * 给Dispatch类型的rawContextURI创建一个HttpInvocation
+	 * 
 	 */
-	public void buildDispatchInvocation(Invocation invocation) throws ServletException
+	public HttpInvocation buildDispatchInvocation(String rawContextURI) throws ServletException
 	{
+		HttpInvocation invocation = new HttpInvocation(this, rawContextURI);
+		
+		//分解URI
+		_uriDecoder.splitQuery(invocation, rawContextURI);
+		
+		String contextURI = invocation.getContextURI();
+		
+		
 		// try to get from Cache
-		FilterChainEntry entry = _dispatchFilterChainCache.get(invocation.getContextURI());
+		FilterChainInvocation fcInvocation = _dispatchFilterChainCache.get(contextURI);
 
-		if (entry != null)
+		//Found
+		if (fcInvocation != null)
 		{
+			invocation.setFilterChainInvocation(fcInvocation);
 
-			invocation.setFilterChain(entry.getFilterChain());
-
-			invocation.setServletName(entry.getServletName());
-			invocation.setServletPath(entry.getServletPath());
-			invocation.setPathInfo(entry.getPathInfo());
-
-			if (!entry.isAsyncSupported())
-				invocation.clearAsyncSupported();
-
-			return;
+			return invocation;
 		}
 
-		// build it
-		buildInvocation(invocation, _dispatchFilterMapper);
+		
+		//Not Found,So build it
+		fcInvocation = createFilterChainInvocation(contextURI,_dispatchFilterMapper);
 
-		// Build FilterChain for the notification of ServletRequestListener(s)
+		
+		// 创建带有ServletRequestListener通知功能的FilterChain, Build FilterChain for the notification of ServletRequestListener(s),
 		if (_requestListeners != null && _requestListeners.size() > 0)
 		{
-			FilterChain filterChain = new ServletRequestListenerFilterChain(invocation.getFilterChain(), this, _requestListeners);
-			invocation.setFilterChain(filterChain);
+			//Old Chain
+			FilterChain filterChain = fcInvocation.getFilterChain();
+			
+			//wraped chain 
+			filterChain = new ServletRequestListenerFilterChain(filterChain, this, _requestListeners);
+			
+			fcInvocation.setFilterChain(filterChain);
 		}
 
 		// put to cache
-		if (invocation.getFilterChain() != null)
+		if (fcInvocation.getFilterChain() != null)
 		{
-			FilterChainEntry filterChainEntry = new FilterChainEntry(invocation.getFilterChain(), invocation);
-			_dispatchFilterChainCache.put(invocation.getContextURI(), filterChainEntry);
+			_dispatchFilterChainCache.put(fcInvocation.getContextURI(), fcInvocation);
 		}
-	}
 
+		
+		invocation.setFilterChainInvocation(fcInvocation);
+		
+		return invocation;
+	}
+	
 	/**
-	 * Fills the invocation for a forward request.
+	 * Build a invocation for a dispatch request 
+	 * 
+	 * 给Forward类型的rawContextURI创建一个HttpInvocation
+	 * 
 	 */
-	public void buildForwardInvocation(Invocation invocation) throws ServletException
+	public HttpInvocation buildForwardInvocation(String rawContextURI) throws ServletException
 	{
+		HttpInvocation invocation = new HttpInvocation(this, rawContextURI);
+		
+		//分解URI
+		_uriDecoder.splitQuery(invocation, rawContextURI);
+		
+		String contextURI = invocation.getContextURI();
+		
+		
 		// try to get from Cache
-		FilterChainEntry entry = _forwardFilterChainCache.get(invocation.getContextURI());
+		FilterChainInvocation fcInvocation = _forwardFilterChainCache.get(contextURI);
 
-		if (entry != null)
+		//Found
+		if (fcInvocation != null)
 		{
+			invocation.setFilterChainInvocation(fcInvocation);
 
-			invocation.setFilterChain(entry.getFilterChain());
-
-			invocation.setServletName(entry.getServletName());
-			invocation.setServletPath(entry.getServletPath());
-			invocation.setPathInfo(entry.getPathInfo());
-
-			if (!entry.isAsyncSupported())
-				invocation.clearAsyncSupported();
-
-			return;
+			return invocation;
 		}
 
-		// build it
-		buildInvocation(invocation, _forwardFilterMapper);
+		
+		//Not Found,So build it
+		fcInvocation = createFilterChainInvocation(contextURI,_forwardFilterMapper);
 
 		// put to cache
-		if (invocation.getFilterChain() != null)
+		if (fcInvocation.getFilterChain() != null)
 		{
-			FilterChainEntry filterChainEntry = new FilterChainEntry(invocation.getFilterChain(), invocation);
-			_forwardFilterChainCache.put(invocation.getContextURI(), filterChainEntry);
+			_forwardFilterChainCache.put(fcInvocation.getContextURI(), fcInvocation);
 		}
+
+		
+		invocation.setFilterChainInvocation(fcInvocation);
+		
+		return invocation;
 	}
 
+	
+
 	/**
-	 * Fills the invocation for an include request.
+	 * Build a invocation for a dispatch request 
+	 * 
+	 * 给Include类型的rawContextURI创建一个HttpInvocation
+	 * 
 	 */
-	public void buildIncludeInvocation(Invocation invocation) throws ServletException
+	public HttpInvocation buildIncludeInvocation(String rawContextURI) throws ServletException
 	{
+		HttpInvocation invocation = new HttpInvocation(this, rawContextURI);
+		
+		//分解URI
+		_uriDecoder.splitQuery(invocation, rawContextURI);
+		
+		String contextURI = invocation.getContextURI();
+		
+		
 		// try to get from Cache
-		FilterChainEntry entry = _includeFilterChainCache.get(invocation.getContextURI());
+		FilterChainInvocation fcInvocation = _includeFilterChainCache.get(contextURI);
 
-		if (entry != null)
+		//Found
+		if (fcInvocation != null)
 		{
+			invocation.setFilterChainInvocation(fcInvocation);
 
-			invocation.setFilterChain(entry.getFilterChain());
-
-			invocation.setServletName(entry.getServletName());
-			invocation.setServletPath(entry.getServletPath());
-			invocation.setPathInfo(entry.getPathInfo());
-
-			if (!entry.isAsyncSupported())
-				invocation.clearAsyncSupported();
-
-			return;
+			return invocation;
 		}
 
-		// build it
-		buildInvocation(invocation, _includeFilterMapper);
+		
+		//Not Found,So build it
+		fcInvocation = createFilterChainInvocation(contextURI,_includeFilterMapper);
 
 		// put to cache
-		if (invocation.getFilterChain() != null)
+		if (fcInvocation.getFilterChain() != null)
 		{
-			FilterChainEntry filterChainEntry = new FilterChainEntry(invocation.getFilterChain(), invocation);
-			_includeFilterChainCache.put(invocation.getContextURI(), filterChainEntry);
+			_includeFilterChainCache.put(fcInvocation.getContextURI(), fcInvocation);
 		}
+
+		
+		invocation.setFilterChainInvocation(fcInvocation);
+		
+		return invocation;
 	}
 
 	/**
-	 * Fills the invocation for an error request.
+	 * Build a invocation for a dispatch request 
+	 * 
+	 * 给Error类型的rawContextURI创建一个HttpInvocation
+	 * 
 	 */
-	public void buildErrorInvocation(Invocation invocation) throws ServletException
+	public HttpInvocation buildErrorInvocation(String rawContextURI) throws ServletException
 	{
+		HttpInvocation invocation = new HttpInvocation(this, rawContextURI);
+		
+		//分解URI
+		_uriDecoder.splitQuery(invocation, rawContextURI);
+		
+		String contextURI = invocation.getContextURI();
+		
+		
 		// try to get from Cache
-		FilterChainEntry entry = _errorFilterChainCache.get(invocation.getContextURI());
+		FilterChainInvocation fcInvocation = _errorFilterChainCache.get(contextURI);
 
-		if (entry != null)
+		//Found
+		if (fcInvocation != null)
 		{
+			invocation.setFilterChainInvocation(fcInvocation);
 
-			invocation.setFilterChain(entry.getFilterChain());
-
-			invocation.setServletName(entry.getServletName());
-			invocation.setServletPath(entry.getServletPath());
-			invocation.setPathInfo(entry.getPathInfo());
-
-			if (!entry.isAsyncSupported())
-				invocation.clearAsyncSupported();
-
-			return;
+			return invocation;
 		}
 
-		// build it
-		buildInvocation(invocation, _errorFilterMapper);
+		
+		//Not Found,So build it
+		fcInvocation = createFilterChainInvocation(contextURI,_errorFilterMapper);
 
 		// put to cache
-		if (invocation.getFilterChain() != null)
+		if (fcInvocation.getFilterChain() != null)
 		{
-			FilterChainEntry filterChainEntry = new FilterChainEntry(invocation.getFilterChain(), invocation);
-			_errorFilterChainCache.put(invocation.getContextURI(), filterChainEntry);
+			_errorFilterChainCache.put(fcInvocation.getContextURI(), fcInvocation);
 		}
+
+		
+		invocation.setFilterChainInvocation(fcInvocation);
+		
+		return invocation;
 	}
+	
 
+	
+	
 	/**
-	 * Fills FilterChain to invocation for subrequests.
+	 * 
+	 * 给特定的ContextURI创建匹配的FilterChainInvocation
+	 * 
+	 * @param contextURI
+	 * @param filterMapper	与特定DispatcherType匹配的FilterMapper
+	 * @return
+	 * @throws ServletException
 	 */
-	void buildInvocation(Invocation invocation, FilterMapper filterMapper) throws ServletException
+	private FilterChainInvocation createFilterChainInvocation(String contextURI, FilterMapper filterMapper) throws ServletException
 	{
-		if (log.isDebugEnabled())
-			log.debug("buildInvocation:" + invocation.getRawURI());
+		if (debug)
+			log.debug("createFilterChainInvocation:" + contextURI);
 
+		FilterChainInvocation fcInvocation = new FilterChainInvocation(this,contextURI);
+		
 		try
 		{
 			FilterChain chain;
 
-			if (!isEnabled())
+			if (!isEnabled())	//503
 			{
-				Exception exn = new UnavailableException("'" + getContextPath() + "' is not currently available.");
-				chain = new ExceptionFilterChain(exn);
+				Exception ex = new UnavailableException("'" + getContextPath() + "' is not currently available.");
+				chain = new ExceptionFilterChain(ex);
 			}
 			else
 			{
-				chain = _servletMapper.createServletChain(invocation); // 测试了Jetty和Tomcat,就是无法找到合适的Sevlet来匹配,也要调用匹配的Filter
-				chain = filterMapper.buildDispatchChain(invocation, chain);
-
+				//匹配Servlet
+				chain = _servletMapper.buildServletChain(fcInvocation); // 测试了Jetty和Tomcat,就是无法找到合适的Sevlet来匹配,也要调用匹配的Filter
+				
+				//匹配Filter
+				chain = filterMapper.buildFilterChain(fcInvocation, chain);
 			}
 
-			invocation.setFilterChain(chain);
+			fcInvocation.setFilterChain(chain);
 		}
 		catch (Exception e)
 		{
 			log.debug(e.toString(), e);
 
 			FilterChain chain = new ExceptionFilterChain(e);
-			invocation.setFilterChain(chain);
+			fcInvocation.setFilterChain(chain);
 		}
+		
+		return fcInvocation;
 	}
 
 	/**
@@ -1557,25 +1635,8 @@ public class WebApp extends ServletContextImpl
 	@Override
 	public RequestDispatcher getNamedDispatcher(String servletName)
 	{
-		try
-		{
-			Invocation invocation = null;
-
-			FilterChain chain = _servletManager.createServletChain(servletName, invocation);
-
-			FilterChain includeChain = _includeFilterMapper.buildFilterChain(chain, servletName);
-
-			FilterChain forwardChain = _forwardFilterMapper.buildFilterChain(chain, servletName);
-
-			return new NamedDispatcherImpl(includeChain, forwardChain, null, this);
-
-		}
-		catch (Exception e)
-		{
-			log.debug(e.toString(), e);
-
-			return null;
-		}
+		//not support currently
+		return null;
 	}
 
 	/**
@@ -1602,7 +1663,7 @@ public class WebApp extends ServletContextImpl
 	 * 
 	 * realPath = tail;
 	 * 
-	 * if (log.isDebugEnabled()) log.debug("real-path " + uri + " -> " + realPath);
+	 * if (debug) log.debug("real-path " + uri + " -> " + realPath);
 	 * 
 	 * _realPathCache.put(uri, realPath);
 	 * 
@@ -1623,7 +1684,7 @@ public class WebApp extends ServletContextImpl
 
 		realPath = super.getRealPath(uri);
 
-		if (log.isDebugEnabled())
+		if (debug)
 			log.debug("real-path " + uri + " -> " + realPath);
 
 		if (realPath != null)
@@ -1791,48 +1852,7 @@ public class WebApp extends ServletContextImpl
 		return _filterManager;
 	}
 
-	static class FilterChainEntry
-	{
-		FilterChain _filterChain;
-		String _pathInfo;
-		String _servletPath;
-		String _servletName;
-		boolean _isAsyncSupported;
-
-		FilterChainEntry(FilterChain filterChain, Invocation invocation)
-		{
-			_filterChain = filterChain;
-			_pathInfo = invocation.getPathInfo();
-			_servletPath = invocation.getServletPath();
-			_servletName = invocation.getServletName();
-			_isAsyncSupported = invocation.isAsyncSupported();
-		}
-
-		FilterChain getFilterChain()
-		{
-			return _filterChain;
-		}
-
-		String getPathInfo()
-		{
-			return _pathInfo;
-		}
-
-		String getServletPath()
-		{
-			return _servletPath;
-		}
-
-		String getServletName()
-		{
-			return _servletName;
-		}
-
-		boolean isAsyncSupported()
-		{
-			return _isAsyncSupported;
-		}
-	}
+	
 
 	// --util-----------------------------------------------------------------
 
