@@ -58,7 +58,9 @@ public class JspServletComposite extends HttpServlet implements PeriodicEventLis
 	private static final long serialVersionUID = 1L;
 
 	// Logger
-	private final transient Log log = LogFactory.getLog(JspServletComposite.class);
+	private static final Log log = LogFactory.getLog(JspServletComposite.class);
+	
+	private static final boolean debug = log.isDebugEnabled();
 
 	private transient ServletContext context;
 
@@ -124,7 +126,7 @@ public class JspServletComposite extends HttpServlet implements PeriodicEventLis
 		rctxt = new JspRuntimeContext(context, options);
 		
 
-		if (log.isDebugEnabled())
+		if (debug)
 		{
 			log.debug(Localizer.getMessage("jsp.message.scratch.dir.is", options.getScratchDir().toString()));
 			log.debug(Localizer.getMessage("jsp.message.dont.modify.servlets"));
@@ -310,7 +312,7 @@ public class JspServletComposite extends HttpServlet implements PeriodicEventLis
 			}
 		}
 
-		if (log.isDebugEnabled())
+		if (debug)
 		{
 			log.debug("JspEngine --> " + jspUri);
 			log.debug("\t     ServletPath: " + request.getServletPath());
@@ -349,7 +351,7 @@ public class JspServletComposite extends HttpServlet implements PeriodicEventLis
 	@Override
 	public void destroy()
 	{
-		if (log.isDebugEnabled())
+		if (debug)
 		{
 			log.debug("JspServlet.destroy()");
 		}
