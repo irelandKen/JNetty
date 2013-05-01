@@ -441,17 +441,17 @@ public class HttpServletRequestImpl implements HttpServletRequest
 		// get [0,writerIndex) of body.date();
 		if (bodyContent == null)
 		{
-			int content_length = body.data().writerIndex(); // [0,writerIndex)
+			int content_length = body.content().writerIndex(); // [0,writerIndex)
 
-			int old_readerIndex = body.data().readerIndex();// resver the old_readrIndex
+			int old_readerIndex = body.content().readerIndex();// resver the old_readrIndex
 
 			byte[] data = new byte[content_length];
 
-			body.data().readerIndex(0);
+			body.content().readerIndex(0);
 
-			body.data().readBytes(data, 0, content_length);
+			body.content().readBytes(data, 0, content_length);
 
-			body.data().readerIndex(old_readerIndex); // recover the readerIndex
+			body.content().readerIndex(old_readerIndex); // recover the readerIndex
 			
 			bodyContent = data;
 		}
@@ -712,7 +712,7 @@ public class HttpServletRequestImpl implements HttpServletRequest
 		usingInputStream = true;
 		if (inputStream == null)
 		{
-			inputStream = new ByteBufServletInputStream(body.data());
+			inputStream = new ByteBufServletInputStream(body.content());
 		}
 		return inputStream;
 	}

@@ -49,8 +49,8 @@ public class JNettyServer
 		}
 		finally
 		{
-			bossGroup.shutdown();
-			workerGroup.shutdown();
+			bossGroup.shutdownGracefully();
+			workerGroup.shutdownGracefully();
 		}
 	}
 

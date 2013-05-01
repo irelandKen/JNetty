@@ -938,7 +938,7 @@ public class HttpServletResponseImpl implements HttpServletResponse
 
 		if (outputStream == null)
 		{
-			outputStream = new ByteBufServletOutputStream(this, body.data());
+			outputStream = new ByteBufServletOutputStream(this, body.content());
 		}
 
 		return outputStream;
@@ -948,7 +948,7 @@ public class HttpServletResponseImpl implements HttpServletResponse
 	{
 		if (outputStream == null)
 		{
-			outputStream = new ByteBufServletOutputStream(this, body.data());
+			outputStream = new ByteBufServletOutputStream(this, body.content());
 		}
 
 		return outputStream;
@@ -1132,14 +1132,14 @@ public class HttpServletResponseImpl implements HttpServletResponse
 		if (isCommitted() || getContentCount() > 0)
 			throw new IllegalStateException("Committed or content written");
 
-		body.data().capacity(size);
+		body.content().capacity(size);
 	}
 
 	@Override
 	// OK
 	public int getBufferSize()
 	{
-		return body.data().capacity();
+		return body.content().capacity();
 	}
 
 	/**
@@ -1147,7 +1147,6 @@ public class HttpServletResponseImpl implements HttpServletResponse
 	 * 
 	 */
 	@Override
-	// OK
 	public void flushBuffer() throws IOException
 	{
 		if (isCommitted()) // committed,need not to do again
@@ -1174,6 +1173,7 @@ public class HttpServletResponseImpl implements HttpServletResponse
 
 		// set the Servlet Header :)
 		response.headers().set(HttpHeaders.Names.SERVER, "JNetty");
+		
 
 		boolean keepAlive = true;
 
@@ -1191,15 +1191,14 @@ public class HttpServletResponseImpl implements HttpServletResponse
 			if (keepAlive)
 			{
 				// Add 'Content-Length' header only for a keep-alive connection.
-				response.headers().set(CONTENT_LENGTH, response.data().readableBytes());
+				response.headers().set(CONTENT_LENGTH, response.content().readableBytes());
+				
 				// Add keep alive header as per:
 				// http://www.w3.org/Protocols/HTTP/1.1/draft-ietf-http-v11-spec-01.html#Connection
 				response.headers().set(CONNECTION, HttpHeaders.Values.KEEP_ALIVE);
 			}
 			else
 			{
-				response.headers().set(CONTENT_LENGTH, response.data().readableBytes());
-
 				response.headers().set(CONNECTION, HttpHeaders.Values.CLOSE);
 			}
 		}
@@ -1207,13 +1206,15 @@ public class HttpServletResponseImpl implements HttpServletResponse
 		// Write the response.
 		ctx.nextOutboundMessageBuffer().add(response);
 
-		// if CONNECTION == "close" Close the non-keep-alive connection after the write operation is done.
+		
 		if (keepAlive)
 		{
 			ctx.flush();
 		}
 		else
 		{
+			//CONNECTION == "close" Close the non-keep-alive connection after the write operation is done.
+			
 			ctx.flush().addListener(ChannelFutureListener.CLOSE);
 		}
 	}
@@ -1284,7 +1285,7 @@ public class HttpServletResponseImpl implements HttpServletResponse
 		if (isCommitted())
 			throw new IllegalStateException("Committed");
 
-		body.data().clear();
+		body.content().clear();
 	}
 
 	/*
@@ -1376,7 +1377,7 @@ public class HttpServletResponseImpl implements HttpServletResponse
 
 	public long getContentCount()
 	{
-		return body.data().writerIndex();
+		return body.content().writerIndex();
 	}
 
 	@Override
