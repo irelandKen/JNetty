@@ -300,7 +300,7 @@ public class ServletMapper
 		if (debug)
 			log.debug(_webApp + " map (uri:" + contextURI + " -> " + servletName + ")");
 
-		// 创建FilterChain
+		// 创建ServletFilterChain
 		FilterChain chain = null;
 		
 		if (config != null)
