@@ -16,6 +16,7 @@
 package org.ireland.jnetty;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
@@ -87,7 +88,8 @@ public class HttpHandler extends ChannelInboundMessageHandlerAdapter<FullHttpMes
 				send100Continue(ctx);
 			}
 
-			FullHttpResponse response = new DefaultFullHttpResponse(request.getProtocolVersion(), OK, Unpooled.buffer(0));
+			//TODO: UnpooledHeapByteBuf 是基于内存复制 来扩展容量的,这里可以改为 (池化 + 增量 组合模式) 来优化
+			FullHttpResponse response = new DefaultFullHttpResponse(request.getProtocolVersion(), OK, PooledByteBufAllocator.DEFAULT.directBuffer(0));
 
 			handle(ctx, request, response);
 
