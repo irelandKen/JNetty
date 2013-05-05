@@ -34,7 +34,7 @@ public class JNettyServer
 	public void run() throws Exception
 	{
 		// Configure the server.
-		EventLoopGroup bossGroup = new AioEventLoopGroup(2);
+		EventLoopGroup bossGroup = new AioEventLoopGroup(1);
 		EventLoopGroup workerGroup = new AioEventLoopGroup();
 		try
 		{
