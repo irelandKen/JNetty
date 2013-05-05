@@ -30,12 +30,14 @@ public class JNettyServer
 	public static final String HOST = "127.0.0.1";
 
 	private static int PORT = 80;
+	
+	private static Integer EVENT_LOOP_THREADS = null;
 
 	public void run() throws Exception
 	{
 		// Configure the server.
 		EventLoopGroup bossGroup = new AioEventLoopGroup(1);
-		EventLoopGroup workerGroup = new AioEventLoopGroup();
+		EventLoopGroup workerGroup = (EVENT_LOOP_THREADS == null) ? new AioEventLoopGroup() : new AioEventLoopGroup(EVENT_LOOP_THREADS);
 		try
 		{
 			ServerBootstrap bootstrap = new ServerBootstrap();
@@ -58,7 +60,11 @@ public class JNettyServer
 	{
         if (args.length > 0) {
         	PORT = Integer.parseInt(args[0]);
-        } 
+        }
+        
+        if(args.length > 1) {
+        	EVENT_LOOP_THREADS = Integer.parseInt(args[1]);
+        }
 
 		new JNettyServer().run();
 	}
