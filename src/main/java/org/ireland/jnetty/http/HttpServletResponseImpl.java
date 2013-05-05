@@ -1174,6 +1174,9 @@ public class HttpServletResponseImpl implements HttpServletResponse
 		// set the Servlet Header :)
 		response.headers().set(HttpHeaders.Names.SERVER, "JNetty");
 		
+		// Set the "Content-Length" Header
+		response.headers().set(CONTENT_LENGTH, response.content().readableBytes());
+		
 
 		boolean keepAlive = true;
 
@@ -1190,9 +1193,6 @@ public class HttpServletResponseImpl implements HttpServletResponse
 			// TODO:think about how to decide keepAlive or not
 			if (keepAlive)
 			{
-				// Add 'Content-Length' header only for a keep-alive connection.
-				response.headers().set(CONTENT_LENGTH, response.content().readableBytes());
-				
 				// Add keep alive header as per:
 				// http://www.w3.org/Protocols/HTTP/1.1/draft-ietf-http-v11-spec-01.html#Connection
 				response.headers().set(CONNECTION, HttpHeaders.Values.KEEP_ALIVE);
