@@ -110,7 +110,7 @@ public class MimeTypes
 
     /* ------------------------------------------------------------ */
     private static final Logger LOG = Log.getLogger(MimeTypes.class);
-    public  final static Trie<MimeTypes.Type> CACHE= new ArrayTrie<>(512);
+    public  final static Trie<MimeTypes.Type> CACHE= new ArrayTrie<MimeTypes.Type>(512);
     private final static Trie<ByteBuffer> TYPES= new ArrayTrie<ByteBuffer>(512);
     private final static Map<String,String> __dftMimeMap = new HashMap<String,String>();
     private final static Map<String,String> __encodings = new HashMap<String,String>();
