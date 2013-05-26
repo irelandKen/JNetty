@@ -27,6 +27,8 @@ import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpServerCodec;
+import io.netty.util.concurrent.DefaultEventExecutorGroup;
+import io.netty.util.concurrent.EventExecutorGroup;
 
 public class JNettySocketChannelInitializer extends ChannelInitializer<SocketChannel> 
 {
@@ -37,6 +39,15 @@ public class JNettySocketChannelInitializer extends ChannelInitializer<SocketCha
 	private static final WebApp webApp;
 	
 	private static final HttpHandler httpHandler;
+	
+	//32条线程作为业务线程
+	private static final EventExecutorGroup businessThreadGroup;
+	
+	static
+	{
+		businessThreadGroup = new DefaultEventExecutorGroup(Runtime.getRuntime().availableProcessors() * 8);
+	}
+	
 	static 
 	{	
     	//String rootDirectory = System.getProperty("user.dir") + SLASH + "src" + SLASH + "main" + SLASH + "webapp";
@@ -66,6 +77,8 @@ public class JNettySocketChannelInitializer extends ChannelInitializer<SocketCha
         p.addLast("aggregator", new HttpObjectAggregator(1048576));
         
         //Share The HttpHandler
-        p.addLast("handler", httpHandler);
+        //业务部分的处理比较耗时，故由独立的线程组来处理						TODO ? 测试：业务处理时间达多长才需要使用独立的业务线程呢？
+        p.addLast(businessThreadGroup,"handler", httpHandler);
+        //p.addLast("handler", httpHandler);
     }
 }
