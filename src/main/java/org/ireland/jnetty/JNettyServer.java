@@ -17,6 +17,7 @@ package org.ireland.jnetty;
 
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.aio.AioEventLoopGroup;
 import io.netty.channel.socket.aio.AioServerSocketChannel;
@@ -29,7 +30,7 @@ public class JNettyServer
 
 	public static final String HOST = "127.0.0.1";
 
-	private static int PORT = 80;
+	private static int PORT = 88;
 	
 	private static Integer EVENT_LOOP_THREADS = null;
 
@@ -44,7 +45,8 @@ public class JNettyServer
 			
 			bootstrap.group(bossGroup, workerGroup)
 			         .channel(AioServerSocketChannel.class)
-			         .childHandler(new JNettySocketChannelInitializer());
+			         .childHandler(new JNettySocketChannelInitializer())
+			         .childOption(ChannelOption.TCP_NODELAY, true);
 
 			Channel ch = bootstrap.bind(HOST, PORT).sync().channel();
 			ch.closeFuture().sync();
